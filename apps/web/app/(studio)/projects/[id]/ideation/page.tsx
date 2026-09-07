@@ -2,14 +2,20 @@ import { FORMATS, type VideoFormat } from "@docupulse/core";
 import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { fmtDuration, parseJson } from "@/lib/data";
-import { selectIdea } from "../../actions";
+import { generateIdeas, selectIdea } from "../../actions";
+import { JobWatcher } from "@/components/JobWatcher";
+import Link from "next/link";
 
-export default async function IdeationPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string }> }) {
+export default async function IdeationPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; view?: "all" | "viral" | "hooks" }> }) {
   const { id } = await params;
-  const { blocked } = await searchParams;
+  const { blocked, job, view = "all" } = await searchParams;
   const { project, header } = await loadProjectShell(id, "IDEATION", blocked);
   const format = FORMATS[project.format as VideoFormat];
   const hooks = parseJson<string[]>(project.hooks, []);
+  const ideas = [...project.ideas].sort((a, b) =>
+    view === "viral" ? (b.ctrEstimate ?? 0) - (a.ctrEstimate ?? 0) : view === "hooks" ? (b.retention30s ?? 0) - (a.retention30s ?? 0) : (b.score ?? 0) - (a.score ?? 0),
+  );
+  const busy = !!job;
 
   return (
     <>
@@ -30,8 +36,14 @@ export default async function IdeationPage({ params, searchParams }: { params: P
               </div>
             </div>
             <div className="flex gap-2">
-              <Button variant="primary" icon="bolt" disabled title="Sprint 1: geração com Gemini">Gerar Ideias Magnéticas com IA</Button>
-              <Button icon="shuffle" disabled>Randomizar</Button>
+              <form action={generateIdeas.bind(null, project.id, { append: false, focus: "all" })}>
+                <Button type="submit" variant="primary" icon="bolt" disabled={busy}>
+                  Gerar Ideias Magnéticas com IA <span className="ml-1 rounded-sm bg-void/30 px-1.5 font-mono text-[10px] font-normal">Gemini</span>
+                </Button>
+              </form>
+              <form action={generateIdeas.bind(null, project.id, { append: false, focus: (["all", "viral", "hooks"] as const)[Math.floor(Math.random() * 3)], count: 3 })}>
+                <Button type="submit" icon="shuffle" disabled={busy}>Randomizar</Button>
+              </form>
             </div>
           </div>
         </Card>
@@ -44,19 +56,25 @@ export default async function IdeationPage({ params, searchParams }: { params: P
             </div>
             <div className="flex items-center gap-2">
               <div className="flex rounded border border-line bg-void/40 p-0.5 font-mono text-[11px]">
-                {["Todas", "Maior Viralidade", "Ganchos Psicológicos"].map((t, i) => (
-                  <span key={t} className={i === 0 ? "rounded-sm bg-primary/15 px-3 py-1 text-primary-bright" : "px-3 py-1 text-fg-secondary"}>{t}{i === 0 && ` (${project.ideas.length})`}</span>
+                {([["all", "Todas"], ["viral", "Maior Viralidade"], ["hooks", "Ganchos Psicológicos"]] as const).map(([v, t]) => (
+                  <Link key={v} href={`?view=${v}`} className={v === view ? "rounded-sm bg-primary/15 px-3 py-1 text-primary-bright" : "px-3 py-1 text-fg-secondary hover:text-fg"}>
+                    {t}{v === "all" && ` (${project.ideas.length})`}
+                  </Link>
                 ))}
               </div>
-              <Button size="sm" icon="refresh" disabled>Gerar mais 3 variações</Button>
+              <form action={generateIdeas.bind(null, project.id, { append: true, focus: view, count: 3 })}>
+                <Button type="submit" size="sm" icon="refresh" disabled={busy || project.ideas.length === 0}>Gerar mais 3 variações</Button>
+              </form>
             </div>
           </div>
 
+          {job && <div className="mt-4"><JobWatcher jobId={job} label="Gerando ideias magnéticas com o Gemini" /></div>}
+
           {project.ideas.length === 0 ? (
-            <Card className="mt-4 p-10 text-center text-sm text-muted">Nenhuma ideia ainda. Na Sprint 1 o botão "Gerar Ideias" chama o Gemini e preenche estes cards.</Card>
+            !job && <Card className="mt-4 p-10 text-center text-sm text-muted">Nenhuma ideia ainda. Clique em "Gerar Ideias Magnéticas com IA".</Card>
           ) : (
             <div className="mt-4 grid grid-cols-3 gap-4">
-              {project.ideas.map((idea) => {
+              {ideas.map((idea) => {
                 const lines = parseJson<string[]>(idea.hookLines, []);
                 return (
                   <Card key={idea.id} className="flex flex-col p-4" glow={idea.recommended ? "cyan" : "none"} accent={idea.recommended ? "dual" : "none"}>

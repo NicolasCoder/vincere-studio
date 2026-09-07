@@ -2,6 +2,7 @@ import type { JobType } from "@docupulse/core";
 import type { JobContext } from "../queue";
 import { demo } from "./demo";
 import { runWorkflow } from "./run-workflow";
+import { generateIdeas } from "./generate-ideas";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -14,7 +15,7 @@ const notImplemented =
 
 export const handlers: Record<JobType, JobHandler> = {
   DEMO: demo,
-  GENERATE_IDEAS: notImplemented("Sprint 1"),
+  GENERATE_IDEAS: generateIdeas,
   GENERATE_SCRIPT: notImplemented("Sprint 2"),
   SYNTHESIZE_VOICE: notImplemented("Sprint 3"),
   HUNT_BROLL: notImplemented("Sprint 3"),

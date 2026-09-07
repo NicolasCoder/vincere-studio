@@ -94,3 +94,11 @@ export async function enqueueJob(type: string, projectId?: string, payload: Reco
   const job = await prisma.job.create({ data: { type, projectId, payload: JSON.stringify(payload) } });
   return job.id;
 }
+
+/** Passo 1: enfileira a geração de ideias e volta para a tela acompanhando o job. */
+export async function generateIdeas(projectId: string, opts: { append?: boolean; focus?: "all" | "viral" | "hooks"; count?: number } = {}) {
+  const job = await prisma.job.create({
+    data: { type: "GENERATE_IDEAS", projectId, payload: JSON.stringify({ projectId, count: opts.count ?? 3, append: opts.append ?? false, focus: opts.focus ?? "all" }) },
+  });
+  redirect(`/projects/${projectId}/ideation?job=${job.id}`);
+}

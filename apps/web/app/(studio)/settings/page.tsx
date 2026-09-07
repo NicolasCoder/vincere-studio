@@ -6,7 +6,8 @@ import { getSettings, getUsageSummary, listJobs } from "@/lib/data";
 import { enqueueDemoJob } from "./actions";
 
 const PROVIDERS = [
-  ["GEMINI_API_KEY", "Gemini API (texto, imagem, TTS)", "aistudio.google.com — free tier"],
+  ["GEMINI_API_KEY", "Gemini API — texto e voz", "aistudio.google.com — nível gratuito, sem cobrança"],
+  ["GEMINI_IMAGE_API_KEY", "Gemini API — imagens (Nano Banana)", "projeto com faturamento; usada só nos modos Híbrido/Premium"],
   ["PEXELS_API_KEY", "Pexels (fotos e vídeos de acervo)", "pexels.com/api — gratuito"],
   ["PIXABAY_API_KEY", "Pixabay (fotos, vídeos, música)", "pixabay.com/api — gratuito"],
   ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "cota diária gratuita"],

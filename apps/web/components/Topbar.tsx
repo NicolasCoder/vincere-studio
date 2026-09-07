@@ -22,10 +22,10 @@ export function Topbar({ crumbs, costUsd }: { crumbs: string[]; costUsd: number 
         </div>
         <div
           className="flex h-9 items-center gap-2 rounded border border-primary/40 bg-primary/10 px-3 font-mono text-xs text-primary-bright"
-          title="Consumo real de API acumulado (base dos créditos)"
+          title="Custo equivalente das chamadas de API (no nível gratuito do Gemini isso não é cobrado)"
         >
           <Icon name="bolt" className="text-[16px]" filled />
-          US$ {costUsd.toFixed(2)} <span className="text-muted">consumido</span>
+          US$ {costUsd.toFixed(2)} <span className="text-muted">equiv.</span>
         </div>
         <button className="relative grid size-9 place-items-center rounded text-fg-secondary hover:bg-line/40 hover:text-fg">
           <Icon name="notifications" className="text-[20px]" />
