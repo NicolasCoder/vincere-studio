@@ -1,0 +1,17 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 48" fill="none">
+  <defs>
+    <linearGradient id="glowGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06B6D4"/>
+      <stop offset="100%" stop-color="#8B5CF6"/>
+    </linearGradient>
+    <filter id="neonBlur" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="3" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+  <rect x="4" y="6" width="36" height="36" rx="10" fill="#111827" stroke="url(#glowGrad)" stroke-width="2"/>
+  <path d="M18 16L30 24L18 32V16Z" fill="url(#glowGrad)"/>
+  <circle cx="31" cy="17" r="2.5" fill="#22D3EE"/>
+  <text x="50" y="30" fill="#F8FAFC" font-family="'Space Grotesk', system-ui, sans-serif" font-size="19" font-weight="700" letter-spacing="-0.02em">DOCU<tspan fill="#22D3EE">PULSE</tspan></text>
+  <text x="156" y="22" fill="#8B5CF6" font-family="'Space Grotesk', system-ui, sans-serif" font-size="9" font-weight="700" letter-spacing="0.08em">AI</text>
+</svg>

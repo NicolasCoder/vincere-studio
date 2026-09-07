@@ -1,0 +1,640 @@
+<!DOCTYPE html><html class="dark" lang="en" style=""><head><meta charset="utf-8"><meta content="width=device-width, initial-scale=1.0" name="viewport"><link href="https://fonts.googleapis.com" rel="preconnect"><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-error-container":"#ffdad6","error":"#ffb4ab","surface-container":"#1c2028","on-tertiary-fixed":"#001f25","on-secondary-container":"#c4abff","on-secondary-fixed":"#23005c","on-primary":"#003640","surface-variant":"#31353e","background":"#0f131c","surface-container-highest":"#31353e","secondary-fixed-dim":"#d0bcff","surface-container-high":"#262a33","on-primary-fixed":"#001f26","on-primary-fixed-variant":"#004e5c","on-tertiary-fixed-variant":"#004e5a","inverse-on-surface":"#2c3039","on-error":"#690005","on-tertiary":"#00363e","tertiary-container":"#00b7cf","primary":"#4cd7f6","surface-container-low":"#181c24","surface-tint":"#4cd7f6","secondary-container":"#571bc1","inverse-primary":"#00687a","primary-fixed":"#acedff","inverse-surface":"#dfe2ee","on-tertiary-container":"#00434d","on-secondary-fixed-variant":"#5516be","on-background":"#dfe2ee","secondary-fixed":"#e9ddff","tertiary-fixed-dim":"#2fd9f4","on-secondary":"#3c0091","primary-fixed-dim":"#4cd7f6","secondary":"#d0bcff","tertiary":"#2fd9f4","primary-container":"#06b6d4","outline":"#869397","on-surface":"#dfe2ee","on-primary-container":"#00424f","tertiary-fixed":"#a2eeff","surface-container-lowest":"#0a0e16","surface-bright":"#353942","outline-variant":"#3d494c","error-container":"#93000a","surface-dim":"#0f131c","on-surface-variant":"#bcc9cd","surface":"#0f131c"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"gutter":"1rem","space-xl":"2rem","space-lg":"1.5rem","space-sm":"0.75rem","space-2xl":"3rem","margin-screen":"1.5rem","sidebar-width":"18rem","space-md":"1rem","inspector-width":"22rem","space-xs":"0.5rem","space-2xs":"0.25rem"},fontFamily:{"label-md":["JetBrains Mono"],"body-lg":["Geist"],"headline-md":["Space Grotesk"],"mono-code":["JetBrains Mono"],"headline-lg-mobile":["Space Grotesk"],"headline-sm":["Space Grotesk"],"label-sm":["JetBrains Mono"],"display-lg":["Space Grotesk"],"body-md":["Geist"],"body-sm":["Geist"],"headline-lg":["Space Grotesk"]},fontSize:{"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"500"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"600"}],"mono-code":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-sm":["18px",{"lineHeight":"26px","letterSpacing":"0em","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.06em","fontWeight":"500"}],"display-lg":["40px",{"lineHeight":"48px","letterSpacing":"-0.03em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0em","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary selection:text-on-primary"><aside class="fixed left-0 top-0 h-screen w-sidebar-width bg-surface-container-lowest/95 backdrop-blur-xl z-50 flex flex-col justify-between p-space-md shadow-[0_0_24px_-4px_rgba(0,0,0,0.7)]"><div class="flex flex-col gap-space-lg"><div class="flex items-center gap-space-sm px-space-xs py-space-2xs"><img alt="DocuPulse AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WfZI3g3NY2_FcP0rAzOUwCj00jOy_ppJLdrS83WVZKFXsiHa7vkkhVCZAHCeUnVDrf9Alg33rbr4jX-fZrIomb4Dc7CPGpGfz94cnhAOzTisIyZL0oS2CwNbz9mynf2WSAwkRrCWRtrClc-dvfsvH4CWeTJtAHKrsrYU1SPefWmco8gY8J5mAY1VfBCctn6y4FTvju1PPsakZMLKhAW8RHRYcx3aHUixnh656Yca7mMqgZeokNroYS7pes"><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight leading-none">DocuPulse<span class="text-primary">.AI</span></span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-space-2xs">Studio OS</span></div></div><nav class="flex flex-col gap-space-2xs" data-active-classes="bg-gradient-to-r from-primary-container/20 to-secondary-container/30 text-primary border-l-2 border-primary shadow-[0_0_16px_rgba(6,182,212,0.25)]"><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">dashboard</span><span class="font-body-md text-body-md">Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="channel-manager" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">smart_display</span><span class="font-body-md text-body-md">Channel Manager</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant">3</span></a><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs rounded transition-all group bg-gradient-to-r from-primary-container/20 to-secondary-container/30 text-primary border-l-2 border-primary shadow-[0_0_16px_rgba(6,182,212,0.25)]" data-path="ideation-hub" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">lightbulb</span><span class="font-body-md text-body-md">Ideation Hub</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-secondary-container/40 text-secondary border border-secondary-container">AI</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="script-writer" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">history_edu</span><span class="font-body-md text-body-md">Script Writer</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="media-asset-library" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">video_library</span><span class="font-body-md text-body-md">Media Assets</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant">4k</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">settings</span><span class="font-body-md text-body-md">Settings</span></div></a></nav></div><div class="flex flex-col gap-space-md pt-space-md border-t border-outline-variant/30"><div class="p-space-sm rounded-xl bg-surface-container-low/70 border border-outline-variant/20 flex flex-col gap-space-xs shadow-[0_0_16px_rgba(6,182,212,0.05)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm font-semibold uppercase px-space-2xs py-0.5 rounded bg-secondary-container text-on-secondary-container tracking-wider">Pro Tier</span><span class="font-mono-code text-mono-code text-primary">60%</span></div><div class="flex flex-col gap-space-2xs"><div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant"><span class="">Quota Rendered</span><span class="font-mono-code text-on-surface">12/20 Docs</span></div><div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full bg-gradient-to-r from-primary via-tertiary to-secondary rounded-full w-3/5"></div></div></div></div><a class="flex items-center gap-space-xs px-space-xs text-on-surface-variant hover:text-primary font-body-sm text-body-sm transition-colors" data-path="support" href="#"><span class="material-symbols-outlined text-base">help_outline</span><span class="">Documentation &amp; Support</span></a></div></aside><div class="pl-sidebar-width min-h-screen flex flex-col"><header class="fixed top-0 left-sidebar-width right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 border-b border-outline-variant/20 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><span class="hover:text-on-surface transition-colors cursor-pointer">Ideation</span><span class="text-outline-variant">/</span><span class="font-medium text-on-surface flex items-center gap-space-2xs"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>Step 1: Topic &amp; Niche</span></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/30 text-on-surface-variant hover:border-primary/50 transition-colors cursor-pointer w-64 shadow-inner"><span class="material-symbols-outlined text-base text-outline">search</span><span class="font-body-sm text-body-sm flex-1 text-on-surface-variant">Quick search...</span><kbd class="font-mono-code text-label-sm px-1.5 py-0.5 rounded bg-surface-container text-outline border border-outline-variant/40">Cmd + K</kbd></div><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-xl bg-surface-container-high/60 border border-primary/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"><span class="material-symbols-outlined text-primary text-base">bolt</span><span class="font-mono-code text-label-md font-semibold text-primary">4,850</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Credits</span></div><button class="relative p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-surface shadow-[0_0_8px_#4cd7f6]"></span></button><div class="flex items-center gap-space-sm pl-space-xs border-l border-outline-variant/30"><div class="relative flex items-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-primary/40" src="https://lh3.googleusercontent.com/aida-public/AB6AXuCiKJkCMXCsAaMpvRpujraML-6U4h9UiVzQ-MZfcSBvXPFUd5xnGPdWaHRS9eOFhbeG1aD8qf0CRj0h7OILc2V9930HZioG4yavpmQg_e-WdVAHE2Run7wsFiPkW8eLkNUgTAuix380OeiQ3vsq99CM3DyRQXghAZJOJS5rtztzIW5rlEVzCU3A6ctC4oeTEMUM7grzyzWZkzMDj5TttgBHEpMnqw4EmkVv8QXsdE30iLJSBb32v-yugA"><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface"></span></div></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<!-- Pipeline Stepper Header -->
+<section class="w-full px-space-lg py-space-md bg-surface-container-lowest/80 backdrop-blur-md"><div class="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-space-md">
+<div class="flex items-center gap-space-xs flex-wrap">
+<div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-surface-container-high/60 text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm uppercase">Passo 01: Tópico &amp; Nicho</span>
+</div>
+<span class="text-outline-variant font-mono-code text-xs">/</span>
+<div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-surface-container-high/60 text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm uppercase">Passo 02: Roteiro &amp; Narrativa</span>
+</div>
+<span class="text-outline-variant font-mono-code text-xs">/</span>
+<div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-surface-container-high/60 text-on-surface-variant">
+<span class="material-symbols-outlined text-tertiary text-sm" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-sm text-label-sm uppercase">Passo 03: Voiceover &amp; B-Roll</span>
+</div>
+<span class="text-outline-variant font-mono-code text-xs">/</span>
+<div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-full bg-primary/20 text-primary border border-primary/40 shadow-lg shadow-primary-container/30 relative">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="font-label-sm text-label-sm uppercase font-bold text-primary tracking-wide">Passo 04: Render em Andamento (88%)</span>
+<span class="px-space-2xs py-0.5 rounded bg-primary text-on-primary text-[10px] font-mono-code font-bold uppercase tracking-wider animate-pulse">AO VIVO</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md">
+<div class="flex flex-col items-end">
+<div class="flex items-center gap-space-xs">
+<span class="font-mono-code text-label-sm text-primary font-bold">88% CONCLUÍDO</span>
+<span class="text-outline text-xs">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant font-mono-code">ETA: ~28s restantes</span>
+</div>
+<div class="w-40 h-2 rounded-full bg-surface-container-highest overflow-hidden mt-1 relative">
+<div class="h-full bg-gradient-to-r from-primary via-tertiary to-secondary rounded-full w-[88%] transition-all"></div>
+</div>
+</div>
+<div class="h-8 w-px bg-surface-variant"></div>
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-base animate-spin">sync</span>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">16x A100 Nodes</span>
+<span class="font-mono-code text-[10px] text-tertiary">98% de Carga</span>
+</div>
+</div>
+</div>
+</div></section>
+<!-- Top Project Hero / Context Banner -->
+<section class="w-full px-space-lg py-space-lg bg-surface-container-low">
+<div class="max-w-7xl mx-auto flex flex-col xl:flex-row xl:items-center justify-between gap-space-lg">
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center gap-space-sm flex-wrap">
+<span class="font-mono-code text-label-sm text-primary bg-primary/10 px-space-xs py-0.5 rounded uppercase">PROJETO ATIVO #DP-8921</span>
+<span class="text-outline-variant font-mono-code text-xs">•</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-sm text-tertiary">history</span> Sincronizado agora
+          </span>
+</div>
+<h1 class="font-headline-lg text-headline-lg text-on-surface tracking-tight leading-tight">Eles Detectaram um Sinal Secreto nos Confins do Sistema Solar</h1>
+<!-- Project Badges Strip -->
+<div class="flex items-center gap-space-xs flex-wrap mt-space-2xs">
+<span class="font-mono-code text-label-sm px-space-xs py-1 rounded bg-surface-container text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-primary">timer</span> 21:15 min total
+          </span>
+<span class="font-mono-code text-label-sm px-space-xs py-1 rounded bg-surface-container text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-secondary">hd</span> 4K 60fps ProRes / H.265
+          </span>
+<span class="font-mono-code text-label-sm px-space-xs py-1 rounded bg-surface-container text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-tertiary">view_carousel</span> 48 Cenas Compiladas
+          </span>
+<span class="font-mono-code text-label-sm px-space-xs py-1 rounded bg-surface-container text-on-surface-variant flex items-center gap-1">
+<span class="material-symbols-outlined text-xs text-primary">surround_sound</span> Áudio Dolby 5.1
+          </span>
+</div>
+</div>
+<!-- Action Group -->
+<div class="flex items-center gap-space-sm flex-wrap self-start xl:self-center"><button class="px-space-md py-2.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-md transition-all flex items-center gap-space-xs shadow-sm group">
+<span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">download</span>
+<span class="">Baixar Pacote (.zip / 4.2 GB)</span>
+</button>
+<button class="px-space-md py-2.5 rounded-lg bg-surface-container-highest hover:bg-surface-bright text-on-surface font-headline-sm text-body-md transition-all flex items-center gap-space-xs shadow-sm group">
+<span class="material-symbols-outlined text-tertiary text-lg">play_circle</span>
+<span class="">Prévia em Streaming</span>
+</button>
+<button class="px-space-lg py-2.5 rounded-lg bg-gradient-to-r from-primary via-tertiary to-secondary-container text-on-primary font-headline-sm text-body-md transition-all flex items-center gap-space-xs shadow-lg shadow-primary-container/40 ring-2 ring-primary/50 relative overflow-hidden group" id="triggerRenderTop">
+<span class="material-symbols-outlined text-xl text-on-surface animate-spin">sync</span>
+<span class="font-bold text-on-surface">Processando Render (88%)</span>
+<span class="px-1.5 py-0.5 rounded bg-primary/30 text-on-surface text-[10px] font-mono-code font-bold uppercase ml-1">~28s</span>
+</button></div>
+</div>
+</section>
+<!-- Main Workstation Layout (2-Column Canvas) -->
+<main class="w-full px-space-lg py-space-xl">
+<div class="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-space-xl">
+<!-- LEFT COLUMN: Render Farm Cluster & Video Player Preview (7 cols) -->
+<div class="lg:col-span-7 flex flex-col gap-space-xl">
+<!-- 1. Cinematic Video Preview Player Container -->
+<div class="rounded-xl bg-surface-container-low shadow-xl overflow-hidden flex flex-col relative group">
+<!-- Live Status Bar -->
+<div class="px-space-md py-2.5 bg-surface-container-lowest/90 backdrop-blur flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="relative flex h-2.5 w-2.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-2.5 w-2.5 bg-primary"></span>
+</span>
+<span class="font-label-sm text-label-sm text-on-surface font-semibold">Render Farm Pronta</span>
+<span class="text-outline-variant font-mono-code text-xs">|</span>
+<span class="font-mono-code text-label-sm text-on-surface-variant">16 GPUs A100 Alocadas</span>
+</div>
+<div class="flex items-center gap-space-sm">
+<span class="font-mono-code text-label-sm px-space-2xs py-0.5 rounded bg-surface-container-highest text-tertiary uppercase">4K 60FPS</span>
+<span class="font-mono-code text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant uppercase">HDR10</span>
+</div>
+</div>
+<!-- Video Canvas / Image Preview Overlay -->
+<div class="relative w-full aspect-video bg-surface-container-lowest overflow-hidden flex items-center justify-center"><img class="w-full h-full object-cover brightness-[0.45] blur-[1px] transition-transform duration-700" alt="Variação B Vencedora - O Sinal Secreto" src="https://lh3.googleusercontent.com/aida/AEtjO1WUyD_x6awBDEs1dn4aV4Avn2HeUkuiVRrK0S3ujK3zPW9Upp3EOglgVYqAC1_5JnKGnVTqHcXmbCuInTtYe8mRV7HePYt9QscrZZa-QdyCROtr6sMkIr8dnMk6A2-VC-9srrnDy2Iy_kfhw-MZDmceTpOLXc4_r8YAFSHnyIchrAbE0Ooh_SVf6DoQn_NsqGiMc-U87ZFcVRsdUOG1pG3A9EIEXOFwZu0C9I_DvOVudmhIddVy9i-Xk7k">
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/50 to-surface-container-lowest/80 pointer-events-none"></div>
+<!-- Top HUD Tags -->
+<div class="absolute top-4 left-4 bg-surface-container-lowest/90 backdrop-blur-md px-2.5 py-1 rounded border border-primary/40 font-mono-code text-label-sm text-primary flex items-center gap-1.5 shadow-lg z-10">
+<span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-primary"></span></span>
+<span class="font-bold">CLUSTER ATIVO: 16x NVIDIA A100 (98.4% TFLOPS)</span>
+</div>
+<div class="absolute top-4 right-4 bg-surface-container-lowest/90 backdrop-blur px-2.5 py-1 rounded border border-outline-variant/30 font-mono-code text-label-md text-on-surface flex items-center gap-1.5 shadow-md z-10">
+<span class="text-primary font-bold animate-pulse">ENCODE</span>
+<span class="text-tertiary">Frame 72,480 / 82,350</span>
+<span class="text-outline">|</span>
+<span class="text-on-surface-variant">59.8 FPS</span>
+</div>
+<!-- Centered Active Render Overlay HUD -->
+<div class="absolute inset-0 z-20 flex flex-col items-center justify-center p-space-lg gap-space-sm text-center max-w-xl mx-auto">
+<div class="flex items-center gap-2 px-3 py-1 rounded-full bg-primary/20 border border-primary/40 text-primary text-xs font-mono-code uppercase font-semibold">
+<span class="material-symbols-outlined text-sm animate-spin">sync</span>
+<span class="">Passo 4 de 4: Composição Final &amp; Encode 4K H.265 / ProRes</span>
+</div>
+<div class="flex items-baseline gap-2">
+<span class="text-headline-lg font-bold text-on-surface tracking-tight font-headline-lg">88.4%</span>
+<span class="text-primary font-mono-code text-label-md font-semibold">RENDERIZANDO...</span>
+</div>
+<!-- Render Progress Bar -->
+<div class="w-full bg-surface-container-highest/80 h-3 rounded-full overflow-hidden border border-outline-variant/30 relative p-0.5 shadow-inner">
+<div class="h-full bg-gradient-to-r from-primary via-tertiary to-secondary rounded-full w-[88.4%] relative">
+<span class="absolute right-0 top-0 bottom-0 w-2 bg-on-surface rounded-full animate-pulse shadow-[0_0_8px_#4cd7f6]"></span>
+</div>
+</div>
+<!-- Telemetry Line -->
+<div class="flex items-center justify-between w-full font-mono-code text-xs text-on-surface-variant pt-1 px-1">
+<span class="flex items-center gap-1 text-primary"><span class="material-symbols-outlined text-xs">timer</span> Tempo Restante: 00:00:26</span>
+<span class="text-outline">•</span>
+<span class="text-on-surface">Bitrate Atual: <strong>68.4 Mbps</strong></span>
+<span class="text-outline">•</span>
+<span class="text-tertiary">Áudio Dolby 5.1 Compilado</span>
+</div>
+</div>
+<!-- Audio Level Meters Overlay (Bottom Left) -->
+<div class="absolute bottom-4 left-4 flex items-end gap-1 p-2 rounded bg-surface-container-lowest/80 backdrop-blur shadow-md z-10">
+<span class="font-mono-code text-[10px] text-outline uppercase mr-1">VU L/R</span>
+<div class="w-1.5 h-6 bg-surface-container rounded-sm overflow-hidden flex flex-col justify-end">
+<div class="w-full h-4/5 bg-tertiary"></div>
+</div>
+<div class="w-1.5 h-6 bg-surface-container rounded-sm overflow-hidden flex flex-col justify-end">
+<div class="w-full h-3/5 bg-primary"></div>
+</div>
+<span class="font-mono-code text-[10px] text-primary ml-1">-14 LUFS OK</span>
+</div></div>
+<!-- Video Scrub Bar with Chapter Milestones -->
+<div class="px-space-md pt-space-xs pb-space-sm bg-surface-container flex flex-col gap-space-2xs">
+<div class="relative w-full h-2 rounded-full bg-surface-container-highest cursor-pointer group/bar flex items-center">
+<!-- Scrub Progress (Simulated buffered 100%) -->
+<div class="absolute left-0 h-full bg-primary/40 rounded-full w-full"></div>
+<!-- Playhead Progress (Simulated scrub at 35%) -->
+<div class="absolute left-0 h-full bg-gradient-to-r from-primary to-tertiary rounded-full w-[35%]"></div>
+<!-- Chapter Marker Notches -->
+<div class="absolute left-[15%] w-1 h-3 bg-on-surface rounded-full shadow" title="Capítulo 1: A Anomalia Gravitacional"></div>
+<div class="absolute left-[38%] w-1 h-3 bg-on-surface rounded-full shadow" title="Capítulo 2: Os Registros Perdidos"></div>
+<div class="absolute left-[62%] w-1 h-3 bg-on-surface rounded-full shadow" title="Capítulo 3: O Vazio em Expansão"></div>
+<div class="absolute left-[85%] w-1 h-3 bg-on-surface rounded-full shadow" title="Capítulo 4: Conclusão Cósmica"></div>
+<!-- Playhead Dot -->
+<div class="absolute left-[35%] w-3.5 h-3.5 rounded-full bg-surface-bright shadow-lg -ml-1.5 ring-2 ring-primary"></div>
+</div>
+<!-- Player Controls Toolbar -->
+<div class="flex items-center justify-between pt-1">
+<div class="flex items-center gap-space-sm">
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center">
+<span class="material-symbols-outlined text-xl">play_arrow</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center">
+<span class="material-symbols-outlined text-xl">skip_next</span>
+</button>
+<button class="text-on-surface-variant hover:text-primary transition-colors flex items-center">
+<span class="material-symbols-outlined text-xl">volume_up</span>
+</button>
+<span class="font-mono-code text-label-sm text-on-surface-variant">07:26 / 21:15</span>
+</div>
+<div class="flex items-center gap-space-sm font-mono-code text-label-sm">
+<span class="text-on-surface-variant">Bitrate: <strong class="text-on-surface">65.2 Mbps</strong></span>
+<span class="text-outline-variant">•</span>
+<span class="text-primary font-semibold">ProRes Master</span>
+<button class="text-on-surface-variant hover:text-on-surface transition-colors">
+<span class="material-symbols-outlined text-lg">fullscreen</span>
+</button>
+</div>
+</div>
+</div>
+</div>
+<!-- 2. Render Farm Processing Cluster Status (4 Cloud Nodes) -->
+<div class="p-space-lg rounded-xl bg-surface-container shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-xl">dns</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Status do Cluster Render Farm</h2>
+</div>
+<div class="flex items-center gap-space-sm font-mono-code text-label-sm text-on-surface-variant">
+<span class="">Latência: <span class="text-primary font-bold">12ms</span></span>
+<span class="">•</span>
+<span class="">Espaço: <span class="text-on-surface">4.8 GB livre</span></span>
+</div>
+</div>
+<!-- Nodes List -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm"><!-- Node 01 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-tertiary/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 01: Áudio &amp; Ducking</span>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary bg-tertiary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sincronização 48Khz Master, voz ElevenLabs masterizada e calibrada a -14 LUFS OK.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-tertiary"></div>
+</div>
+</div>
+<!-- Node 02 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-primary/40 flex flex-col gap-space-xs relative overflow-hidden">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-base animate-spin">sync</span>
+<span class="font-label-md text-label-md text-primary font-bold">Node 02: Composição 4K</span>
+</div>
+<span class="font-mono-code text-label-sm text-primary bg-primary/20 border border-primary/30 px-1.5 py-0.5 rounded font-bold animate-pulse">EM EXECUÇÃO 92%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Interpolação de 48 tomadas a 60fps com simulação de gravidade relativística.</p>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="w-[92%] h-full bg-gradient-to-r from-primary to-tertiary rounded-full animate-pulse"></div>
+</div>
+</div>
+<!-- Node 03 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-secondary/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 03: Color Grading LUTs</span>
+</div>
+<span class="font-mono-code text-label-sm text-secondary bg-secondary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Paleta Obsidian Teal &amp; Orange aplicada e calibrada para telas OLED/HDR de alto contraste.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-secondary"></div>
+</div>
+</div>
+<!-- Node 04 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-outline-variant/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 04: Legendas &amp; SEO</span>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary bg-tertiary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Legendas .SRT dinâmicas compiladas por fonemas e tags geradas com sucesso.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-tertiary"></div>
+</div>
+</div></div>
+</div>
+<!-- 3. Export Quality & Presets Selector -->
+<div class="p-space-lg rounded-xl bg-surface-container shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-xl">tune</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Configurações de Exportação Master</h2>
+</div>
+<span class="font-label-sm text-label-sm text-primary uppercase font-mono-code">Perfil Padrão Studio</span>
+</div>
+<!-- Presets Radio Cards -->
+<div class="grid grid-cols-1 sm:grid-cols-3 gap-space-sm" id="presetSelectors">
+<!-- Preset 1: Recommended -->
+<div class="p-space-sm rounded-lg bg-surface-container-highest cursor-pointer flex flex-col gap-1 transition-all shadow-md" data-preset="yt-4k">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-md font-bold text-on-surface">YouTube 4K</span>
+<span class="material-symbols-outlined text-primary text-base">check_circle</span>
+</div>
+<span class="font-label-sm text-label-sm text-primary font-mono-code">Recomendado</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">H.265 / HEVC • 65 Mbps • Áudio Estéreo Otimizado -14 LUFS.</p>
+</div>
+<!-- Preset 2: ProRes -->
+<div class="p-space-sm rounded-lg bg-surface-container-low cursor-pointer flex flex-col gap-1 hover:bg-surface-container-high transition-all" data-preset="prores">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-md font-bold text-on-surface">ProRes 422 HQ</span>
+<span class="material-symbols-outlined text-outline-variant text-base">radio_button_unchecked</span>
+</div>
+<span class="font-label-sm text-label-sm text-secondary font-mono-code">Arquivo Master</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">Bitrate sem perdas • 220 Mbps • Áudio Dolby 5.1 Surround.</p>
+</div>
+<!-- Preset 3: Web 1080p -->
+<div class="p-space-sm rounded-lg bg-surface-container-low cursor-pointer flex flex-col gap-1 hover:bg-surface-container-high transition-all" data-preset="web-1080">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-body-md font-bold text-on-surface">FHD 1080p Web</span>
+<span class="material-symbols-outlined text-outline-variant text-base">radio_button_unchecked</span>
+</div>
+<span class="font-label-sm text-label-sm text-on-surface-variant font-mono-code">Render Rápido</span>
+<p class="font-body-sm text-body-sm text-on-surface-variant mt-1">H.264 • 18 Mbps • Exportação ágil para revisão rápida.</p>
+</div>
+</div>
+<!-- Feature Toggles -->
+<div class="pt-space-xs grid grid-cols-1 sm:grid-cols-3 gap-space-sm">
+<label class="flex items-center gap-space-xs p-space-xs rounded bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-highest accent-primary" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Burn-in Legendas</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Estilo MrBeast / Estético</span>
+</div>
+</label>
+<label class="flex items-center gap-space-xs p-space-xs rounded bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-highest accent-primary" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Capítulos YouTube</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Timestamps automáticos</span>
+</div>
+</label>
+<label class="flex items-center gap-space-xs p-space-xs rounded bg-surface-container-low cursor-pointer hover:bg-surface-container-high transition-colors">
+<input checked="" class="w-4 h-4 rounded bg-surface-container-highest accent-primary" type="checkbox">
+<div class="flex flex-col">
+<span class="font-body-md text-body-md text-on-surface font-medium">Norm. YouTube Audio</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Calibrado a -14 LUFS</span>
+</div>
+</label>
+</div>
+</div>
+</div>
+<!-- RIGHT COLUMN: YouTube Publishing & AI Metadata Suite (5 cols) -->
+<div class="lg:col-span-5 flex flex-col gap-space-xl">
+<!-- 1. YouTube Channel Integration Card -->
+<div class="p-space-lg rounded-xl bg-surface-container shadow-md flex flex-col gap-space-md"><div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-on-surface-variant uppercase font-mono-code">Canal de Destino Conectado</span>
+<span class="flex items-center gap-1 font-mono-code text-label-sm text-primary font-bold">
+<span class="w-2 h-2 rounded-full bg-primary animate-ping"></span> UPLOAD EM ANDAMENTO (76%)
+</span>
+</div>
+<!-- Live Upload In-Progress Banner -->
+<div class="p-space-sm rounded-lg bg-surface-container-lowest border border-primary/30 flex flex-col gap-2 shadow-inner">
+<div class="flex items-center justify-between font-mono-code text-xs">
+<span class="text-primary font-bold flex items-center gap-1"><span class="material-symbols-outlined text-sm animate-spin">cloud_upload</span> UPLOAD EM ANDAMENTO VIA YOUTUBE API</span>
+<span class="text-on-surface font-bold text-label-sm">76% ENVIADO</span>
+</div>
+<div class="w-full h-2 rounded-full bg-surface-container-highest overflow-hidden relative">
+<div class="h-full bg-gradient-to-r from-primary to-tertiary rounded-full w-[76%] transition-all"></div>
+</div>
+<div class="flex items-center justify-between font-mono-code text-[11px] text-on-surface-variant">
+<span class="text-on-surface">Video ID: <strong class="text-primary">dQw4w9WgXcQ</strong></span>
+<span class="text-secondary bg-secondary/10 px-1.5 py-0.5 rounded">Não listado • Pré-estreia agendada</span>
+</div>
+<div class="flex items-center gap-1 font-body-sm text-[11px] text-tertiary border-t border-outline-variant/20 pt-1.5">
+<span class="material-symbols-outlined text-sm">task_alt</span>
+<span class="">Thumbnail Variação B injetada como Capa Oficial (100% tráfego)</span>
+</div>
+</div>
+<div class="flex items-center gap-space-md p-space-sm rounded-lg bg-surface-container-low">
+<div class="w-12 h-12 rounded-full overflow-hidden bg-surface-container-highest flex-shrink-0">
+<img class="w-full h-full object-cover" alt="YouTube channel avatar" src="https://lh3.googleusercontent.com/aida-public/AB6AXuAERcRMqubUlTuem5uukQe1Im_526jtvsq8-uN1t4OcBEY7jBikprQ7DL7NiBfO2IppYX_qax-0LCJTqil0N5S6pB79Lsh563O5nXKILeZQ_NjebbWW0T5VLOHG7PbOb7fzd3afUj2DpveHYfl-Y-tYdjw6ZndxpqEw7SD24O42TQtmXktiYzSn-22O4ercqKRGRTmJ6AVDeNVU8bBt9nV03Ug42OzuAwCRe-iI2F1sYJl8dSo42CNH4g">
+</div>
+<div class="flex flex-col flex-1 min-w-0">
+<div class="flex items-center gap-1">
+<span class="font-headline-sm text-headline-sm text-on-surface truncate">Arquivo Cósmico &amp; Mistérios</span>
+<span class="material-symbols-outlined text-primary text-base" title="Canal Verificado">verified</span>
+</div>
+<div class="flex items-center gap-space-xs font-mono-code text-label-sm text-on-surface-variant">
+<span class="">@ArquivoCosmicoDoc</span>
+<span class="">•</span>
+<span class="text-on-surface font-semibold">142.4k inscritos</span>
+</div>
+</div>
+</div>
+<div class="flex items-center justify-between text-body-sm font-body-sm text-on-surface-variant px-1">
+<span class="">Cota diária de upload YouTube:</span>
+<span class="font-mono-code text-on-surface font-bold">1 de 6 vídeos usados</span>
+</div></div>
+<!-- 2. AI-Optimized Metadata & SEO Engine -->
+<div class="p-space-lg rounded-xl bg-surface-container shadow-md flex flex-col gap-space-md">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-xl">auto_awesome</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">SEO &amp; Metadados por IA</h2>
+</div>
+<div class="flex items-center gap-1 bg-surface-container-highest px-2 py-0.5 rounded">
+<span class="font-mono-code text-label-sm text-primary font-bold">98%</span>
+<span class="font-label-sm text-label-sm text-on-surface-variant">CTR Score</span>
+</div>
+</div>
+<!-- Video Title Input with Suggestions Trigger -->
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface">Título Oficial do Vídeo</label>
+<button class="font-label-sm text-label-sm text-primary hover:underline flex items-center gap-1">
+<span class="material-symbols-outlined text-xs">refresh</span> Gerar 3 Alternativas
+              </button>
+</div>
+<div class="relative">
+<input class="w-full p-space-sm rounded-lg bg-surface-container-low text-on-surface font-body-md text-body-md focus:outline-none focus:bg-surface-container-highest transition-all shadow-inner" type="text" value="Eles Detectaram um Sinal Secreto nos Confins do Sistema Solar">
+<button class="absolute right-2 top-2.5 text-on-surface-variant hover:text-primary transition-colors p-1" title="Copiar Título">
+<span class="material-symbols-outlined text-base">content_copy</span>
+</button>
+</div><div class="p-space-xs rounded-lg bg-surface-container-low border border-primary/30 flex items-center gap-space-sm mt-1"><div class="w-24 aspect-video rounded overflow-hidden flex-shrink-0 border border-primary/40 relative"><img class="w-full h-full object-cover" src="https://lh3.googleusercontent.com/aida/AEtjO1WUyD_x6awBDEs1dn4aV4Avn2HeUkuiVRrK0S3ujK3zPW9Upp3EOglgVYqAC1_5JnKGnVTqHcXmbCuInTtYe8mRV7HePYt9QscrZZa-QdyCROtr6sMkIr8dnMk6A2-VC-9srrnDy2Iy_kfhw-MZDmceTpOLXc4_r8YAFSHnyIchrAbE0Ooh_SVf6DoQn_NsqGiMc-U87ZFcVRsdUOG1pG3A9EIEXOFwZu0C9I_DvOVudmhIddVy9i-Xk7k" alt="Thumbnail Ativa Variação B"></div><div class="flex flex-col flex-1 min-w-0"><div class="flex items-center gap-1"><span class="material-symbols-outlined text-primary text-sm">verified</span><span class="font-label-sm text-[11px] font-bold text-primary uppercase font-mono-code truncate">Thumbnail Ativa: Variação B (O Sinal Secreto)</span></div><span class="font-body-sm text-[11px] text-on-surface-variant truncate">Promovida via YouTube Studio API (CTR 16.8%)</span></div><span class="font-mono-code text-[10px] text-primary bg-primary/10 border border-primary/20 px-1.5 py-0.5 rounded uppercase font-bold flex-shrink-0">Ativa 100%</span></div>
+</div>
+<!-- Video Description with Auto-Generated Timestamps -->
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface">Descrição com Capítulos Dinâmicos</label>
+<span class="font-mono-code text-label-sm text-on-surface-variant">1,840 / 5,000</span>
+</div>
+<textarea class="w-full p-space-sm rounded-lg bg-surface-container-low text-on-surface font-mono-code text-mono-code focus:outline-none focus:bg-surface-container-highest transition-all resize-none shadow-inner leading-relaxed" rows="6">Uma nova anomalia nas órbitas transnetunianas pode finalmente comprovar a hipótese mais perturbadora da astrofísica moderna: existiria um buraco negro primordial escondido nos confins do nosso próprio Sistema Solar?
+
+🔬 Fontes e Estudos Analisados:
+- Simulações de Lente Gravitacional do Observatório Vera Rubin
+- Dados orbitais anômalos de Sedna e 2015 BP519
+
+⏱️ Capítulos &amp; Linha do Tempo:
+00:00 - A Anomalia do Cinturão de Kuiper
+03:42 - O Planeta Nove Nunca Foi Encontrado
+08:15 - A Teoria dos Buracos Negros Primordiais
+14:02 - O Que Acontece se Ele se Aproximar?
+19:10 - O Novo Paradoxo da Astrofísica</textarea>
+</div>
+<!-- High-Conversion Tags -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface flex items-center justify-between">
+<span class="">Tags de Alta Conversão Recomendadas</span>
+<span class="font-mono-code text-label-sm text-primary">+8 Tags Injetadas</span>
+</label>
+<div class="flex flex-wrap gap-1.5">
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-primary font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #astronomia <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-primary font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #buraconegro <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-tertiary font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #sistemasolar <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-on-surface font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #espaco <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-on-surface font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #documentario <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+<span class="px-space-xs py-1 rounded-full bg-surface-container-low text-secondary font-mono-code text-label-sm flex items-center gap-1 hover:bg-surface-container-highest cursor-pointer">
+                #misterio <span class="material-symbols-outlined text-xs text-outline">close</span>
+</span>
+</div>
+</div>
+<!-- Publication Visibility & Scheduling -->
+<div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm pt-space-xs"><!-- Node 01 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-tertiary/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 01: Áudio &amp; Ducking</span>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary bg-tertiary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Sincronização 48Khz Master, voz ElevenLabs masterizada e calibrada a -14 LUFS OK.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-tertiary"></div>
+</div>
+</div>
+<!-- Node 02 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-primary/40 flex flex-col gap-space-xs relative overflow-hidden">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-base animate-spin">sync</span>
+<span class="font-label-md text-label-md text-primary font-bold">Node 02: Composição 4K</span>
+</div>
+<span class="font-mono-code text-label-sm text-primary bg-primary/20 border border-primary/30 px-1.5 py-0.5 rounded font-bold animate-pulse">EM EXECUÇÃO 92%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Interpolação de 48 tomadas a 60fps com simulação de gravidade relativística.</p>
+<div class="w-full h-1.5 bg-surface-container-highest rounded-full overflow-hidden relative">
+<div class="w-[92%] h-full bg-gradient-to-r from-primary to-tertiary rounded-full animate-pulse"></div>
+</div>
+</div>
+<!-- Node 03 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-secondary/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 03: Color Grading LUTs</span>
+</div>
+<span class="font-mono-code text-label-sm text-secondary bg-secondary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Paleta Obsidian Teal &amp; Orange aplicada e calibrada para telas OLED/HDR de alto contraste.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-secondary"></div>
+</div>
+</div>
+<!-- Node 04 -->
+<div class="p-space-sm rounded-lg bg-surface-container-low border border-outline-variant/30 flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-label-md text-label-md text-on-surface font-semibold">Node 04: Legendas &amp; SEO</span>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary bg-tertiary/10 px-1.5 py-0.5 rounded font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> CONCLUÍDO 100%</span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant">Legendas .SRT dinâmicas compiladas por fonemas e tags geradas com sucesso.</p>
+<div class="w-full h-1 bg-surface-container-highest rounded-full overflow-hidden">
+<div class="w-full h-full bg-tertiary"></div>
+</div>
+</div></div>
+</div>
+<!-- 3. Pre-Flight Integrity & Compliance Checks -->
+<div class="p-space-lg rounded-xl bg-surface-container shadow-md flex flex-col gap-space-md"><div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-xl">verified_user</span>
+<h2 class="font-headline-sm text-headline-sm text-on-surface">Verificação Pré-Voo (Compliance)</h2>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary font-bold flex items-center gap-1"><span class="material-symbols-outlined text-xs">check</span> 100% LIMPO</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<!-- Check 1: Realtime YouTube Content ID -->
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container-low border border-primary/20">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-tertiary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Verificação de Direitos Autorais em Tempo Real</span>
+<span class="font-mono-code text-[11px] text-on-surface-variant">Processamento de SD/HD concluído • Qualidade 4K sendo processada</span>
+</div>
+</div>
+<span class="font-mono-code text-label-sm text-tertiary font-bold bg-tertiary/10 px-2 py-0.5 rounded">0 Flags</span>
+</div>
+<!-- Check 2: AI Disclosure -->
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container-low">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-base" style="font-variation-settings: 'FILL' 1;">check_circle</span>
+<span class="font-body-sm text-body-sm text-on-surface">Declaração de Conteúdo por IA</span>
+</div>
+<span class="font-mono-code text-label-sm text-primary">Em Conformidade</span>
+</div>
+<!-- Check 3: Thumbnail A/B Test Readiness -->
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container-low border border-primary/30">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-base" style="font-variation-settings: 'FILL' 1;">verified</span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Thumbnail Variação B Promovida (O Sinal Secreto)</span>
+<span class="font-label-sm text-[11px] text-tertiary font-mono-code">CTR 16.8% (+25.4% vs Controle) • 100% Tráfego Oficial</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-mono-code text-label-sm text-primary bg-primary/10 border border-primary/30 px-2 py-0.5 rounded font-semibold">Ativa na API</span>
+</div>
+</div>
+</div></div>
+</div>
+</div>
+</main>
+<!-- Bottom Sticky Action Bar (Studio Finish Command Console) -->
+<footer class="sticky bottom-0 left-0 right-0 z-40 bg-surface-container-lowest/95 backdrop-blur-xl px-space-lg py-space-md shadow-[0_-8px_30px_rgba(0,0,0,0.8)]"><div class="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-space-md">
+<!-- Status Feedback -->
+<div class="flex items-center gap-space-sm">
+<div class="relative flex h-3.5 w-3.5">
+<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-primary opacity-75"></span>
+<span class="relative inline-flex rounded-full h-3.5 w-3.5 bg-primary shadow-[0_0_12px_#4cd7f6]"></span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-md text-on-surface font-semibold flex items-center gap-2">
+Render Farm executando a 98% da capacidade (16 Nodes A100)
+<span class="px-2 py-0.5 rounded bg-primary/20 text-primary font-mono-code text-xs font-bold">88% CONCLUÍDO</span>
+</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Envio para o YouTube agendado para 18:30 BRT após validação final. ETA ~28s restantes.</span>
+</div>
+</div>
+<!-- Command Buttons -->
+<div class="flex items-center gap-space-sm flex-shrink-0 w-full sm:w-auto justify-end">
+<button class="px-space-md py-2.5 rounded-lg bg-surface-container-high hover:bg-surface-bright text-on-surface font-headline-sm text-body-md transition-colors flex items-center gap-1.5 border border-outline-variant/30">
+<span class="material-symbols-outlined text-base text-outline">terminal</span>
+<span class="">Ver Log do Cluster</span>
+</button>
+<button class="px-space-md py-2.5 rounded-lg bg-surface-container-low hover:bg-surface-container-high text-on-surface-variant hover:text-error font-headline-sm text-body-md transition-colors flex items-center gap-1 border border-outline-variant/20">
+<span class="material-symbols-outlined text-base">close</span>
+<span class="">Cancelar Execução</span>
+</button>
+<button class="px-space-xl py-2.5 rounded-lg bg-gradient-to-r from-primary via-tertiary to-secondary-container text-on-surface font-headline-sm text-body-md font-bold transition-all shadow-xl shadow-primary-container/40 ring-2 ring-primary/40 flex items-center gap-space-xs" id="mainPublishBtn">
+<span class="material-symbols-outlined text-xl animate-spin">sync</span>
+<span class="">Renderizando &amp; Enviando... (88%)</span>
+</button>
+</div>
+</div></footer>
+</div>
+<script>
+  // Simple Preset card switcher micro-interaction
+  const presetCards = document.querySelectorAll('#presetSelectors > div');
+  presetCards.forEach(card => {
+    card.addEventListener('click', () => {
+      presetCards.forEach(c => {
+        c.classList.remove('bg-surface-container-highest', 'shadow-md');
+        c.classList.add('bg-surface-container-low');
+        const icon = c.querySelector('.material-symbols-outlined');
+        if (icon) {
+          icon.textContent = 'radio_button_unchecked';
+          icon.classList.remove('text-primary');
+          icon.classList.add('text-outline-variant');
+        }
+      });
+      card.classList.remove('bg-surface-container-low');
+      card.classList.add('bg-surface-container-highest', 'shadow-md');
+      const activeIcon = card.querySelector('.material-symbols-outlined');
+      if (activeIcon) {
+        activeIcon.textContent = 'check_circle';
+        activeIcon.classList.remove('text-outline-variant');
+        activeIcon.classList.add('text-primary');
+      }
+    });
+  });
+
+  // Action Button feedback
+  const publishBtn = document.getElementById('mainPublishBtn');
+  const triggerTop = document.getElementById('triggerRenderTop');
+  const triggerAction = () => {
+    publishBtn.innerHTML = '<span class="material-symbols-outlined text-xl animate-spin">sync</span><span>Disparando Render Farm (16 Nodes)...</span>';
+    setTimeout(() => {
+      publishBtn.innerHTML = '<span class="material-symbols-outlined text-xl">done_all</span><span>Renderização Iniciada! Agendado no YouTube</span>';
+    }, 1800);
+  };
+
+  if (publishBtn) publishBtn.addEventListener('click', triggerAction);
+  if (triggerTop) triggerTop.addEventListener('click', triggerAction);
+</script></main></div>
+
+</body></html>

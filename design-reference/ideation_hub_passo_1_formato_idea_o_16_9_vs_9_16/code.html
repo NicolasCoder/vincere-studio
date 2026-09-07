@@ -1,0 +1,438 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Geist:wght@300;400;500;600;700&amp;family=JetBrains+Mono:wght@400;500;600&amp;family=Space+Grotesk:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"on-error-container":"#ffdad6","error":"#ffb4ab","surface-container":"#1c2028","on-tertiary-fixed":"#001f25","on-secondary-container":"#c4abff","on-secondary-fixed":"#23005c","on-primary":"#003640","surface-variant":"#31353e","background":"#0f131c","surface-container-highest":"#31353e","secondary-fixed-dim":"#d0bcff","surface-container-high":"#262a33","on-primary-fixed":"#001f26","on-primary-fixed-variant":"#004e5c","on-tertiary-fixed-variant":"#004e5a","inverse-on-surface":"#2c3039","on-error":"#690005","on-tertiary":"#00363e","tertiary-container":"#00b7cf","primary":"#4cd7f6","surface-container-low":"#181c24","surface-tint":"#4cd7f6","secondary-container":"#571bc1","inverse-primary":"#00687a","primary-fixed":"#acedff","inverse-surface":"#dfe2ee","on-tertiary-container":"#00434d","on-secondary-fixed-variant":"#5516be","on-background":"#dfe2ee","secondary-fixed":"#e9ddff","tertiary-fixed-dim":"#2fd9f4","on-secondary":"#3c0091","primary-fixed-dim":"#4cd7f6","secondary":"#d0bcff","tertiary":"#2fd9f4","primary-container":"#06b6d4","outline":"#869397","on-surface":"#dfe2ee","on-primary-container":"#00424f","tertiary-fixed":"#a2eeff","surface-container-lowest":"#0a0e16","surface-bright":"#353942","outline-variant":"#3d494c","error-container":"#93000a","surface-dim":"#0f131c","on-surface-variant":"#bcc9cd","surface":"#0f131c"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"gutter":"1rem","space-xl":"2rem","space-lg":"1.5rem","space-sm":"0.75rem","space-2xl":"3rem","margin-screen":"1.5rem","sidebar-width":"18rem","space-md":"1rem","inspector-width":"22rem","space-xs":"0.5rem","space-2xs":"0.25rem"},fontFamily:{"label-md":["JetBrains Mono"],"body-lg":["Geist"],"headline-md":["Space Grotesk"],"mono-code":["JetBrains Mono"],"headline-lg-mobile":["Space Grotesk"],"headline-sm":["Space Grotesk"],"label-sm":["JetBrains Mono"],"display-lg":["Space Grotesk"],"body-md":["Geist"],"body-sm":["Geist"],"headline-lg":["Space Grotesk"]},fontSize:{"label-md":["12px",{"lineHeight":"16px","letterSpacing":"0.04em","fontWeight":"500"}],"body-lg":["16px",{"lineHeight":"24px","letterSpacing":"-0.01em","fontWeight":"400"}],"headline-md":["24px",{"lineHeight":"32px","letterSpacing":"-0.01em","fontWeight":"600"}],"mono-code":["13px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg-mobile":["24px",{"lineHeight":"32px","letterSpacing":"-0.02em","fontWeight":"600"}],"headline-sm":["18px",{"lineHeight":"26px","letterSpacing":"0em","fontWeight":"600"}],"label-sm":["11px",{"lineHeight":"14px","letterSpacing":"0.06em","fontWeight":"500"}],"display-lg":["40px",{"lineHeight":"48px","letterSpacing":"-0.03em","fontWeight":"700"}],"body-md":["14px",{"lineHeight":"20px","letterSpacing":"0em","fontWeight":"400"}],"body-sm":["12px",{"lineHeight":"18px","letterSpacing":"0em","fontWeight":"400"}],"headline-lg":["32px",{"lineHeight":"40px","letterSpacing":"-0.02em","fontWeight":"600"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased selection:bg-primary selection:text-on-primary"><aside class="fixed left-0 top-0 h-screen w-sidebar-width bg-surface-container-lowest/95 backdrop-blur-xl z-50 flex flex-col justify-between p-space-md shadow-[0_0_24px_-4px_rgba(0,0,0,0.7)]"><div class="flex flex-col gap-space-lg"><div class="flex items-center gap-space-sm px-space-xs py-space-2xs"><img alt="DocuPulse AI Logo" class="h-8 w-auto object-contain" src="https://lh3.googleusercontent.com/aida/AEtjO1WfZI3g3NY2_FcP0rAzOUwCj00jOy_ppJLdrS83WVZKFXsiHa7vkkhVCZAHCeUnVDrf9Alg33rbr4jX-fZrIomb4Dc7CPGpGfz94cnhAOzTisIyZL0oS2CwNbz9mynf2WSAwkRrCWRtrClc-dvfsvH4CWeTJtAHKrsrYU1SPefWmco8gY8J5mAY1VfBCctn6y4FTvju1PPsakZMLKhAW8RHRYcx3aHUixnh656Yca7mMqgZeokNroYS7pes"/><div class="flex flex-col"><span class="font-headline-sm text-headline-sm text-on-surface tracking-tight leading-none">DocuPulse<span class="text-primary">.AI</span></span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase tracking-wider mt-space-2xs">Studio OS</span></div></div><nav class="flex flex-col gap-space-2xs" data-active-classes="bg-gradient-to-r from-primary-container/20 to-secondary-container/30 text-primary border-l-2 border-primary shadow-[0_0_16px_rgba(6,182,212,0.25)]"><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="dashboard" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">dashboard</span><span class="font-body-md text-body-md">Dashboard</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="channel-manager" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">smart_display</span><span class="font-body-md text-body-md">Channel Manager</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant">3</span></a><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-xs rounded transition-all group bg-gradient-to-r from-primary-container/20 to-secondary-container/30 text-primary border-l-2 border-primary shadow-[0_0_16px_rgba(6,182,212,0.25)]" data-path="ideation-hub" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">lightbulb</span><span class="font-body-md text-body-md">Ideation Hub</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-secondary-container/40 text-secondary border border-secondary-container">AI</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="script-writer" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">history_edu</span><span class="font-body-md text-body-md">Script Writer</span></div></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="production-history" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">folder_special</span><span class="font-body-md text-body-md">Histórico de Produção</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant font-mono-code">14 docs</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="analytics-metrics" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">monitoring</span><span class="font-body-md text-body-md">Métricas &amp; Desempenho</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-primary-container/20 text-primary font-mono-code border border-primary/20 flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>Live</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="media-asset-library" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">video_library</span><span class="font-body-md text-body-md">Media Assets</span></div><span class="font-label-sm text-label-sm px-space-2xs py-0.5 rounded bg-surface-container text-on-surface-variant">4k</span></a><a class="flex items-center justify-between px-space-sm py-space-xs rounded text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-all group" data-path="settings" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-on-surface-variant group-hover:text-primary transition-colors text-lg">settings</span><span class="font-body-md text-body-md">Settings</span></div></a></nav></div><div class="flex flex-col gap-space-md pt-space-md border-t border-outline-variant/30"><div class="p-space-sm rounded-xl bg-surface-container-low/70 border border-outline-variant/20 flex flex-col gap-space-xs shadow-[0_0_16px_rgba(6,182,212,0.05)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm font-semibold uppercase px-space-2xs py-0.5 rounded bg-secondary-container text-on-secondary-container tracking-wider">Pro Tier</span><span class="font-mono-code text-mono-code text-primary">60%</span></div><div class="flex flex-col gap-space-2xs"><div class="flex items-center justify-between font-label-sm text-label-sm text-on-surface-variant"><span>Quota Rendered</span><span class="font-mono-code text-on-surface">12/20 Docs</span></div><div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden"><div class="h-full bg-gradient-to-r from-primary via-tertiary to-secondary rounded-full w-3/5"></div></div></div></div><a class="flex items-center gap-space-xs px-space-xs text-on-surface-variant hover:text-primary font-body-sm text-body-sm transition-colors" data-path="support" href="#"><span class="material-symbols-outlined text-base">help_outline</span><span>Documentation &amp; Support</span></a></div></aside><div class="pl-sidebar-width min-h-screen flex flex-col"><header class="fixed top-0 left-sidebar-width right-0 h-16 bg-surface/85 backdrop-blur-xl z-40 border-b border-outline-variant/20 px-space-lg flex items-center justify-between"><div class="flex items-center gap-space-sm"><div class="flex items-center gap-space-xs font-body-sm text-body-sm text-on-surface-variant"><span class="hover:text-on-surface transition-colors cursor-pointer">Ideation</span><span class="text-outline-variant">/</span><span class="font-medium text-on-surface flex items-center gap-space-2xs"><span class="w-1.5 h-1.5 rounded-full bg-primary animate-pulse"></span>Step 1: Topic &amp; Niche</span></div></div><div class="flex items-center gap-space-md"><div class="hidden md:flex items-center gap-space-xs px-space-sm py-1.5 rounded-xl bg-surface-container-lowest/80 border border-outline-variant/30 text-on-surface-variant hover:border-primary/50 transition-colors cursor-pointer w-64 shadow-inner"><span class="material-symbols-outlined text-base text-outline">search</span><span class="font-body-sm text-body-sm flex-1 text-on-surface-variant">Quick search...</span><kbd class="font-mono-code text-label-sm px-1.5 py-0.5 rounded bg-surface-container text-outline border border-outline-variant/40">Cmd + K</kbd></div><div class="flex items-center gap-space-xs px-space-sm py-1.5 rounded-xl bg-surface-container-high/60 border border-primary/20 shadow-[0_0_12px_rgba(6,182,212,0.15)]"><span class="material-symbols-outlined text-primary text-base">bolt</span><span class="font-mono-code text-label-md font-semibold text-primary">4,850</span><span class="font-label-sm text-label-sm text-on-surface-variant uppercase">Credits</span></div><button class="relative p-2 rounded-lg text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-colors"><span class="material-symbols-outlined text-xl">notifications</span><span class="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-primary ring-2 ring-surface shadow-[0_0_8px_#4cd7f6]"></span></button><div class="flex items-center gap-space-sm pl-space-xs border-l border-outline-variant/30"><div class="relative flex items-center"><img alt="Profile" class="w-8 h-8 rounded-full object-cover ring-1 ring-primary/40" src="https://lh3.googleusercontent.com/aida/AEtjO1XhJploihSq_V7GvAIQqnoN5UREdtc0WFeb9Utvt9XuvPvc34qxPe3mt-v-MYH2u4hz_3EoE2WGUt5YBAxPoulSxT0wRm8XKA22eMesdzmvw2zWkkcaJ8jmTKLfMS_dlPsrYeXXDMUyjAojV38MD8h_LMb9YmQVcKt1-YPxkzTuZo0sfVA64RObWkQKVMBXTOZn2PBTFgQvqaQ1PY_7DiFQt0tCS8IlDnhYnHo4vLO9hSVUHEJyQbv37oyv"/><span class="absolute bottom-0 right-0 w-2.5 h-2.5 rounded-full bg-primary ring-2 ring-surface"></span></div></div></div></header><main class="w-full pt-16 bg-surface flex-1"><div class="flex flex-col w-full">
+<!-- Pipeline Progress Track -->
+<section class="w-full px-space-lg py-space-md bg-surface-container-lowest/80 backdrop-blur-md">
+<div class="max-w-7xl mx-auto flex flex-col gap-space-sm">
+<!-- Stepper Badges & Titles -->
+<div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-space-sm">
+<!-- Step 1: Active -->
+<div class="relative flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-high/90 shadow-[0_0_24px_-4px_rgba(6,182,212,0.3)]">
+<div class="relative flex items-center justify-center w-10 h-10 rounded-lg bg-gradient-to-br from-primary-container to-secondary-container text-on-primary font-headline-sm text-headline-sm shadow-[0_0_12px_rgba(76,215,246,0.6)]">
+<span class="material-symbols-outlined text-xl">auto_stories</span>
+<span class="absolute -top-1 -right-1 w-2.5 h-2.5 rounded-full bg-primary animate-ping"></span>
+</div>
+<div class="flex flex-col min-w-0">
+<div class="flex items-center gap-space-2xs">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-primary">Passo 01</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.2 bg-primary-container/20 text-primary rounded-full">Em Progresso</span>
+</div>
+<span class="font-headline-sm text-body-md font-semibold text-on-surface truncate">Tópico &amp; Nicho</span>
+</div>
+</div>
+<!-- Step 2: Next -->
+<div class="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-low/60 text-on-surface-variant/70 opacity-80">
+<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-container-highest text-on-surface-variant font-mono-code text-label-md font-semibold">
+            02
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-on-surface-variant/60">Passo 02</span>
+<span class="font-headline-sm text-body-md font-medium text-on-surface-variant truncate">Roteiro &amp; Narrativa</span>
+</div>
+<span class="material-symbols-outlined ml-auto text-base text-outline">lock</span>
+</div>
+<!-- Step 3: Locked -->
+<div class="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-low/40 text-on-surface-variant/50 opacity-60">
+<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-container-highest/60 text-on-surface-variant/70 font-mono-code text-label-md font-semibold">
+            03
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-on-surface-variant/40">Passo 03</span>
+<span class="font-headline-sm text-body-md font-medium text-on-surface-variant/70 truncate">Voiceover &amp; B-Roll</span>
+</div>
+<span class="material-symbols-outlined ml-auto text-base text-outline-variant">lock</span>
+</div>
+<!-- Step 4: Locked -->
+<div class="flex items-center gap-space-sm p-space-sm rounded-xl bg-surface-container-low/30 text-on-surface-variant/40 opacity-40">
+<div class="flex items-center justify-center w-10 h-10 rounded-lg bg-surface-container-highest/40 text-on-surface-variant/50 font-mono-code text-label-md font-semibold">
+            04
+          </div>
+<div class="flex flex-col min-w-0">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-on-surface-variant/40">Passo 04</span>
+<span class="font-headline-sm text-body-md font-medium text-on-surface-variant/60 truncate">Render &amp; Export</span>
+</div>
+<span class="material-symbols-outlined ml-auto text-base text-outline-variant">lock</span>
+</div>
+</div>
+<!-- Linear Micro Progress Bar & Cadence ETA -->
+<div class="flex items-center justify-between gap-space-md pt-space-xs">
+<div class="flex-1 flex items-center gap-space-sm">
+<div class="w-full h-1.5 rounded-full bg-surface-container-highest overflow-hidden">
+<div class="h-full bg-gradient-to-r from-primary via-tertiary to-secondary rounded-full w-1/4 shadow-[0_0_8px_rgba(6,182,212,0.8)]"></div>
+</div>
+<span class="font-mono-code text-label-sm text-primary whitespace-nowrap">25% Concluído</span>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-tertiary">timelapse</span>
+<span class="font-mono-code text-label-sm">ETA: ~12 min para roteiro preliminar</span>
+</div>
+</div>
+</div>
+</section>
+<!-- Workspace Shell -->
+<div class="w-full px-space-lg py-space-xl flex flex-col gap-space-2xl max-w-7xl mx-auto">
+<!-- Config Card: Dark Glassmorphism -->
+<div class="relative rounded-2xl bg-surface-container-high/60 backdrop-blur-xl p-space-lg lg:p-space-xl shadow-[0_20px_40px_-15px_rgba(0,0,0,0.8)]">
+<!-- Top Neon Glow Edge Flare -->
+<div class="absolute inset-x-8 top-0 h-px bg-gradient-to-r from-transparent via-primary to-transparent opacity-80 shadow-[0_0_12px_#4cd7f6]"></div>
+<div class="flex flex-col gap-space-lg">
+<!-- Header Section -->
+<div class="flex flex-col md:flex-row md:items-center justify-between gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<div class="p-2.5 rounded-xl bg-surface-container-highest/80 text-primary shadow-[0_0_16px_rgba(6,182,212,0.2)]">
+<span class="material-symbols-outlined text-2xl">magic_button</span>
+</div>
+<div class="flex flex-col">
+<div class="flex items-center gap-space-xs">
+<h1 class="font-headline-md text-headline-md text-on-surface tracking-tight">Definição do Nicho e Ideação Inicial</h1>
+<span class="px-2 py-0.5 rounded bg-secondary-container/40 text-secondary font-mono-code text-label-sm">v3.4 Core</span>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant mt-space-2xs">Configure os parâmetros do documentário para a IA calibrar tom, retenção e ganchos de alta conversão.</p>
+</div>
+</div>
+<div class="flex items-center gap-space-xs self-start md:self-auto px-space-sm py-1 rounded-full bg-surface-container-lowest text-on-surface-variant">
+<span class="material-symbols-outlined text-sm text-tertiary">network_intelligence</span>
+<span class="font-mono-code text-label-sm">Cluster: Dark Documentaries v2</span>
+</div>
+</div>
+<!-- Input Section -->
+<div class="flex flex-col gap-space-md">
+<div class="flex flex-col gap-space-xs p-space-sm rounded-xl bg-surface-container-lowest/70 border border-outline-variant/30"><div class="flex items-center justify-between"><label class="font-label-md text-label-md text-on-surface flex items-center gap-space-2xs"><span class="material-symbols-outlined text-primary text-base">aspect_ratio</span><span>Formato &amp; Dinâmica do Documentário</span><span class="text-primary">*</span></label><span class="font-mono-code text-label-sm text-outline">Selecione a proporção cinematográfica</span></div><div class="grid grid-cols-1 sm:grid-cols-2 gap-space-sm"><div class="relative flex items-start gap-space-sm p-space-sm rounded-xl bg-surface-container-high/90 border border-primary ring-1 ring-primary/40 shadow-[0_0_16px_rgba(6,182,212,0.25)] cursor-pointer"><div class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-primary-container/20 text-primary border border-primary/30"><span class="material-symbols-outlined text-xl">crop_16_9</span><span class="font-mono-code text-label-sm leading-none">16:9</span></div><div class="flex flex-col flex-1 min-w-0"><div class="flex items-center justify-between"><span class="font-headline-sm text-body-md font-semibold text-on-surface">Vídeo Longo (16:9)</span><span class="px-2 py-0.2 rounded-full bg-primary text-on-primary font-mono-code text-label-sm font-semibold">Ativo</span></div><span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Documentário Aprofundado (15-25 min) · 4K horizontal · YouTube Long-form</span></div></div><div class="relative flex items-start gap-space-sm p-space-sm rounded-xl bg-surface-container-low/60 hover:bg-surface-container-low/90 border border-outline-variant/30 hover:border-outline-variant/60 cursor-pointer transition-all"><div class="flex flex-col items-center justify-center w-10 h-10 rounded-lg bg-surface-container-highest text-on-surface-variant"><span class="material-symbols-outlined text-xl">crop_portrait</span><span class="font-mono-code text-label-sm leading-none">9:16</span></div><div class="flex flex-col flex-1 min-w-0"><div class="flex items-center justify-between"><span class="font-headline-sm text-body-md font-medium text-on-surface">Vídeo Curto (9:16)</span><span class="px-2 py-0.2 rounded-full bg-surface-container text-on-surface-variant font-mono-code text-label-sm">Shorts/Reels</span></div><span class="font-body-sm text-body-sm text-on-surface-variant mt-0.5">Shorts, Reels &amp; TikTok (60-90s) · Vertical dinâmico · Cortes rápidos a cada 1.8s</span></div></div></div></div><div class="flex flex-col gap-space-2xs">
+<div class="flex justify-between items-center">
+<label class="font-label-md text-label-md text-on-surface flex items-center gap-space-2xs">
+<span>Nicho ou Tema Central do Documentário</span>
+<span class="text-primary">*</span>
+</label>
+<span class="font-mono-code text-label-sm text-outline">54 / 120 caracteres</span>
+</div>
+<div class="relative flex items-center">
+<span class="material-symbols-outlined absolute left-space-sm text-outline text-xl pointer-events-none">travel_explore</span>
+<input class="w-full pl-12 pr-28 py-space-sm rounded-xl bg-surface-container-lowest/90 text-on-surface font-body-lg text-body-lg placeholder:text-outline-variant focus:outline-none shadow-inner" placeholder="Digite o nicho ou tema central do seu documentário (ex: Mistérios da Antiguidade, Espaço Sombrio...)" type="text" value="Mistérios Ocultos da Antiguidade e Civilizações Perdidas"/>
+<button class="absolute right-space-xs px-space-sm py-1.5 rounded-lg bg-surface-container-highest hover:bg-surface-bright text-on-surface text-label-sm font-label-md transition-all flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-sm">cached</span>
+                Limpar
+              </button>
+</div>
+</div>
+<!-- Parameter Selectors Grid -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Selector 1: Tom -->
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-sm text-secondary">psychology</span>
+<span>Tom Narrativo</span>
+</label>
+<div class="relative">
+<select class="w-full appearance-none px-space-sm py-space-xs pr-10 rounded-xl bg-surface-container-lowest/90 text-on-surface font-body-md text-body-md focus:outline-none cursor-pointer">
+<option selected="">Misterioso &amp; Investigativo</option>
+<option>Épico &amp; Dramático</option>
+<option>Educativo &amp; Científico</option>
+<option>Conspiratório &amp; Tenso</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+<!-- Selector 2: Duração -->
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-sm text-primary">timer</span>
+<span>Duração Estimada</span>
+</label>
+<div class="relative">
+<select class="w-full appearance-none px-space-sm py-space-xs pr-10 rounded-xl bg-surface-container-lowest/90 text-on-surface font-body-md text-body-md focus:outline-none cursor-pointer">
+<option>Mini-Doc (8 - 12 min)</option>
+<option selected="">Long-form (15 - 20 min)</option>
+<option>Feature Doc (30+ min)</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+<!-- Selector 3: Audiência / Estilo -->
+<div class="flex flex-col gap-space-2xs">
+<label class="font-label-md text-label-md text-on-surface-variant flex items-center gap-space-2xs">
+<span class="material-symbols-outlined text-sm text-tertiary">group</span>
+<span>Público-Alvo &amp; Canal</span>
+</label>
+<div class="relative">
+<select class="w-full appearance-none px-space-sm py-space-xs pr-10 rounded-xl bg-surface-container-lowest/90 text-on-surface font-body-md text-body-md focus:outline-none cursor-pointer">
+<option selected="">Audiência Curiosa &amp; Dark Channel</option>
+<option>Céticos &amp; Amantes de Ciência</option>
+<option>Historiadores &amp; Pesquisa Crítica</option>
+<option>Exploradores &amp; Entusiastas</option>
+</select>
+<span class="material-symbols-outlined absolute right-space-sm top-1/2 -translate-y-1/2 text-outline pointer-events-none text-base">expand_more</span>
+</div>
+</div>
+</div>
+<!-- Fast Badges Filters for AI Tone Fine-Tuning -->
+<div class="flex flex-wrap items-center gap-space-xs pt-space-2xs">
+<span class="font-mono-code text-label-sm text-on-surface-variant uppercase mr-space-2xs">Micro-Hooks:</span>
+<span class="px-space-xs py-1 rounded bg-surface-container-highest text-primary font-mono-code text-label-sm flex items-center gap-1 cursor-pointer hover:bg-surface-bright transition-colors">
+<span class="material-symbols-outlined text-xs">check</span> Clímax nos 30s
+            </span>
+<span class="px-space-xs py-1 rounded bg-surface-container-highest text-secondary font-mono-code text-label-sm flex items-center gap-1 cursor-pointer hover:bg-surface-bright transition-colors">
+<span class="material-symbols-outlined text-xs">check</span> Cliffhangers Triplos
+            </span>
+<span class="px-space-xs py-1 rounded bg-surface-container-lowest text-on-surface-variant font-mono-code text-label-sm hover:text-on-surface cursor-pointer">
+              + Revelação Gradual
+            </span>
+<span class="px-space-xs py-1 rounded bg-surface-container-lowest text-on-surface-variant font-mono-code text-label-sm hover:text-on-surface cursor-pointer">
+              + Conflito Não Resolvido
+            </span>
+</div>
+</div>
+<!-- Action Row -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md pt-space-sm">
+<div class="flex items-center gap-space-sm w-full sm:w-auto">
+<button class="w-full sm:w-auto flex items-center justify-center gap-space-xs px-space-lg py-space-sm rounded-xl bg-gradient-to-r from-primary via-tertiary-container to-secondary text-on-primary font-headline-sm text-headline-sm font-semibold tracking-tight shadow-[0_0_24px_rgba(6,182,212,0.45)] hover:shadow-[0_0_32px_rgba(6,182,212,0.65)] hover:brightness-110 active:scale-[0.99] transition-all">
+<span class="material-symbols-outlined text-xl">bolt</span>
+<span>Gerar Ideias Magnéticas com IA</span>
+<span class="ml-space-2xs px-2 py-0.5 rounded-full bg-surface-container-lowest/40 font-mono-code text-label-sm text-on-surface font-normal">-15 Créditos</span>
+</button>
+<button class="flex items-center gap-space-2xs px-space-md py-space-sm rounded-xl bg-surface-container-lowest/80 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-all">
+<span class="material-symbols-outlined text-base">casino</span>
+<span class="font-body-md text-body-md">Randomizar</span>
+</button>
+</div>
+<div class="flex items-center gap-space-xs text-on-surface-variant self-end sm:self-center">
+<span class="material-symbols-outlined text-sm text-primary">verified_user</span>
+<span class="font-label-sm text-label-sm">Algoritmo calibrado com +4.200 canais Dark de alto impacto</span>
+</div>
+</div>
+</div>
+</div>
+<!-- Recommendations Stream -->
+<div class="flex flex-col gap-space-lg">
+<!-- Section Header -->
+<div class="flex flex-col md:flex-row md:items-end justify-between gap-space-sm">
+<div class="flex flex-col gap-space-2xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-primary text-xl">analytics</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Ideias Geradas pela IA para Alta Retenção</h2>
+</div>
+<p class="font-body-md text-body-md text-on-surface-variant">Calibradas com base no tráfego de documentários investigativos e algoritmo de sugestão do YouTube (CTR Previsto &gt; 11%).</p>
+</div>
+<div class="flex items-center gap-space-sm flex-wrap">
+<div class="flex items-center rounded-xl bg-surface-container-low p-1">
+<button class="px-space-sm py-1 rounded-lg bg-surface-container text-primary font-mono-code text-label-sm font-medium shadow-sm">Todas (3)</button>
+<button class="px-space-sm py-1 rounded-lg text-on-surface-variant hover:text-on-surface font-mono-code text-label-sm">Maior Viralidade</button>
+<button class="px-space-sm py-1 rounded-lg text-on-surface-variant hover:text-on-surface font-mono-code text-label-sm">Ganchos Psicológicos</button>
+</div>
+<button class="flex items-center gap-space-2xs px-space-sm py-1.5 rounded-lg bg-surface-container-high/60 text-primary hover:bg-surface-container-highest font-label-md text-label-md transition-all">
+<span class="material-symbols-outlined text-sm">refresh</span>
+<span>Gerar mais 3 variações</span>
+</button>
+</div>
+</div>
+<!-- Recommendation Cards Mosaic -->
+<div class="grid grid-cols-1 lg:grid-cols-3 gap-space-lg items-stretch">
+<!-- CARD 1: Histórico -->
+<div class="group relative flex flex-col justify-between rounded-2xl bg-surface-container-high/40 hover:bg-surface-container-high/70 backdrop-blur-md p-space-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
+<div class="flex flex-col gap-space-md">
+<!-- Media Visual Thumbnail Overlay -->
+<div class="relative w-full h-44 rounded-xl overflow-hidden bg-surface-container-lowest">
+<div class="bg-cover bg-center w-full h-full transform group-hover:scale-105 transition-transform duration-500" data-alt="Dark cinematic macro shot of ancient encrypted manuscripts sealed with black wax in an underground Florence vault, cold atmospheric lighting with neon cyan dust motes, investigative documentary aesthetic" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuCV_U6fyBxaXk7dyIrXGVfHw56xPHPUp14ilRLy1v2UnI6gd568pM6b7THZ5nneFIGbzQ_QjxH2KzImy9nDibLWcSZwWk7c4pi7U57_jieQ7Lot2Ekff9-7uPMFSOi7s9aoRmOd6RckoskwE0tY2ln7LOEBcHCED7VTLbAE3RgM2-nU-3nanFUUSKN-sfjOto3BtSRzac2x166OaoFPBfVUdYIqHxB1D65JruvlH8eE3WC6mPUbR4ANAQ')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent"></div>
+<div class="absolute top-space-xs left-space-xs flex flex-wrap gap-1">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 backdrop-blur-sm text-primary font-mono-code text-label-sm">
+                  CTR 13.8%
+                </span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 backdrop-blur-sm text-secondary font-mono-code text-label-sm">
+                  Score: 94/100
+                </span>
+</div>
+<div class="absolute bottom-space-xs right-space-xs flex items-center gap-1"><span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 text-tertiary font-mono-code text-label-sm border border-tertiary/30 flex items-center gap-1"><span class="material-symbols-outlined text-xs">crop_16_9</span> 16:9 Master</span><span class="px-2 py-0.5 rounded bg-surface-container-lowest/80 text-on-surface font-mono-code text-label-sm">18:40 min</span></div>
+</div>
+<!-- Title & Tags -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-outline">Mistério Histórico</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                O Segredo Oculto que a História Escondeu por 500 Anos
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                A descoberta recente de pergaminhos criptografados nos subterrâneos de Florença que reescrevem o desaparecimento de uma ordem medieval inteira.
+              </p>
+</div>
+<!-- The Hook Preview Box -->
+<div class="flex flex-col gap-space-2xs p-space-sm rounded-xl bg-surface-container-lowest/80 shadow-inner">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-mono-code text-label-sm uppercase flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-xs">record_voice_over</span> O Gancho (Primeiros 30s)
+                </span>
+<span class="font-mono-code text-label-sm text-outline">Teleprompter</span>
+</div>
+<div class="space-y-1 font-mono-code text-body-sm text-on-surface-variant/90 italic">
+<p><span class="text-primary font-semibold">01:</span> “Em 1524, um manuscrito foi selado com cera negra e ordem papal de destruição imediata.”</p>
+<p><span class="text-primary font-semibold">02:</span> “Por cinco séculos, historiadores acreditaram que ele havia virado cinzas...”</p>
+<p><span class="text-primary font-semibold">03:</span> “Até que uma reforma no arquivo secreto revelou que o pior medo ainda estava intacto.”</p>
+</div>
+</div>
+<!-- Performance Telemetry -->
+<div class="grid grid-cols-2 gap-space-xs py-space-2xs">
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-outline">Retenção Estimada:</span>
+<span class="font-headline-sm text-body-lg font-semibold text-primary">68% <span class="font-body-sm text-on-surface-variant font-normal">aos 30s</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-outline">Ritmo de Edição:</span>
+<span class="font-body-md text-body-md font-medium text-on-surface">Lento &amp; Tenso</span>
+</div>
+</div>
+</div>
+<!-- CTA Button -->
+<button class="mt-space-md w-full flex items-center justify-center gap-space-xs py-space-sm px-space-md rounded-xl bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface font-headline-sm text-body-md font-semibold transition-all">
+<span>Selecionar e Avançar</span>
+<span class="material-symbols-outlined text-base">arrow_forward</span>
+</button>
+</div>
+<!-- CARD 2: FEATURED / RECOMMENDED (Cosmologia Dark) -->
+<div class="relative flex flex-col justify-between rounded-2xl bg-surface-container-high/90 backdrop-blur-xl p-space-lg shadow-[0_0_32px_rgba(6,182,212,0.25)] lg:-translate-y-2">
+<!-- Luminous Active Accent Ring -->
+<div class="absolute inset-0 rounded-2xl pointer-events-none shadow-[inset_0_0_16px_rgba(76,215,246,0.2)]"></div>
+<!-- Top Badge Ribbon -->
+<div class="absolute -top-3.5 left-1/2 -translate-x-1/2 px-space-sm py-1 rounded-full bg-gradient-to-r from-primary to-secondary text-on-primary font-mono-code text-label-sm font-semibold tracking-wider uppercase flex items-center gap-1 shadow-[0_0_12px_rgba(6,182,212,0.6)]">
+<span class="material-symbols-outlined text-sm">stars</span> Opção Recomendada IA
+          </div>
+<div class="flex flex-col gap-space-md pt-space-xs">
+<!-- Media Visual Thumbnail Overlay -->
+<div class="relative w-full h-44 rounded-xl overflow-hidden bg-surface-container-lowest">
+<div class="bg-cover bg-center w-full h-full transform hover:scale-105 transition-transform duration-500" data-alt="Hyper-realistic space documentary shot of an enigmatic primordial black hole hidden at the dark edges of our solar system, gravitational lensing distorting distant nebula light, glowing cyan accretion disk, highly dramatic investigative tone" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuBfo-qK5OY0KkeuWW8QIk875VRxlJC57x24jWjSAZru1ZH095Ib6kqy8lNOhrAOlI4FL8_WguPHxE77DEniPaQth_vS9V0Ul7VnZpUbwpruqu2OeXbC3K9HP3XzuNhF1bCpiZFJqrJWMuuckiB3Zt3QpCBzie-K6v1qWLl56vsOfuNmN7RccHrGIqMMPkvu-68HY9_iKRKSsyjRY-CZFMQnQhdg4U8pkbkuiK5N4-F_McBZkULZZ1rLLA')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent"></div>
+<div class="absolute top-space-xs left-space-xs flex flex-wrap gap-1">
+<span class="px-2 py-0.5 rounded bg-primary-container text-on-primary-container font-mono-code text-label-sm font-semibold shadow-sm">
+                  CTR 14.5% Max
+                </span>
+<span class="px-2 py-0.5 rounded bg-secondary-container text-on-secondary-container font-mono-code text-label-sm font-semibold">
+                  Viral Score: 97/100
+                </span>
+</div>
+<div class="absolute bottom-space-xs right-space-xs flex items-center gap-1"><span class="px-2 py-0.5 rounded bg-primary text-on-primary font-mono-code text-label-sm font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-xs">crop_16_9</span> 16:9 + 9:16 Shorts Cut</span><span class="px-2 py-0.5 rounded bg-surface-container-lowest/80 text-primary font-mono-code text-label-sm">21:15 min</span></div>
+</div>
+<!-- Title & Tags -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-primary">Cosmologia Dark</span>
+<span class="flex items-center gap-1 text-primary font-mono-code text-label-sm">
+<span class="w-2 h-2 rounded-full bg-primary animate-pulse"></span>
+                  Garante Alto Engajamento
+                </span>
+</div>
+<h3 class="font-headline-sm text-headline-sm text-on-surface text-primary transition-colors line-clamp-2">
+                O Buraco Negro Oculto no Sistema Solar: O Sinal Que Ignoramos
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                Anomalias gravitacionais nas órbitas dos planetas exteriores sugerem que um micro buraco negro primordial pode estar espreitando na Nuvem de Oort.
+              </p>
+</div>
+<!-- The Hook Preview Box -->
+<div class="flex flex-col gap-space-2xs p-space-sm rounded-xl bg-surface-container-lowest/90 shadow-inner">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-mono-code text-label-sm uppercase flex items-center gap-1 text-primary font-semibold">
+<span class="material-symbols-outlined text-xs">record_voice_over</span> O Gancho (Primeiros 30s)
+                </span>
+<span class="font-mono-code text-label-sm px-1.5 py-0.5 rounded bg-primary-container/30 text-primary">99% Conversão</span>
+</div>
+<div class="space-y-1 font-mono-code text-body-sm text-on-surface italic">
+<p><span class="text-primary font-semibold">01:</span> “Algo invisível está puxando os confins do nosso sistema solar há mais de quarenta anos.”</p>
+<p><span class="text-primary font-semibold">02:</span> “Nossos telescópios olharam para o vazio... e viram apenas a distorção da luz.”</p>
+<p><span class="text-primary font-semibold">03:</span> “Agora, astrofísicos admitem: ele está vindo na nossa direção.”</p>
+</div>
+</div>
+<!-- Performance Telemetry -->
+<div class="grid grid-cols-2 gap-space-xs py-space-2xs bg-surface-container-lowest/50 p-space-xs rounded-lg">
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-on-surface-variant">Retenção Estimada:</span>
+<span class="font-headline-sm text-body-lg font-bold text-primary">74% <span class="font-body-sm text-on-surface-variant font-normal">aos 30s</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-on-surface-variant">Ritmo de Edição:</span>
+<span class="font-body-md text-body-md font-semibold text-secondary">Frenético &amp; Imersivo</span>
+</div>
+</div>
+</div>
+<!-- High-Priority Gradient CTA -->
+<button class="mt-space-md w-full flex items-center justify-center gap-space-xs py-space-sm px-space-md rounded-xl bg-gradient-to-r from-primary via-tertiary-container to-secondary text-on-primary font-headline-sm text-headline-sm font-semibold tracking-tight shadow-[0_0_20px_rgba(6,182,212,0.4)] hover:shadow-[0_0_28px_rgba(6,182,212,0.6)] hover:brightness-110 active:scale-[0.99] transition-all">
+<span>Selecionar e Iniciar Roteiro</span>
+<span class="material-symbols-outlined text-lg">arrow_forward</span>
+</button>
+</div>
+<!-- CARD 3: Urban Exploration -->
+<div class="group relative flex flex-col justify-between rounded-2xl bg-surface-container-high/40 hover:bg-surface-container-high/70 backdrop-blur-md p-space-lg transition-all duration-300 shadow-lg hover:shadow-xl hover:-translate-y-1">
+<div class="flex flex-col gap-space-md">
+<!-- Media Visual Thumbnail Overlay -->
+<div class="relative w-full h-44 rounded-xl overflow-hidden bg-surface-container-lowest">
+<div class="bg-cover bg-center w-full h-full transform group-hover:scale-105 transition-transform duration-500" data-alt="Investigative flash camera photo inside an underground Cold War military bunker complex deep beneath Berlin, sealed blast doors, decaying control panels, cold cinematic green and deep cyan shadows" style="background-image: url('https://lh3.googleusercontent.com/aida-public/AB6AXuD2iXbRVCjxQpP3JafkFgG_JXM_fwPWSkI9bPUNPLC8Qy9VVdCqgRYMAmQQPEJk345vN3P6XBhsc9CAkOScKUtOIfGOwdza-bhMpCoZHSnALEVTg5PlhII_wXTNAtMRMxAP6xZpabwl2CGF8HUExSK1-72-TaPgWX4qp64iqO3_viaVpWQ9C5k-k5B5NvQbkdL0igYCg6KiSl_iqU7h8p5eKQ8TBc90pjltUbz1Y3FiP-FvnxYrr6jHqw')"></div>
+<div class="absolute inset-0 bg-gradient-to-t from-surface-container-lowest via-surface-container-lowest/30 to-transparent"></div>
+<div class="absolute top-space-xs left-space-xs flex flex-wrap gap-1">
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 backdrop-blur-sm text-primary font-mono-code text-label-sm">
+                  CTR 12.2%
+                </span>
+<span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 backdrop-blur-sm text-secondary font-mono-code text-label-sm">
+                  Score: 91/100
+                </span>
+</div>
+<div class="absolute bottom-space-xs right-space-xs flex items-center gap-1"><span class="px-2 py-0.5 rounded bg-surface-container-lowest/90 text-tertiary font-mono-code text-label-sm border border-tertiary/30 flex items-center gap-1"><span class="material-symbols-outlined text-xs">crop_16_9</span> 16:9 Master</span><span class="px-2 py-0.5 rounded bg-surface-container-lowest/80 text-on-surface font-mono-code text-label-sm">16:50 min</span></div>
+</div>
+<!-- Title & Tags -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-mono-code text-label-sm uppercase tracking-wider text-outline">Exploração Urbana &amp; Militar</span>
+<h3 class="font-headline-sm text-headline-sm text-on-surface group-hover:text-primary transition-colors line-clamp-2">
+                A Cidade Subterrânea Esquecida que Ninguém Consegue Mapear
+              </h3>
+<p class="font-body-md text-body-md text-on-surface-variant line-clamp-3">
+                Engenheiros militares escavaram uma rede secreta de bunkers durante a Guerra Fria que se estende por mais de 300km, mas os mapas originais foram expurgados.
+              </p>
+</div>
+<!-- The Hook Preview Box -->
+<div class="flex flex-col gap-space-2xs p-space-sm rounded-xl bg-surface-container-lowest/80 shadow-inner">
+<div class="flex items-center justify-between text-on-surface-variant">
+<span class="font-mono-code text-label-sm uppercase flex items-center gap-1 text-primary">
+<span class="material-symbols-outlined text-xs">record_voice_over</span> O Gancho (Primeiros 30s)
+                </span>
+<span class="font-mono-code text-label-sm text-outline">Teleprompter</span>
+</div>
+<div class="space-y-1 font-mono-code text-body-sm text-on-surface-variant/90 italic">
+<p><span class="text-primary font-semibold">01:</span> “A 60 metros sob o solo de Berlim, existe uma porta blindada sem registro militar.”</p>
+<p><span class="text-primary font-semibold">02:</span> “Quando espeleólogos forçaram a entrada em 2021, o ar ainda circulava.”</p>
+<p><span class="text-primary font-semibold">03:</span> “O Nível 4 prova que alguém continuou construindo muito depois do fim da guerra.”</p>
+</div>
+</div>
+<!-- Performance Telemetry -->
+<div class="grid grid-cols-2 gap-space-xs py-space-2xs">
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-outline">Retenção Estimada:</span>
+<span class="font-headline-sm text-body-lg font-semibold text-primary">65% <span class="font-body-sm text-on-surface-variant font-normal">aos 30s</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-mono-code text-label-sm text-outline">Ritmo de Edição:</span>
+<span class="font-body-md text-body-md font-medium text-on-surface">Suspense Investigativo</span>
+</div>
+</div>
+</div>
+<!-- CTA Button -->
+<button class="mt-space-md w-full flex items-center justify-center gap-space-xs py-space-sm px-space-md rounded-xl bg-surface-container-highest hover:bg-primary hover:text-on-primary text-on-surface font-headline-sm text-body-md font-semibold transition-all">
+<span>Selecionar e Avançar</span>
+<span class="material-symbols-outlined text-base">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Bottom Contextual Intelligence Banner -->
+<div class="flex flex-col sm:flex-row items-center justify-between gap-space-md p-space-md rounded-xl bg-surface-container-low/70">
+<div class="flex items-center gap-space-sm">
+<div class="w-8 h-8 rounded-lg bg-surface-container-highest flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-lg">info</span>
+</div>
+<div class="flex flex-col">
+<span class="font-headline-sm text-body-md font-semibold text-on-surface">Próximo Passo no Pipeline: Geração Estruturada de Roteiro</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant">Ao confirmar uma ideia, o DocuPulse dividirá sua narrativa em 6 atos cinematográficos com marcações de B-Roll e trilha sonora adaptativa.</span>
+</div>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="font-mono-code text-label-sm text-on-surface-variant">Modo Studio Ativo</span>
+<div class="w-2 h-2 rounded-full bg-primary"></div>
+</div>
+</div>
+</div>
+</div></main></div></body></html>

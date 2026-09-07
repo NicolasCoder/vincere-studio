@@ -1,0 +1,206 @@
+// DocuPulse.AI — schema v0.1 (Sprint 0)
+// SQLite local; no SaaS trocamos o provider para postgresql sem mudar os modelos.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Project {
+  id             String   @id @default(cuid())
+  title          String
+  format         String   // LONG_16_9 | SHORT_9_16  (ver @docupulse/core FORMATS)
+  costMode       String   @default("FREE") // FREE | HYBRID | PREMIUM
+  niche          String
+  tone           String?
+  targetDuration Int?     // segundos
+  audience       String?
+  hooks          String   @default("[]") // JSON string[]
+  stage          String   @default("IDEATION") // ver @docupulse/core STAGES
+  status         String   @default("DRAFT") // DRAFT | IN_PROGRESS | PUBLISHED | ARCHIVED
+  costUsd        Float    @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  ideas        Idea[]
+  scripts      Script[]
+  renderJobs   RenderJob[]
+  publications Publication[]
+  jobs         Job[]
+  usage        Usage[]
+}
+
+model Idea {
+  id           String   @id @default(cuid())
+  projectId    String
+  project      Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  title        String
+  category     String
+  synopsis     String
+  hookLines    String   // JSON string[3]
+  ctrEstimate  Float?
+  score        Int?
+  retention30s Float?
+  editingPace  String?
+  recommended  Boolean  @default(false)
+  coverPath    String?
+  selected     Boolean  @default(false)
+  createdAt    DateTime @default(now())
+
+  scripts Script[]
+}
+
+model Script {
+  id                String   @id @default(cuid())
+  projectId         String
+  project           Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  ideaId            String?
+  idea              Idea?    @relation(fields: [ideaId], references: [id])
+  version           Int      @default(1)
+  wordCount         Int      @default(0)
+  estimatedDuration Int      @default(0) // segundos
+  retentionCurve    String   @default("[]") // JSON number[]
+  createdAt         DateTime @default(now())
+
+  blocks ScriptBlock[]
+}
+
+model ScriptBlock {
+  id        String  @id @default(cuid())
+  scriptId  String
+  script    Script  @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  act       Int
+  order     Int
+  kind      String  // HOOK | CONTEXT | ESCALATION | REVEAL | CLIMAX | RESOLUTION | CTA
+  title     String
+  narration String  // texto com marcações [Pausa 1.8s]
+  wpm       Int     @default(150)
+  startMs   Int?
+  endMs     Int?
+  brollCue  String?
+  soundCue  String?
+
+  voiceTracks VoiceTrack[]
+  scenes      Scene[]
+}
+
+model VoiceTrack {
+  id            String      @id @default(cuid())
+  scriptBlockId String
+  block         ScriptBlock @relation(fields: [scriptBlockId], references: [id], onDelete: Cascade)
+  provider      String      // GEMINI_TTS | EDGE_TTS | ELEVENLABS
+  voiceId       String
+  filePath      String
+  durationMs    Int
+  params        String      @default("{}") // JSON
+  createdAt     DateTime    @default(now())
+
+  captions Caption[]
+}
+
+model Caption {
+  id           String     @id @default(cuid())
+  voiceTrackId String
+  track        VoiceTrack @relation(fields: [voiceTrackId], references: [id], onDelete: Cascade)
+  words        String     // JSON [{text,startMs,endMs}]
+}
+
+model Scene {
+  id            String      @id @default(cuid())
+  scriptBlockId String
+  block         ScriptBlock @relation(fields: [scriptBlockId], references: [id], onDelete: Cascade)
+  order         Int
+  source        String      // GENERATED | STOCK | IMPORTED | MOTION
+  provider      String?     // NANO_BANANA | FLUX_CF | PEXELS | PIXABAY | MANUAL
+  providerRef   String?
+  prompt        String?
+  filePath      String?
+  mediaType     String      @default("image") // image | video
+  startMs       Int
+  endMs         Int
+  motion        String      @default("{}") // JSON: kenBurns etc
+  status        String      @default("PENDING") // PENDING | READY | FAILED
+  license       String?
+}
+
+model RenderJob {
+  id         String    @id @default(cuid())
+  projectId  String
+  project    Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  profile    String    // YOUTUBE_1080 | SHORTS_1080x1920 | WEB_720
+  progress   Int       @default(0)
+  log        String    @default("")
+  outputPath String?
+  startedAt  DateTime?
+  finishedAt DateTime?
+}
+
+model Publication {
+  id            String    @id @default(cuid())
+  projectId     String
+  project       Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  platform      String    @default("YOUTUBE")
+  videoId       String?
+  url           String?
+  title         String
+  description   String    @default("")
+  tags          String    @default("[]")
+  chapters      String    @default("[]")
+  thumbnailPath String?
+  publishedAt   DateTime?
+  stats         String    @default("{}") // JSON {views, ctr, avgViewDuration}
+}
+
+/// Fila de jobs persistida. O worker faz polling desta tabela (v1);
+/// no SaaS a mesma interface é servida por BullMQ/Redis.
+model Job {
+  id         String    @id @default(cuid())
+  type       String    // ver @docupulse/core JOB_TYPES
+  projectId  String?
+  project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  payload    String    @default("{}")
+  status     String    @default("QUEUED") // QUEUED | RUNNING | DONE | FAILED | CANCELLED
+  progress   Int       @default(0)
+  message    String?
+  attempts   Int       @default(0)
+  error      String?
+  logs       String    @default("")
+  result     String?
+  createdAt  DateTime  @default(now())
+  startedAt  DateTime?
+  finishedAt DateTime?
+
+  @@index([status, createdAt])
+}
+
+/// Medidor de consumo: base dos "créditos" mostrados na topbar.
+model Usage {
+  id        String   @id @default(cuid())
+  projectId String?
+  project   Project? @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  provider  String
+  unit      String   // TOKENS_IN | TOKENS_OUT | IMAGES | AUDIO_SECONDS | VIDEO_SECONDS | REQUESTS
+  quantity  Float
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+}
+
+model Setting {
+  key   String @id
+  value String
+}
+
+/// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @docupulse/core WorkflowGraph).
+model Workflow {
+  id        String   @id @default(cuid())
+  name      String
+  kind      String   @default("VERTICAL_COMMERCIAL") // VERTICAL_COMMERCIAL | UGC | CUSTOM
+  status    String   @default("DRAFT") // DRAFT | READY | RUNNING | DONE
+  graph     String   @default("{\"nodes\":[],\"edges\":[]}")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}

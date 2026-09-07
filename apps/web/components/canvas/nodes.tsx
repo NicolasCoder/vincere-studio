@@ -1,0 +1,137 @@
+"use client";
+import { useReactFlow, type Node, type NodeProps, type NodeTypes } from "@xyflow/react";
+import type { WorkflowNodeData, NodeKind } from "@docupulse/core";
+import { Icon } from "@docupulse/ui";
+import { Field, Meter, NodeShell, Thumb } from "./NodeShell";
+
+export type CanvasNode = Node<WorkflowNodeData & { index?: number }, NodeKind>;
+
+function useUpdate(id: string) {
+  const { updateNodeData } = useReactFlow();
+  return (patch: Record<string, unknown>) => updateNodeData(id, patch);
+}
+
+function AvatarNode({ id, data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "AVATAR" }> & { index?: number };
+  const set = useUpdate(id);
+  return (
+    <NodeShell kind="AVATAR" index={d.index ?? 1} selected={selected}>
+      <div className="flex gap-3 rounded border border-line bg-void/40 p-3">
+        <Thumb label="9:16 FEED" icon="person" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <div className="flex items-center justify-between">
+            <input className="nodrag w-full bg-transparent font-display text-base font-semibold outline-none" value={d.name} onChange={(e) => set({ name: e.target.value })} />
+            <span className="rounded-sm bg-secondary/30 px-1.5 py-0.5 font-mono text-[9px] text-secondary-soft">UGC</span>
+          </div>
+          <input className="nodrag w-full bg-transparent font-mono text-[11px] text-fg-secondary outline-none" value={d.role} onChange={(e) => set({ role: e.target.value })} />
+          <Meter label="Face Consistency" value={d.faceConsistency} />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Gaze Direction" value={d.gaze} onChange={(v) => set({ gaze: v })} />
+        <Field label="Expression Mode" value={d.expression} onChange={(v) => set({ expression: v })} />
+      </div>
+      <Field label="Head Pose Tracking" value={d.headPose} onChange={(v) => set({ headPose: v })} />
+    </NodeShell>
+  );
+}
+
+function ProductNode({ id, data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "PRODUCT" }> & { index?: number };
+  const set = useUpdate(id);
+  return (
+    <NodeShell kind="PRODUCT" index={d.index ?? 2} selected={selected}>
+      <div className="flex gap-3 rounded border border-line bg-void/40 p-3">
+        <Thumb label="ASSET 3D" icon="deployed_code" />
+        <div className="min-w-0 flex-1 space-y-2">
+          <input className="nodrag w-full bg-transparent font-display text-base font-semibold outline-none" value={d.name} onChange={(e) => set({ name: e.target.value })} />
+          <input className="nodrag w-full bg-transparent font-mono text-[11px] text-fg-secondary outline-none" value={d.description} onChange={(e) => set({ description: e.target.value })} />
+          <Meter label="Fidelity Weight" value={d.fidelity} max={1} unit="" />
+        </div>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Lighting Match" value={d.lighting} onChange={(v) => set({ lighting: v })} />
+        <Field label="Interaction Mode" value={d.interaction} onChange={(v) => set({ interaction: v })} />
+      </div>
+      <Field label="Reflection Mapping" value={d.reflection} onChange={(v) => set({ reflection: v })} />
+    </NodeShell>
+  );
+}
+
+function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "PROMPT" }> & { index?: number };
+  const set = useUpdate(id);
+  return (
+    <NodeShell kind="PROMPT" index={d.index ?? 3} selected={selected} width={460}>
+      <div className="flex gap-2">
+        <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary-bright">{d.format}</span>
+        <span className="rounded-sm border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] text-fg-secondary">{d.fps} FPS</span>
+      </div>
+      <Field label="Prompt Positivo (Comercial 9:16)" value={d.positive} onChange={(v) => set({ positive: v })} multiline mono={false} suffix={<span className="font-mono text-[10px] text-primary-bright">{d.positive.length} chars</span>} />
+      <Field label="Prompt Negativo" value={d.negative} onChange={(v) => set({ negative: v })} mono={false} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Model Engine" value={d.engine} onChange={(v) => set({ engine: v })} />
+        <Field label="Motion Strength" value={d.motionStrength} onChange={(v) => set({ motionStrength: Number(v) || 0 })} />
+      </div>
+      <Field label="Sampling Steps" value={`${d.steps} Steps · Euler A`} />
+    </NodeShell>
+  );
+}
+
+function VoiceNode({ id, data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "VOICE" }> & { index?: number };
+  const set = useUpdate(id);
+  return (
+    <NodeShell kind="VOICE" index={d.index ?? 4} selected={selected}>
+      <div className="rounded border border-line bg-void/60 p-3">
+        <div className="flex items-center justify-between font-mono text-[10px]">
+          <span className="text-fg-secondary">{d.provider.toUpperCase()} · COMMERCIAL MASTER</span>
+          <span className="text-warning">00:00 / {d.durationSec}s</span>
+        </div>
+        <div className="mt-2 flex h-8 items-end gap-[3px]">
+          {Array.from({ length: 40 }).map((_, i) => <div key={i} className="flex-1 rounded-sm bg-primary-bright/70" style={{ height: `${25 + Math.abs(Math.sin(i * 0.9) * 75)}%` }} />)}
+        </div>
+      </div>
+      <Field label="Roteiro da locução" value={d.script} onChange={(v) => set({ script: v })} multiline mono={false} tone="amber" />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Voice ID" value={d.voiceId} onChange={(v) => set({ voiceId: v })} tone="amber" />
+        <Field label="Lip-Sync Engine" value={d.lipSync} onChange={(v) => set({ lipSync: v })} tone="amber" />
+      </div>
+      <Field label="Zero-Drift Audio Latency" value={`${d.latencyMs}ms · Synchronized`} tone="amber" />
+    </NodeShell>
+  );
+}
+
+function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "RENDER" }>;
+  return (
+    <NodeShell kind="RENDER" index={5} selected={selected} isTarget>
+      <div className="relative overflow-hidden rounded border border-line bg-gradient-to-b from-secondary/20 via-void to-primary/20" style={{ height: 260 }}>
+        <div className="absolute inset-0 grid place-items-center text-center">
+          <div>
+            <div className="font-display text-xl font-bold">{d.title}</div>
+            <div className="mt-1 font-mono text-[10px] text-fg-secondary">{d.width} × {d.height} · {d.fps} FPS</div>
+            <div className="mt-3 text-[11px] text-fg-secondary">Composição multimodal: Avatar IA + Packshot 3D com lip-sync sincronizado e legendas automáticas.</div>
+          </div>
+        </div>
+        <span className="absolute left-2 top-2 rounded-sm bg-void/80 px-1.5 font-mono text-[9px] text-primary-bright">PREVIEW 9:16</span>
+      </div>
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Resolução" value={`${d.width} × ${d.height}`} tone="emerald" />
+        <Field label="Bitrate" value={d.bitrate} tone="emerald" />
+      </div>
+      <div className="flex items-center justify-between rounded border border-line bg-void/60 px-3 py-2">
+        <span className="label-mono text-muted">Status Pipeline</span>
+        <span className="flex items-center gap-1 font-mono text-[11px] text-success"><Icon name="check_circle" className="text-[14px]" />{d.status === "READY" ? "Pronto p/ Renderizar" : d.status}</span>
+      </div>
+    </NodeShell>
+  );
+}
+
+export const nodeTypes: NodeTypes = {
+  AVATAR: AvatarNode,
+  PRODUCT: ProductNode,
+  PROMPT: PromptNode,
+  VOICE: VoiceNode,
+  RENDER: RenderNode,
+};

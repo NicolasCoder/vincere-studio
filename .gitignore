@@ -1,0 +1,11 @@
+node_modules/
+.next/
+dist/
+.turbo/
+*.db
+*.db-journal
+.env
+storage/*
+!storage/.gitkeep
+.DS_Store
+_incoming/
