@@ -46,12 +46,14 @@ export const PromptData = z.object({
 
 export const VoiceData = z.object({
   kind: z.literal("VOICE"),
-  provider: z.string().default("Gemini TTS"),
-  voiceId: z.string().default("Clara - Conversational"),
+  provider: z.string().default("Edge TTS (grátis)"),
+  voiceId: z.string().default("pt-BR-FranciscaNeural"),
   script: z.string().default(""),
   durationSec: z.number().default(15),
   lipSync: z.string().default("LivePortrait"),
   latencyMs: z.number().default(42),
+  /** relPath (storage/…) da última prévia de áudio gerada de fato (Edge TTS), se houver. */
+  previewUrl: z.string().optional(),
 });
 
 export const RenderData = z.object({

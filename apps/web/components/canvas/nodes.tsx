@@ -104,26 +104,77 @@ function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
   );
 }
 
+const EDGE_VOICES = [
+  { id: "pt-BR-AntonioNeural", label: "Antônio · Grave" },
+  { id: "pt-BR-FranciscaNeural", label: "Francisca · Clara" },
+  { id: "pt-BR-ThalitaNeural", label: "Thalita · Jovem" },
+  { id: "pt-BR-MacerioMultilingualNeural", label: "Macério · Multilíngue" },
+];
+
 function VoiceNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "VOICE" }> & { index?: number };
   const set = useUpdate(id);
+  const workflowId = useContext(WorkflowIdContext);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const preview = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workflows/${workflowId}/voice-preview`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nodeId: id, text: d.script, voiceId: d.voiceId }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "falha ao gerar prévia");
+      set({ previewUrl: json.audioUrl, durationSec: Math.round(json.durationMs / 1000) });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <NodeShell kind="VOICE" index={d.index ?? 4} selected={selected}>
       <div className="rounded border border-line bg-void/60 p-3">
         <div className="flex items-center justify-between font-mono text-[10px]">
-          <span className="text-fg-secondary">{d.provider.toUpperCase()} · COMMERCIAL MASTER</span>
-          <span className="text-warning">00:00 / {d.durationSec}s</span>
+          <span className="text-fg-secondary">EDGE TTS · PRÉVIA REAL</span>
+          <span className="text-warning">{d.durationSec}s</span>
         </div>
         <div className="mt-2 flex h-8 items-end gap-[3px]">
           {Array.from({ length: 40 }).map((_, i) => <div key={i} className="flex-1 rounded-sm bg-primary-bright/70" style={{ height: `${25 + Math.abs(Math.sin(i * 0.9) * 75)}%` }} />)}
         </div>
+        <div className="nodrag mt-2 flex items-center gap-2">
+          <button
+            type="button"
+            onClick={preview}
+            disabled={loading || !d.script.trim()}
+            className="flex items-center gap-1 rounded border border-warning/40 bg-warning/10 px-2 py-1 font-mono text-[10px] text-warning disabled:opacity-40"
+          >
+            <Icon name={loading ? "sync" : "play_circle"} className={loading ? "animate-spin text-[14px]" : "text-[14px]"} />
+            {loading ? "Gerando…" : "Ouvir prévia (Edge TTS)"}
+          </button>
+          {d.previewUrl && !loading && <audio controls preload="none" src={`/api/media/${d.previewUrl}`} className="nodrag h-7 flex-1" />}
+        </div>
+        {error && <div className="mt-1 font-mono text-[10px] text-error">{error}</div>}
       </div>
       <Field label="Roteiro da locução" value={d.script} onChange={(v) => set({ script: v })} multiline mono={false} tone="amber" />
-      <div className="grid grid-cols-2 gap-2">
-        <Field label="Voice ID" value={d.voiceId} onChange={(v) => set({ voiceId: v })} tone="amber" />
-        <Field label="Lip-Sync Engine" value={d.lipSync} onChange={(v) => set({ lipSync: v })} tone="amber" />
+      <div className="rounded border border-line bg-void/60 px-3 py-2">
+        <span className="label-mono text-muted">Voice ID (Edge TTS)</span>
+        <select
+          className="nodrag mt-1 w-full bg-transparent font-mono text-[12px] text-warning outline-none"
+          value={EDGE_VOICES.some((v) => v.id === d.voiceId) ? d.voiceId : EDGE_VOICES[1].id}
+          onChange={(e) => set({ voiceId: e.target.value })}
+        >
+          {EDGE_VOICES.map((v) => (
+            <option key={v.id} value={v.id} className="bg-surface-low">{v.label}</option>
+          ))}
+        </select>
       </div>
-      <Field label="Zero-Drift Audio Latency" value={`${d.latencyMs}ms · Synchronized`} tone="amber" />
+      <Field label="Lip-Sync Engine" value={d.lipSync} onChange={(v) => set({ lipSync: v })} tone="amber" />
     </NodeShell>
   );
 }
