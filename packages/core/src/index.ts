@@ -5,3 +5,5 @@ export * from "./workflow";
 export * from "./prompts/ideation";
 export * from "./prompts/script";
 export * from "./retention";
+export * from "./visual-styles";
+export * from "./prompts/scenes";

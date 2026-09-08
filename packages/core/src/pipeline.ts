@@ -41,5 +41,8 @@ export const JOB_TYPES = [
   "RUN_WORKFLOW",
   "REWRITE_BLOCK",
   "SCRIPT_SUGGESTIONS",
+  "GENERATE_SCENE_PROMPTS",
+  "IMPORT_INBOX",
+  "PREVIEW_VOICE",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];

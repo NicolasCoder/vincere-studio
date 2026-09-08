@@ -23,6 +23,9 @@ model Project {
   stage          String   @default("IDEATION") // ver @docupulse/core STAGES
   status         String   @default("DRAFT") // DRAFT | IN_PROGRESS | PUBLISHED | ARCHIVED
   costUsd        Float    @default(0)
+  visualStyle    String   @default("DARK_DOC") // ver @docupulse/core VISUAL_STYLES
+  voiceProfileId String?
+  voiceProfile   VoiceProfile? @relation(fields: [voiceProfileId], references: [id])
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
@@ -107,6 +110,7 @@ model VoiceTrack {
   filePath      String
   durationMs    Int
   params        String      @default("{}") // JSON
+  fallbackUsed  Boolean     @default(false)
   createdAt     DateTime    @default(now())
 
   captions Caption[]
@@ -135,6 +139,30 @@ model Scene {
   motion        String      @default("{}") // JSON: kenBurns etc
   status        String      @default("PENDING") // PENDING | READY | FAILED
   license       String?
+  keywords      String?
+  description   String?
+  preferVideo   Boolean     @default(false)
+  sourceUrl     String?
+  thumbPath     String?
+  width         Int?
+  height        Int?
+  durationMs    Int?
+}
+
+/// Identidade de voz de um canal: provedor principal + equivalentes de reserva.
+model VoiceProfile {
+  id        String   @id @default(cuid())
+  name      String
+  provider  String   // GEMINI_TTS | EDGE_TTS | ELEVENLABS
+  voiceId   String
+  style     String   @default("") // instrução de estilo (Gemini)
+  rate      Float    @default(1.0)
+  language  String   @default("pt-BR")
+  fallbacks String   @default("[]") // JSON [{provider, voiceId}]
+  isDefault Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  projects Project[]
 }
 
 model RenderJob {

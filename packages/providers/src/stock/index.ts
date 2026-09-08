@@ -1,0 +1,100 @@
+import { createWriteStream } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import path from "node:path";
+import { pipeline } from "node:stream/promises";
+import { Readable } from "node:stream";
+
+export interface StockQuery {
+  keywords: string;
+  orientation: "landscape" | "portrait";
+  type: "video" | "image";
+  minDurationSec?: number;
+}
+export interface StockAsset {
+  provider: "PEXELS" | "PIXABAY";
+  id: string;
+  type: "video" | "image";
+  url: string; // download
+  pageUrl: string;
+  thumbUrl?: string;
+  width: number;
+  height: number;
+  durationSec?: number;
+  author?: string;
+  license: string;
+}
+export interface StockProvider {
+  readonly name: "PEXELS" | "PIXABAY";
+  search(q: StockQuery, limit?: number): Promise<StockAsset[]>;
+}
+
+export class PexelsProvider implements StockProvider {
+  readonly name = "PEXELS" as const;
+  constructor(private readonly key = process.env.PEXELS_API_KEY ?? "") {}
+  get enabled() {
+    return !!this.key;
+  }
+  async search(q: StockQuery, limit = 6): Promise<StockAsset[]> {
+    if (!this.key) return [];
+    const base = q.type === "video" ? "https://api.pexels.com/videos/search" : "https://api.pexels.com/v1/search";
+    const url = `${base}?query=${encodeURIComponent(q.keywords)}&orientation=${q.orientation}&per_page=${limit}&size=medium`;
+    const res = await fetch(url, { headers: { Authorization: this.key }, signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`Pexels ${res.status}`);
+    const json = (await res.json()) as { videos?: PexelsVideo[]; photos?: PexelsPhoto[] };
+    if (q.type === "video") {
+      return (json.videos ?? [])
+        .filter((v) => !q.minDurationSec || v.duration >= q.minDurationSec)
+        .map((v) => {
+          const files = v.video_files.filter((f) => f.file_type === "video/mp4").sort((a, b) => Math.abs((a.height ?? 0) - 1080) - Math.abs((b.height ?? 0) - 1080));
+          const f = files[0];
+          return { provider: "PEXELS" as const, id: String(v.id), type: "video" as const, url: f?.link ?? "", pageUrl: v.url, thumbUrl: v.image, width: f?.width ?? v.width, height: f?.height ?? v.height, durationSec: v.duration, author: v.user?.name, license: "Pexels License (uso livre, atribuição opcional)" };
+        })
+        .filter((a) => a.url);
+    }
+    return (json.photos ?? []).map((p) => ({ provider: "PEXELS" as const, id: String(p.id), type: "image" as const, url: p.src.large2x ?? p.src.original, pageUrl: p.url, thumbUrl: p.src.medium, width: p.width, height: p.height, author: p.photographer, license: "Pexels License (uso livre, atribuição opcional)" }));
+  }
+}
+interface PexelsVideo { id: number; url: string; image: string; duration: number; width: number; height: number; user?: { name: string }; video_files: { link: string; file_type: string; width?: number; height?: number }[] }
+interface PexelsPhoto { id: number; url: string; width: number; height: number; photographer: string; src: { original: string; large2x?: string; medium: string } }
+
+export class PixabayProvider implements StockProvider {
+  readonly name = "PIXABAY" as const;
+  constructor(private readonly key = process.env.PIXABAY_API_KEY ?? "") {}
+  get enabled() {
+    return !!this.key;
+  }
+  async search(q: StockQuery, limit = 6): Promise<StockAsset[]> {
+    if (!this.key) return [];
+    const orientation = q.orientation === "portrait" ? "vertical" : "horizontal";
+    const base = q.type === "video" ? "https://pixabay.com/api/videos/" : "https://pixabay.com/api/";
+    const url = `${base}?key=${this.key}&q=${encodeURIComponent(q.keywords)}&per_page=${Math.max(3, limit)}&safesearch=true&lang=pt${q.type === "image" ? `&orientation=${orientation}&image_type=photo` : ""}`;
+    const res = await fetch(url, { signal: AbortSignal.timeout(30_000) });
+    if (!res.ok) throw new Error(`Pixabay ${res.status}`);
+    const json = (await res.json()) as { hits: PixabayHit[] };
+    return (json.hits ?? [])
+      .filter((h) => (q.type === "video" ? !!h.videos : true))
+      .filter((h) => !q.minDurationSec || !h.duration || h.duration >= q.minDurationSec)
+      .map((h) => {
+        if (q.type === "video") {
+          const v = h.videos!.large?.url ? h.videos!.large : h.videos!.medium;
+          return { provider: "PIXABAY" as const, id: String(h.id), type: "video" as const, url: v.url, pageUrl: h.pageURL, thumbUrl: v.thumbnail, width: v.width, height: v.height, durationSec: h.duration, author: h.user, license: "Pixabay Content License (uso livre)" };
+        }
+        return { provider: "PIXABAY" as const, id: String(h.id), type: "image" as const, url: h.largeImageURL ?? h.webformatURL ?? "", pageUrl: h.pageURL, thumbUrl: h.previewURL, width: h.imageWidth ?? 0, height: h.imageHeight ?? 0, author: h.user, license: "Pixabay Content License (uso livre)" };
+      })
+      .filter((a) => a.url)
+      .filter((a) => (q.type === "video" ? (q.orientation === "portrait" ? a.height >= a.width : a.width >= a.height) : true));
+  }
+}
+interface PixabayHit { id: number; pageURL: string; user: string; duration?: number; previewURL?: string; webformatURL?: string; largeImageURL?: string; imageWidth?: number; imageHeight?: number; videos?: Record<string, { url: string; width: number; height: number; thumbnail?: string }> }
+
+export function getStockProviders(): StockProvider[] {
+  return [new PexelsProvider(), new PixabayProvider()].filter((p) => p.enabled);
+}
+
+export async function downloadTo(url: string, file: string) {
+  await mkdir(path.dirname(file), { recursive: true });
+  const res = await fetch(url, { signal: AbortSignal.timeout(120_000) });
+  if (!res.ok || !res.body) throw new Error(`download ${res.status} ${url}`);
+  await pipeline(Readable.fromWeb(res.body as import("node:stream/web").ReadableStream), createWriteStream(file));
+  return file;
+}

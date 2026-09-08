@@ -1,15 +1,39 @@
-import { FORMATS, type VideoFormat } from "@docupulse/core";
+import { prisma } from "@docupulse/db";
+import { FORMATS, getVisualStyle, sceneFileStem, visualStyleList, type VideoFormat } from "@docupulse/core";
+import { EdgeVoiceProvider, storageRoot } from "@docupulse/providers";
 import { Badge, Button, Card, Chip, Icon, Progress, Stat } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
-import { fmtDuration, fmtMs } from "@/lib/data";
+import { JobWatcher } from "@/components/JobWatcher";
+import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
+import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, setVisualStyle, setVoiceProfile, synthesizeVoice } from "./actions";
+import path from "node:path";
 
-export default async function MediaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string }> }) {
+const GEMINI_VOICES = ["Charon", "Fenrir", "Enceladus", "Orus", "Kore", "Aoede", "Leda", "Puck"];
+
+export default async function MediaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
   const { id } = await params;
-  const { blocked } = await searchParams;
-  const { project, header } = await loadProjectShell(id, "MEDIA", blocked);
+  const { blocked, job } = await searchParams;
+  const { project, header, busy } = await loadProjectShell(id, "MEDIA", blocked, job);
   const format = FORMATS[project.format as VideoFormat];
-  const blocks = project.scripts[0]?.blocks ?? [];
+  const style = getVisualStyle(project.visualStyle);
+  await ensureDefaultVoiceProfiles();
+  const [script, profiles] = await Promise.all([
+    prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: { include: { captions: true } }, scenes: { orderBy: { order: "asc" } } } } } }),
+    prisma.voiceProfile.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] }),
+  ]);
+  const blocks = script?.blocks ?? [];
+  const profile = profiles.find((p) => p.id === project.voiceProfileId) ?? profiles.find((p) => p.isDefault) ?? profiles[0];
+  const voiced = blocks.filter((b) => b.voiceTracks.length).length;
+  const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
+  const scenes = blocks.flatMap((b) => b.scenes.map((s) => ({ ...s, act: b.act })));
+  const ready = scenes.filter((s) => s.filePath).length;
+  const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
+  const fallbackCount = blocks.filter((b) => b.voiceTracks[0]?.fallbackUsed).length;
+  const bySource = { STOCK: scenes.filter((s) => s.source === "STOCK").length, IMPORTED: scenes.filter((s) => s.source === "IMPORTED").length, GENERATED: scenes.filter((s) => s.source === "GENERATED" && s.filePath).length };
+  const inboxPath = path.join(storageRoot(), "projects", id, "inbox");
+  const hasStock = !!(process.env.PEXELS_API_KEY || process.env.PIXABAY_API_KEY);
+  const edgeVoices = new EdgeVoiceProvider().voices();
 
   return (
     <>
@@ -17,86 +41,143 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
       <main className="p-6">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2"><Badge tone="violet">Projeto ativo #{project.id.slice(-6).toUpperCase()}</Badge><span className="font-mono text-[11px] text-muted">· modo {project.costMode}</span></div>
+            <div className="flex items-center gap-2"><Badge tone="violet">Projeto #{project.id.slice(-6).toUpperCase()}</Badge><Badge tone="neutral">modo {project.costMode}</Badge><Badge tone="cyan">{style.label}</Badge></div>
             <h1 className="mt-2 max-w-3xl font-display text-3xl font-semibold leading-tight"><span className="gradient-text">{project.title}</span></h1>
             <div className="mt-3 flex flex-wrap gap-2">
-              <Chip icon="timer">{fmtDuration(project.targetDuration)} total</Chip>
-              <Chip icon="view_agenda">{blocks.length} Atos</Chip>
-              <Chip icon="movie">B-roll: Pexels · Pixabay · {project.costMode === "FREE" ? "FLUX (CF)" : "Nano Banana"}</Chip>
-              <Chip icon="record_voice_over" active tone="violet">Voz IA: Gemini TTS (Charon)</Chip>
+              <Chip icon="timer">{totalMs ? fmtDuration(Math.round(totalMs / 1000)) : fmtDuration(project.targetDuration)} {totalMs ? "de locução" : "previsto"}</Chip>
+              <Chip icon="view_agenda">{voiced}/{blocks.length} atos com voz</Chip>
+              <Chip icon="subtitles">{captioned}/{blocks.length} com legendas</Chip>
+              <Chip icon="movie" active={ready > 0}>{ready}/{scenes.length} cenas com mídia</Chip>
+              {profile && <Chip icon="record_voice_over" active tone="violet">{profile.name}</Chip>}
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <Button icon="play_circle" disabled>Ouvir Prévia Completa</Button>
-            <Button icon="autorenew" disabled>Regenerar B-Roll em Massa</Button>
-            <Button variant="primary" icon="sync" disabled title="Sprint 3">Auto-Sincronizar Timeline</Button>
+            <form action={synthesizeVoice.bind(null, project.id, [])}><Button type="submit" variant={voiced ? "ghost" : "primary"} icon="mic" className="w-full" disabled={busy || !blocks.length || !profile}>{voiced ? "Regravar toda a locução" : "Sintetizar locução"}</Button></form>
+            <form action={alignCaptions.bind(null, project.id)}><Button type="submit" icon="subtitles" className="w-full" disabled={busy || !voiced}>Alinhar legendas (Whisper)</Button></form>
+            <div className="flex gap-2">
+              <form action={generateScenePrompts.bind(null, project.id, "sparse")} className="flex-1"><Button type="submit" variant={voiced && !scenes.length ? "primary" : "ghost"} icon="auto_awesome" className="w-full" disabled={busy || !blocks.length} title="Cenas longas (8–12s): menos imagens para gerar à mão no Flow">{scenes.length ? "Replanejar (Flow)" : "Planejar cenas (Flow)"}</Button></form>
+              <form action={generateScenePrompts.bind(null, project.id, "dense")} className="flex-1"><Button type="submit" icon="burst_mode" className="w-full" disabled={busy || !blocks.length} title="Cenas curtas no ritmo do formato: para acervo Pexels/Pixabay ou API de imagem">{scenes.length ? "Replanejar (denso)" : "Planejar cenas (denso)"}</Button></form>
+            </div>
           </div>
         </div>
 
+        {job && <div className="mt-4"><JobWatcher jobId={job} label="Estúdio de mídia trabalhando" /></div>}
+
         <div className="mt-6 grid grid-cols-[1fr_22rem] gap-6">
           <div className="space-y-4">
-            {blocks.length === 0 && <Card className="p-10 text-center text-sm text-muted">Sem blocos de roteiro. Volte ao Passo 2.</Card>}
-            {blocks.map((b, i) => (
-              <Card key={b.id} className="p-5" accent={i === 0 ? "dual" : "none"}>
-                <div className="flex items-center gap-3">
-                  <span className="grid size-8 place-items-center rounded bg-line/40 font-mono text-xs text-primary-bright">{String(b.act).padStart(2, "0")}</span>
-                  <div className="flex-1"><div className="font-display font-semibold">Ato {b.act}: {b.title}</div><div className="text-xs text-fg-secondary">{b.brollCue ?? "—"}</div></div>
-                  <Badge tone="cyan">{fmtMs(b.startMs)} – {fmtMs(b.endMs)}</Badge>
-                  <Badge tone="neutral">0 cenas mapeadas</Badge>
-                </div>
-                {i === 0 && (
-                  <div className="mt-4 rounded border border-line bg-void/60 p-4">
-                    <div className="flex items-center gap-3">
-                      <button className="grid size-9 place-items-center rounded-full bg-primary/20 text-primary-bright"><Icon name="play_arrow" /></button>
-                      <div className="flex-1"><div className="font-mono text-xs">Track_Act{String(b.act).padStart(2, "0")}.wav</div><div className="font-mono text-[10px] text-muted">48kHz · 24-bit · aguardando síntese (Sprint 3)</div></div>
-                      <span className="font-mono text-xs text-primary-bright">00:00 / {fmtMs((b.endMs ?? 0) - (b.startMs ?? 0))}</span>
-                    </div>
-                    <div className="mt-3 flex h-16 items-center gap-[2px] px-1">
-                      {Array.from({ length: 96 }).map((_, k) => <div key={k} className="flex-1 rounded-sm bg-primary/40" style={{ height: `${20 + Math.abs(Math.sin(k * 0.6) * 70)}%` }} />)}
-                    </div>
+            {!blocks.length && <Card className="p-10 text-center text-sm text-muted">Sem roteiro. Volte ao Passo 2.</Card>}
+            {blocks.map((b) => {
+              const t = b.voiceTracks[0];
+              const words = parseJson<{ text: string; startMs: number; endMs: number }[]>(t?.captions[0]?.words, []);
+              return (
+                <Card key={b.id} className="p-5" accent={t ? (t.fallbackUsed ? "slate" : "cyan") : "none"}>
+                  <div className="flex items-center gap-3">
+                    <span className="grid size-8 place-items-center rounded bg-line/40 font-mono text-xs text-primary-bright">{String(b.act).padStart(2, "0")}</span>
+                    <div className="min-w-0 flex-1"><div className="font-display font-semibold">Ato {b.act}: {b.title}</div><div className="truncate text-xs text-fg-secondary">{b.brollCue ?? "—"}</div></div>
+                    <Badge tone="cyan">{t ? fmtMs(t.durationMs) : `${fmtMs(b.startMs)} – ${fmtMs(b.endMs)}`}</Badge>
+                    <Badge tone={b.scenes.filter((s) => s.filePath).length === b.scenes.length && b.scenes.length ? "success" : "neutral"}>{b.scenes.filter((s) => s.filePath).length}/{b.scenes.length} cenas</Badge>
                   </div>
-                )}
-                <div className="mt-3 flex items-center justify-between"><span className="label-mono text-muted">Cenas & B-rolls mapeados no Ato {b.act}</span><button className="font-mono text-[11px] text-primary-bright">+ Adicionar Ponto de Corte</button></div>
-                <div className="mt-2 rounded border border-dashed border-line p-4 text-center text-xs text-muted">Sprint 3: o Auto-Hunter divide o ato em cenas de {format.cutPace.min}–{format.cutPace.max}s e busca mídia em Pexels/Pixabay ou gera com IA.</div>
-              </Card>
-            ))}
+
+                  <div className="mt-4 rounded border border-line bg-void/60 p-4">
+                    {t ? (
+                      <>
+                        <div className="flex items-center gap-3">
+                          <audio controls preload="none" src={`/api/media/${t.filePath}`} className="h-9 flex-1" />
+                          <div className="text-right font-mono text-[10px] text-muted">{t.provider} · {t.voiceId}{t.fallbackUsed && <span className="ml-1 text-warning">(reserva)</span>}</div>
+                          <form action={synthesizeVoice.bind(null, project.id, [b.id])}><Button type="submit" variant="icon" icon="refresh" title="Regravar este ato" disabled={busy} /></form>
+                        </div>
+                        {words.length > 0 && (
+                          <div className="mt-3 max-h-16 overflow-hidden font-mono text-[10px] leading-relaxed text-fg-secondary">
+                            {words.slice(0, 40).map((w, i) => <span key={i} className="mr-1 inline-block rounded-sm bg-line/30 px-1" title={`${fmtMs(w.startMs)}`}>{w.text}</span>)}
+                            {words.length > 40 && <span className="text-muted">… +{words.length - 40} palavras alinhadas</span>}
+                          </div>
+                        )}
+                      </>
+                    ) : (
+                      <div className="flex items-center justify-between text-xs text-muted"><span><Icon name="mic_off" className="mr-1 align-middle text-[16px]" />Sem locução ainda</span><form action={synthesizeVoice.bind(null, project.id, [b.id])}><Button type="submit" size="sm" icon="mic" disabled={busy || !profile}>Sintetizar só este ato</Button></form></div>
+                    )}
+                  </div>
+
+                  <div className="mt-3 flex items-center justify-between"><span className="label-mono text-muted">Cenas & B-roll mapeados no Ato {b.act}</span><span className="font-mono text-[10px] text-muted">ritmo {format.cutPace.min}–{format.cutPace.max}s</span></div>
+                  {b.scenes.length === 0 ? (
+                    <div className="mt-2 rounded border border-dashed border-line p-3 text-center text-xs text-muted">Clique em "Planejar cenas & prompts" para dividir o ato em cenas no estilo {style.label}.</div>
+                  ) : (
+                    <div className="mt-2 grid grid-cols-2 gap-2">
+                      {b.scenes.map((s) => (
+                        <div key={s.id} className="flex gap-3 rounded border border-line bg-void/40 p-2">
+                          <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded border border-line bg-surface-low">
+                            {s.filePath ? (
+                              s.mediaType === "video" ? <video src={`/api/media/${s.filePath}`} muted preload="metadata" className="h-full w-full object-cover" /> : <img src={`/api/media/${s.filePath}`} alt="" className="h-full w-full object-cover" />
+                            ) : (
+                              <div className="grid h-full w-full place-items-center text-muted"><Icon name={s.preferVideo ? "videocam" : "image"} className="text-[20px]" /></div>
+                            )}
+                            <span className="absolute bottom-0.5 left-0.5 rounded-sm bg-void/80 px-1 font-mono text-[9px] text-primary-bright">{sceneFileStem(b.act, s.order)}</span>
+                          </div>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex items-center justify-between"><span className="font-mono text-[10px] text-fg-secondary">{fmtMs(s.startMs)}–{fmtMs(s.endMs)}</span><Badge tone={s.filePath ? (s.source === "STOCK" ? "cyan" : "violet") : "neutral"}>{s.filePath ? (s.source === "STOCK" ? s.provider : "Flow/Import") : "pendente"}</Badge></div>
+                            <p className="mt-1 line-clamp-2 text-[11px] text-fg-secondary" title={s.prompt ?? ""}>{s.description ?? s.prompt}</p>
+                            <div className="mt-1 flex items-center justify-between"><span className="truncate font-mono text-[9px] text-muted">{s.keywords}</span>{s.filePath && <form action={clearScene.bind(null, project.id, s.id)}><button className="font-mono text-[9px] text-muted hover:text-error">limpar</button></form>}</div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                </Card>
+              );
+            })}
           </div>
 
           <aside className="space-y-4">
             <Card className="p-4">
-              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="mic" className="mr-1 align-middle text-primary-bright" />Locução (Voiceover Engine)</h3><Badge tone="cyan">Gemini TTS</Badge></div>
-              <div className="mt-3 rounded border border-line bg-void/60 p-3">
-                <div className="flex items-center gap-3"><span className="grid size-10 place-items-center rounded bg-secondary/30 text-secondary-soft"><Icon name="record_voice_over" /></span><div className="text-sm"><div className="font-semibold">Charon · Sombrio & Investigativo</div><div className="font-mono text-[11px] text-muted">gemini-tts · pt-BR</div></div></div>
-                {[["Estabilidade Neural", 85], ["Clareza & Similaridade", 90], ["Exagero Emocional", 15]].map(([l, v]) => (
-                  <div key={String(l)} className="mt-3"><div className="flex justify-between font-mono text-[11px]"><span className="text-fg-secondary">{l}</span><span className="text-primary-bright">{v}%</span></div><Progress value={Number(v)} className="mt-1" /></div>
-                ))}
+              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="mic" className="mr-1 align-middle text-primary-bright" />Voz do Canal</h3><Badge tone="cyan">{profile?.provider ?? "—"}</Badge></div>
+              <form action={setVoiceProfile.bind(null, project.id)} className="mt-3">
+                <select name="voiceProfileId" defaultValue={profile?.id ?? ""} className="field w-full px-3 py-2 text-sm">
+                  {profiles.map((p) => <option key={p.id} value={p.id} className="bg-surface-low">{p.name} · {p.provider === "GEMINI_TTS" ? "Gemini" : "Edge"} {p.voiceId}{p.isDefault ? " (padrão)" : ""}</option>)}
+                </select>
+                <Button type="submit" size="sm" className="mt-2 w-full" icon="check">Usar neste projeto</Button>
+              </form>
+              {profile && (
+                <div className="mt-3 rounded border border-line bg-void/60 p-3 text-xs">
+                  <div className="font-semibold">{profile.name}</div>
+                  <div className="mt-1 font-mono text-[10px] text-muted">{profile.provider} / {profile.voiceId} · {profile.rate}x</div>
+                  {profile.style && <div className="mt-1 italic text-fg-secondary">“{profile.style}”</div>}
+                  <div className="mt-2 font-mono text-[10px] text-muted">Reserva: {parseJson<{ provider: string; voiceId: string }[]>(profile.fallbacks, []).map((f) => `${f.provider}/${f.voiceId}`).join(", ") || "—"}</div>
+                  {fallbackCount > 0 && <div className="mt-2 text-warning"><Icon name="warning" className="mr-1 align-middle text-[14px]" />{fallbackCount} ato(s) gravados com a voz de reserva. Regrave quando a principal voltar.</div>}
+                </div>
+              )}
+              <p className="mt-2 text-[11px] text-muted">Vozes Gemini: {GEMINI_VOICES.join(", ")}. Edge (grátis, sem chave): {edgeVoices.map((v) => v.label.split(" ·")[0]).join(", ")}. Crie perfis em Settings.</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="palette" className="mr-1 align-middle text-primary-bright" />Estilo Visual</h3><Badge tone="violet">{format.ratio}</Badge></div>
+              <form action={setVisualStyle.bind(null, project.id)} className="mt-3">
+                <select name="visualStyle" defaultValue={project.visualStyle} className="field w-full px-3 py-2 text-sm">
+                  {visualStyleList.map((s) => <option key={s.id} value={s.id} className="bg-surface-low">{s.label}</option>)}
+                </select>
+                <Button type="submit" size="sm" className="mt-2 w-full" icon="check">Aplicar estilo</Button>
+              </form>
+              <p className="mt-2 text-[11px] text-fg-secondary">{style.description}</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Modo Flow</Badge></div>
+              <div className="mt-3 grid grid-cols-2 gap-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
+              {scenes.length > 0 && <Progress value={scenes.length ? (ready / scenes.length) * 100 : 0} className="mt-3" />}
+              <div className="mt-3 space-y-2">
+                {scenes.length > 0 && <a href={`/api/media/projects/${project.id}/prompts/flow-pack.md?download=1`}><Button icon="download" size="sm" className="w-full">Baixar pacote de prompts (Flow)</Button></a>}
+                <form action={importInbox.bind(null, project.id)}><Button type="submit" icon="folder_open" size="sm" className="w-full" disabled={busy || !scenes.length}>Importar da pasta inbox</Button></form>
+                <form action={huntBroll.bind(null, project.id, false)}><Button type="submit" icon="travel_explore" size="sm" className="w-full" disabled={busy || !scenes.length || !hasStock} title={hasStock ? "Pexels/Pixabay" : "Configure PEXELS_API_KEY / PIXABAY_API_KEY"}>Buscar B-roll no acervo{!hasStock && " (sem chave)"}</Button></form>
               </div>
-              <div className="label-mono mt-4 text-muted">Vozes alternativas</div>
-              {["Kore · Narradora Misteriosa", "Fenrir · Documentarista Profundo", "Edge TTS · Antônio (fallback grátis)"].map((v) => <div key={v} className="mt-1.5 flex items-center justify-between rounded border border-line bg-void/40 px-3 py-2 text-xs"><span>{v}</span><span className="font-mono text-[10px] text-muted">Trocar</span></div>)}
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll IA</h3><Badge tone="violet">Auto-Hunter</Badge></div>
-              <div className="mt-3 grid grid-cols-2 gap-2"><Stat label="Clipes atribuídos" value="0 / 0" sub="0% cobertura" /><Stat label="Cache de mídia" value="0 MB" sub="pasta storage/" tone="fg" /></div>
-              <div className="label-mono mt-4 text-muted">Distribuição das fontes</div>
-              <div className="mt-2 flex h-2 overflow-hidden rounded-full"><div className="w-2/3 bg-primary" /><div className="w-1/3 bg-secondary" /></div>
-              <div className="mt-1 flex justify-between font-mono text-[10px] text-muted"><span>67% Acervo (Pexels/Pixabay)</span><span>33% IA</span></div>
-            </Card>
-            <Card className="p-4">
-              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="verified" className="mr-1 align-middle text-primary-bright" />Quality & Retention Check</h3><span className="font-mono text-xs text-primary-bright">—/100</span></div>
-              <ul className="mt-3 space-y-2 text-xs text-fg-secondary">
-                <li className="flex gap-2"><Icon name="check_circle" className="text-[16px] text-success" />Licenças das fontes verificadas (atribuição registrada)</li>
-                <li className="flex gap-2"><Icon name="check_circle" className="text-[16px] text-success" />Legendas sincronizadas via Whisper (FFmpeg)</li>
-                <li className="flex gap-2"><Icon name="check_circle" className="text-[16px] text-success" />Loudness normalizado a -14 LUFS</li>
-              </ul>
+              <div className="mt-3 rounded border border-line bg-void/60 p-2 font-mono text-[10px] text-muted break-all"><Icon name="folder" className="mr-1 align-middle text-[12px]" />{inboxPath}</div>
+              <p className="mt-2 text-[11px] text-fg-secondary">Gere as imagens no Flow com os prompts do pacote, salve nesta pasta com os nomes indicados (a01-s03.png) e clique em Importar.</p>
             </Card>
           </aside>
         </div>
 
         <Card className="mt-6 flex items-center gap-4 p-4">
           <Icon name="task_alt" className="text-primary-bright" />
-          <div className="flex-1 text-sm"><div className="font-semibold">Cenas e áudio prontos para composição</div><div className="text-xs text-fg-secondary">Tudo pronto para a composição final no motor de renderização (FFmpeg).</div></div>
-          <Button icon="save" disabled>Salvar Configuração</Button>
-          <form action={advanceStage.bind(null, project.id)}><Button type="submit" variant="primary" iconRight="arrow_forward">Avançar para Passo 4: Render & Export</Button></form>
+          <div className="flex-1 text-sm"><div className="font-semibold">{voiced === blocks.length && blocks.length ? "Locução completa" : "Locução pendente"} · {ready}/{scenes.length} cenas com mídia</div><div className="text-xs text-fg-secondary">O render (Passo 4) usa a locução, as legendas alinhadas e as cenas prontas; cenas sem mídia recebem um cartão de título no estilo do projeto.</div></div>
+          <form action={advanceStage.bind(null, project.id)}><Button type="submit" variant="primary" iconRight="arrow_forward" disabled={busy}>Avançar para Passo 4: Render & Export</Button></form>
         </Card>
       </main>
     </>

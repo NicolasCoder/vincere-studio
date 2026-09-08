@@ -15,7 +15,7 @@ type Suggestion = { id: string; act: number; severity: "high" | "medium" | "low"
 export default async function ScriptPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; v?: string }> }) {
   const { id } = await params;
   const { blocked, job, v } = await searchParams;
-  const { project, header } = await loadProjectShell(id, "SCRIPT", blocked);
+  const { project, header, busy } = await loadProjectShell(id, "SCRIPT", blocked, job);
   const format = FORMATS[project.format as VideoFormat];
   const versions = await prisma.script.findMany({ where: { projectId: id }, orderBy: { version: "desc" }, select: { id: true, version: true, createdAt: true, wordCount: true } });
   const latest = versions[0];
@@ -26,7 +26,6 @@ export default async function ScriptPage({ params, searchParams }: { params: Pro
   const metrics = parseJson<Partial<RetentionResult>>(script?.metrics, {});
   const suggestions = parseJson<Suggestion[]>(script?.suggestions, []);
   const idea = project.ideas.find((i) => i.selected);
-  const busy = !!job;
 
   return (
     <>

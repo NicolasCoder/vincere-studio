@@ -60,3 +60,16 @@ export const parseJson = <T,>(s: string | null | undefined, fallback: T): T => {
     return fallback;
   }
 };
+
+/** Cria os perfis de voz padrão na primeira vez (sem precisar rodar o seed). */
+export async function ensureDefaultVoiceProfiles() {
+  if ((await prisma.voiceProfile.count()) > 0) return;
+  await prisma.voiceProfile.createMany({
+    data: [
+      { name: "Narrador Dark (Charon)", provider: "GEMINI_TTS", voiceId: "Charon", style: "Narre em português do Brasil, tom grave, ritmo lento e misterioso, como um documentário investigativo de alta produção. Pausas naturais, sem exagero teatral.", rate: 1.0, fallbacks: JSON.stringify([{ provider: "EDGE_TTS", voiceId: "pt-BR-AntonioNeural" }]), isDefault: true },
+      { name: "Narradora Investigativa (Kore)", provider: "GEMINI_TTS", voiceId: "Kore", style: "Narre em português do Brasil, voz firme e clara, tom investigativo e envolvente.", rate: 1.0, fallbacks: JSON.stringify([{ provider: "EDGE_TTS", voiceId: "pt-BR-FranciscaNeural" }]) },
+      { name: "Infantil Animado (Puck)", provider: "GEMINI_TTS", voiceId: "Puck", style: "Narre em português do Brasil com energia alegre e acolhedora, como um contador de histórias para crianças.", rate: 1.05, fallbacks: JSON.stringify([{ provider: "EDGE_TTS", voiceId: "pt-BR-ThalitaNeural" }]) },
+      { name: "Antônio (Edge, grátis)", provider: "EDGE_TTS", voiceId: "pt-BR-AntonioNeural", style: "", rate: 1.0, fallbacks: JSON.stringify([{ provider: "GEMINI_TTS", voiceId: "Charon" }]) },
+    ],
+  });
+}

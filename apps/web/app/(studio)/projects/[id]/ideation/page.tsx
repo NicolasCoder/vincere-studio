@@ -9,13 +9,12 @@ import Link from "next/link";
 export default async function IdeationPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; view?: "all" | "viral" | "hooks" }> }) {
   const { id } = await params;
   const { blocked, job, view = "all" } = await searchParams;
-  const { project, header } = await loadProjectShell(id, "IDEATION", blocked);
+  const { project, header, busy } = await loadProjectShell(id, "IDEATION", blocked, job);
   const format = FORMATS[project.format as VideoFormat];
   const hooks = parseJson<string[]>(project.hooks, []);
   const ideas = [...project.ideas].sort((a, b) =>
     view === "viral" ? (b.ctrEstimate ?? 0) - (a.ctrEstimate ?? 0) : view === "hooks" ? (b.retention30s ?? 0) - (a.retention30s ?? 0) : (b.score ?? 0) - (a.score ?? 0),
   );
-  const busy = !!job;
 
   return (
     <>

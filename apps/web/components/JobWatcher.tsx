@@ -24,6 +24,7 @@ export function JobWatcher({ jobId, label }: { jobId: string; label: string }) {
         router.replace(pathname);
         router.refresh();
       }
+      if (r.status === "FAILED") router.refresh(); // libera os botões (busy é calculado no servidor)
     };
     tick();
     const t = setInterval(() => {

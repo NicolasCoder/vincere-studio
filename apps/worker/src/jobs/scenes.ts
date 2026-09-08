@@ -1,0 +1,158 @@
+import path from "node:path";
+import { readdir, rename, stat, writeFile } from "node:fs/promises";
+import { prisma } from "@docupulse/db";
+import { FORMATS, SCENES_PROMPT_VERSION, ScenesResponseSchema, composeImagePrompt, getVisualStyle, parseSceneFileStem, sceneFileStem, scenesPrompt, type VideoFormat } from "@docupulse/core";
+import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, projectDir, recordUsage, relPath } from "@docupulse/providers";
+import type { JobContext } from "../queue";
+
+/**
+ * GENERATE_SCENE_PROMPTS: divide cada ato em cenas com descrição, keywords e prompt de imagem
+ * no estilo visual do projeto; grava Scene e exporta o pacote de prompts (Modo Flow).
+ * payload: { projectId }
+ */
+export async function generateScenePrompts(ctx: JobContext) {
+  const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
+  const density = (ctx.payload.density as "dense" | "sparse") ?? "dense";
+  const project = await prisma.project.findUnique({ where: { id: projectId }, include: { scripts: { orderBy: { version: "desc" }, take: 1, include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: true } } } } } });
+  if (!project) throw new Error("Projeto não encontrado");
+  const script = project.scripts[0];
+  if (!script) throw new Error("Gere o roteiro antes.");
+  const style = getVisualStyle(project.visualStyle);
+  const format = FORMATS[project.format as VideoFormat];
+  const provider = getTextProvider();
+  const pack: string[] = [`# Pacote de prompts — ${project.title}`, ``, `Estilo: ${style.label}. Proporção: ${format.ratio}.`, `Gere cada imagem e salve na pasta inbox do projeto com o nome indicado (ex.: a01-s03.png). O app casa os arquivos com as cenas automaticamente.`, ``];
+  let total = 0;
+
+  for (let i = 0; i < script.blocks.length; i++) {
+    const b = script.blocks[i];
+    if (await ctx.isCancelled()) return { cancelled: true };
+    await ctx.progress({ percent: (i / script.blocks.length) * 90, message: `Ato ${b.act}: planejando cenas` });
+    const durationSec = Math.round((b.voiceTracks[0]?.durationMs ?? ((b.endMs ?? 0) - (b.startMs ?? 0))) / 1000) || 30;
+    const res = await provider.generateJson(scenesPrompt({ format: project.format as VideoFormat, style, title: project.title, act: b.act, actTitle: b.title, narration: b.narration, brollCue: b.brollCue, durationSec, density }), ScenesResponseSchema, { temperature: 0.7 });
+    await recordUsage(projectId, res.usage);
+
+    // Normaliza durações para somarem o ato e distribui tempos
+    const scenes = res.data.scenes.sort((a, c) => a.order - c.order);
+    const sum = scenes.reduce((s, x) => s + Math.max(1, x.durationSec), 0) || 1;
+    let cursor = 0;
+    await prisma.scene.deleteMany({ where: { scriptBlockId: b.id, status: "PENDING", filePath: null } });
+    const existing = await prisma.scene.findMany({ where: { scriptBlockId: b.id } });
+    pack.push(`## Ato ${b.act} — ${b.title}`, ``);
+    for (let k = 0; k < scenes.length; k++) {
+      const sc = scenes[k];
+      const ms = Math.round((Math.max(1, sc.durationSec) / sum) * durationSec * 1000);
+      const order = k + 1;
+      const prompt = composeImagePrompt(style, sc.description, format.ratio);
+      const keep = existing.find((e) => e.order === order && e.filePath);
+      if (!keep) {
+        await prisma.scene.create({ data: { scriptBlockId: b.id, order, source: "GENERATED", provider: "FLOW_MANUAL", prompt, description: sc.description, keywords: sc.keywords, preferVideo: sc.preferVideo, startMs: cursor, endMs: cursor + ms, motion: JSON.stringify({ kind: style.motion }), status: "PENDING" } });
+      } else {
+        await prisma.scene.update({ where: { id: keep.id }, data: { startMs: cursor, endMs: cursor + ms, prompt, description: sc.description, keywords: sc.keywords } });
+      }
+      pack.push(`### ${sceneFileStem(b.act, order)}  (${(ms / 1000).toFixed(1)}s${sc.preferVideo ? " · prefere vídeo de acervo" : ""})`, ``, prompt, ``);
+      cursor += ms;
+      total++;
+    }
+  }
+  const dir = await projectDir(projectId, "prompts");
+  const file = path.join(dir, "flow-pack.md");
+  await writeFile(file, pack.join("\n"), "utf8");
+  await projectDir(projectId, "inbox");
+  await ctx.log(`${total} cenas planejadas (${density === "sparse" ? "esparso · Modo Flow" : "denso · acervo/API"}) · pacote em ${relPath(file)} · versão ${SCENES_PROMPT_VERSION}`);
+  return { scenes: total, pack: relPath(file) };
+}
+
+/**
+ * IMPORT_INBOX: casa arquivos em storage/projects/<id>/inbox com as cenas (a01-s03.*)
+ * ou, se os nomes não seguirem o padrão, por ordem alfabética nas cenas pendentes.
+ */
+export async function importInbox(ctx: JobContext) {
+  const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
+  const inbox = await projectDir(projectId, "inbox");
+  const scenesDir = await projectDir(projectId, "scenes");
+  const files = (await readdir(inbox)).filter((f) => /\.(png|jpe?g|webp|mp4|mov|webm)$/i.test(f)).sort();
+  if (!files.length) {
+    await ctx.log("Inbox vazia");
+    return { imported: 0 };
+  }
+  const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { scenes: { orderBy: { order: "asc" } } } } } });
+  if (!script) throw new Error("Sem roteiro");
+  const all = script.blocks.flatMap((b) => b.scenes.map((s) => ({ s, act: b.act })));
+  const pending = all.filter((x) => !x.s.filePath);
+  let imported = 0;
+  for (const f of files) {
+    const stem = parseSceneFileStem(f);
+    const target = stem ? all.find((x) => x.act === stem.act && x.s.order === stem.order) : pending.shift();
+    if (!target) continue;
+    const ext = path.extname(f).toLowerCase();
+    const dest = path.join(scenesDir, `${sceneFileStem(target.act, target.s.order)}${ext}`);
+    await rename(path.join(inbox, f), dest);
+    const isVideo = /\.(mp4|mov|webm)$/i.test(ext);
+    const durationMs = isVideo ? await probeDurationMs(dest).catch(() => null) : null;
+    const size = (await stat(dest)).size;
+    await prisma.scene.update({ where: { id: target.s.id }, data: { filePath: relPath(dest), mediaType: isVideo ? "video" : "image", source: "IMPORTED", provider: "FLOW_MANUAL", status: "READY", durationMs, license: "Gerado pelo usuário (Flow/Gemini)" } });
+    imported++;
+    await ctx.log(`${f} → ${sceneFileStem(target.act, target.s.order)}${ext} (${Math.round(size / 1024)} KB)`);
+  }
+  return { imported };
+}
+
+/**
+ * HUNT_BROLL: para cenas sem mídia, busca no Pexels/Pixabay pelas keywords e baixa o melhor resultado.
+ * payload: { projectId, onlyPreferVideo?: boolean }
+ */
+export async function huntBroll(ctx: JobContext) {
+  const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
+  const onlyPreferVideo = Boolean(ctx.payload.onlyPreferVideo ?? false);
+  const providers = getStockProviders();
+  if (!providers.length) throw new Error("Nenhuma chave de acervo: configure PEXELS_API_KEY e/ou PIXABAY_API_KEY no .env");
+  const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
+  const format = FORMATS[project.format as VideoFormat];
+  const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { scenes: { orderBy: { order: "asc" } } } } } });
+  if (!script) throw new Error("Sem roteiro");
+  const targets = script.blocks.flatMap((b) => b.scenes.filter((s) => !s.filePath && (!onlyPreferVideo || s.preferVideo)).map((s) => ({ s, act: b.act })));
+  if (!targets.length) {
+    await ctx.log("Nenhuma cena pendente");
+    return { found: 0 };
+  }
+  const dir = await projectDir(projectId, "scenes");
+  const used = new Set<string>();
+  let found = 0;
+  for (let i = 0; i < targets.length; i++) {
+    const { s, act } = targets[i];
+    if (await ctx.isCancelled()) return { cancelled: true };
+    await ctx.progress({ percent: (i / targets.length) * 95, message: `Cena ${sceneFileStem(act, s.order)}: buscando "${s.keywords}"` });
+    const minDur = Math.ceil((s.endMs - s.startMs) / 1000);
+    let hit = null as null | Awaited<ReturnType<(typeof providers)[number]["search"]>>[number];
+    for (const type of s.preferVideo ? (["video", "image"] as const) : (["image", "video"] as const)) {
+      for (const p of providers) {
+        try {
+          const results = await p.search({ keywords: s.keywords ?? s.description ?? "", orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 8);
+          hit = results.find((r) => !used.has(`${r.provider}:${r.id}`)) ?? null;
+          if (hit) break;
+        } catch (err) {
+          await ctx.log(`${p.name}: ${String(err).slice(0, 100)}`);
+        }
+      }
+      if (hit) break;
+    }
+    if (!hit) {
+      await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nada encontrado para "${s.keywords}"`);
+      continue;
+    }
+    used.add(`${hit.provider}:${hit.id}`);
+    const ext = hit.type === "video" ? ".mp4" : ".jpg";
+    const dest = path.join(dir, `${sceneFileStem(act, s.order)}${ext}`);
+    try {
+      await downloadTo(hit.url, dest);
+      const durationMs = hit.type === "video" ? await probeDurationMs(dest).catch(() => null) : null;
+      await prisma.scene.update({ where: { id: s.id }, data: { filePath: relPath(dest), mediaType: hit.type, source: "STOCK", provider: hit.provider, providerRef: hit.id, sourceUrl: hit.pageUrl, width: hit.width, height: hit.height, durationMs, status: "READY", license: `${hit.license}${hit.author ? ` · ${hit.author}` : ""}` } });
+      await prisma.usage.create({ data: { projectId, provider: hit.provider, unit: "REQUESTS", quantity: 1, costUsd: 0 } });
+      found++;
+    } catch (err) {
+      await ctx.log(`Cena ${sceneFileStem(act, s.order)}: download falhou (${String(err).slice(0, 100)})`);
+    }
+  }
+  await ctx.log(`${found}/${targets.length} cenas preenchidas com acervo`);
+  return { found, total: targets.length };
+}
