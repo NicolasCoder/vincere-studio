@@ -328,3 +328,31 @@ O worker faz uma ordenação topológica do grafo e executa cada nó com os prov
 - **Modo Flow**: o app planeja as cenas e exporta um pacote de prompts numerados (`a01-s03`), o usuário gera no Flow/Gemini com a conta paga e solta na pasta `inbox` do projeto; o app casa os arquivos com as cenas. Mesmo prompt serve para qualquer API de imagem quando ligada.
 - **Voz como identidade do canal** (`VoiceProfile`): provedor principal + voz equivalente em cada reserva. Provedores: Gemini TTS (free tier), Edge TTS (grátis, sem chave), ElevenLabs (premium; 10k créditos/mês grátis). A reserva só entra quando a principal falha e o app marca o ato para regravar.
 - **Workflow Studio — próximos incrementos pedidos**: (1) nós aceitam **imagens de referência** (upload/arraste no nó de Avatar, Produto e Prompt; o arquivo fica em `storage/workflows/<id>/refs/` e entra na geração); (2) **exportar o fluxo como plano de produção** (pacote com prompts por cena, referências anexadas, ordem de montagem e trilha) para gerar fora, no Flow, e **importar de volta** pela pasta `inbox` do fluxo — mesmo mecanismo do pipeline de documentários.
+
+---
+
+## 9. Estado do projeto em 08/09/2026 (fim da Sprint 4)
+
+| Sprint | Estado | Commit |
+|---|---|---|
+| 0 — Fundação + Workflow Studio | concluída | `dda2c90` |
+| 1 — Ideação com Gemini | concluída | `68f7f50` |
+| 2 — Motor de roteiro | concluída | `3d2dadd` |
+| 3 — Voz, legendas, estilos visuais, Modo Flow, B-roll | concluída | `6c24f8f` |
+| 4 — Render com FFmpeg | concluída | `91fec19` |
+| 5 — Publicação no YouTube, SEO, thumbnail | próxima | — |
+| 6 — Dashboard, histórico, métricas, assets | pendente | — |
+| 7 — Legendas animadas (Remotion), Shorts a partir do longo | pendente | — |
+| 8 — SaaS | pendente | — |
+
+**Validado de ponta a ponta na máquina do Igor**: ideias → roteiro (6 atos) → locução (Gemini/Edge) → legendas (Whisper) → 105 cenas planejadas → 24 cenas de acervo → render 720p de 7 min com legendas, Ken Burns e dissolves (encoder Intel QSV).
+
+**Decisões pendentes**
+- Voz principal do canal: Edge (grátis/ilimitado), Gemini TTS (grátis mas cota pequena e instável à noite) ou ElevenLabs (10k créditos/mês grátis, premium).
+- Densidade de cenas por projeto: "esparso" para o Modo Flow (menos imagens à mão) ou "denso" com acervo/API.
+
+**Melhorias conhecidas para as próximas sessões**
+- Cartões de título: agora usam o título do ato em português com quebra de linha (verificar no próximo render).
+- Render 1080p completo com todas as cenas preenchidas para avaliar a qualidade final.
+- Watcher automático da pasta `inbox` (hoje é um botão).
+- Workflow Studio: referências de imagem nos nós, plano exportável para o Flow, execução nó a nó com prévia (referência "Fluxos" do ElevenLabs).
