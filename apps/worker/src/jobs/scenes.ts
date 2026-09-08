@@ -115,6 +115,23 @@ function scoreAsset(asset: { tags?: string; pageUrl?: string }, terms: string[])
 }
 
 /**
+ * Termos-âncora do tema do projeto: os termos mais recorrentes entre as keywords de TODAS as cenas
+ * do roteiro (não só as pendentes). Somados à busca de cada cena, evitam que uma keyword fraca ou
+ * abstrata de um trecho específico deriva para um resultado bonito mas fora do assunto do documentário.
+ */
+function themeAnchor(allKeywords: (string | null)[], minCount = 2, take = 3): string[] {
+  const counts = new Map<string, number>();
+  for (const kw of allKeywords) {
+    for (const t of relevanceTerms(kw, null)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  }
+  return [...counts.entries()]
+    .filter(([, c]) => c >= minCount)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, take)
+    .map(([t]) => t);
+}
+
+/**
  * HUNT_BROLL: para cenas sem mídia, busca no Pexels/Pixabay pelas keywords e baixa o resultado mais relevante
  * (pontuado por sobreposição de palavras-chave/descrição com as tags do candidato, quando disponíveis).
  * payload: { projectId, onlyPreferVideo?: boolean }
@@ -134,6 +151,8 @@ export async function huntBroll(ctx: JobContext) {
     await ctx.log("Nenhuma cena pendente");
     return { found: 0 };
   }
+  const anchor = themeAnchor(script.blocks.flatMap((b) => b.scenes.map((s) => s.keywords)));
+  if (anchor.length) await ctx.log(`Âncora de tema do projeto: ${anchor.join(", ")}`);
   const dir = await projectDir(projectId, "scenes");
   const used = new Set<string>();
   let found = 0;
@@ -143,32 +162,36 @@ export async function huntBroll(ctx: JobContext) {
     await ctx.progress({ percent: (i / targets.length) * 95, message: `Cena ${sceneFileStem(act, s.order)}: buscando "${s.keywords}"` });
     const minDur = Math.ceil((s.endMs - s.startMs) / 1000);
     const terms = relevanceTerms(s.keywords, s.description);
+    const baseKeywords = s.keywords ?? s.description ?? "";
+    const query = anchor.length ? `${baseKeywords}, ${anchor.join(", ")}` : baseKeywords;
     type Asset = Awaited<ReturnType<(typeof providers)[number]["search"]>>[number];
     let hit: Asset | null = null;
     for (const type of s.preferVideo ? (["video", "image"] as const) : (["image", "video"] as const)) {
       const pool: Asset[] = [];
       for (const p of providers) {
         try {
-          const results = await p.search({ keywords: s.keywords ?? s.description ?? "", orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 10);
+          const results = await p.search({ keywords: query, orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 10);
           pool.push(...results.filter((r) => !used.has(`${r.provider}:${r.id}`)));
         } catch (err) {
           await ctx.log(`${p.name}: ${String(err).slice(0, 100)}`);
         }
       }
-      if (pool.length) {
-        // Mantém a ordem original de cada provider como desempate (ranking próprio deles já é relevante),
-        // só reordena quando a pontuação por sobreposição de termos indica um candidato melhor.
-        const scored = pool.map((r, i) => ({ r, score: scoreAsset(r, terms), i }));
-        scored.sort((a, b) => b.score - a.score || a.i - b.i);
-        hit = scored[0].r;
-        if (scored[0].score === 0 && terms.length) {
-          await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nenhum candidato com tags compatíveis para "${s.keywords}" — usando melhor resultado da busca mesmo assim`);
-        }
-        break;
+      if (!pool.length) continue;
+      // Pixabay traz tags mais ricas que o Pexels (que não retorna tags pra vídeo); em caso de empate
+      // na pontuação de relevância para vídeo, prefere o candidato do Pixabay.
+      const scored = pool.map((r, i) => ({ r, score: scoreAsset(r, terms) + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), i }));
+      scored.sort((a, b) => b.score - a.score || a.i - b.i);
+      const top = scored[0];
+      if (terms.length > 0 && top.score === 0) {
+        // Nenhum candidato deste tipo tem qualquer sobreposição com o contexto da cena — tenta o
+        // outro tipo (imagem/vídeo) antes de desistir, em vez de aceitar algo genérico/fora de tema.
+        continue;
       }
+      hit = top.r;
+      break;
     }
     if (!hit) {
-      await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nada encontrado para "${s.keywords}"`);
+      await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nenhuma opção relevante para "${s.keywords}" — cena fica pendente (herda mídia da vizinha no render)`);
       continue;
     }
     used.add(`${hit.provider}:${hit.id}`);

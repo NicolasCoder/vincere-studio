@@ -16,6 +16,12 @@ function rerollScore(asset: { tags?: string; pageUrl?: string }, terms: string[]
   const haystack = `${asset.tags ?? ""} ${asset.pageUrl ?? ""}`.toLowerCase();
   return haystack.trim() ? terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0) : 0;
 }
+/** Termos mais recorrentes nas keywords do roteiro inteiro, pra ancorar a busca no tema do projeto. */
+function rerollThemeAnchor(allKeywords: (string | null)[], minCount = 2, take = 3): string[] {
+  const counts = new Map<string, number>();
+  for (const kw of allKeywords) for (const t of rerollTerms(kw, null)) counts.set(t, (counts.get(t) ?? 0) + 1);
+  return [...counts.entries()].filter(([, c]) => c >= minCount).sort((a, b) => b[1] - a[1]).slice(0, take).map(([t]) => t);
+}
 
 const back = (projectId: string, job?: string) => redirect(`/projects/${projectId}/media${job ? `?job=${job}` : ""}`);
 async function enqueue(projectId: string, type: string, payload: Record<string, unknown> = {}) {
@@ -72,20 +78,23 @@ export async function rerollScene(projectId: string, sceneId: string, formData: 
   const minDur = Math.ceil((scene.endMs - scene.startMs) / 1000);
   const keywords = custom || scene.keywords || scene.description || "";
   const terms = rerollTerms(keywords, scene.description);
+  const siblingScenes = await prisma.scene.findMany({ where: { block: { script: { projectId } } }, select: { keywords: true } });
+  const anchor = rerollThemeAnchor(siblingScenes.map((x) => x.keywords));
+  const query = anchor.length ? `${keywords}, ${anchor.join(", ")}` : keywords;
   const excludeKey = scene.provider && scene.providerRef ? `${scene.provider}:${scene.providerRef}` : null;
   let hit: StockAsset | null = null;
   for (const type of scene.preferVideo ? (["video", "image"] as const) : (["image", "video"] as const)) {
     const pool: StockAsset[] = [];
     for (const p of providers) {
       try {
-        const results = await p.search({ keywords, orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 10);
+        const results = await p.search({ keywords: query, orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 10);
         pool.push(...results.filter((r) => `${r.provider}:${r.id}` !== excludeKey));
       } catch {
         // ignora falha de um provedor e segue com o outro
       }
     }
     if (pool.length) {
-      const scored = pool.map((r, i) => ({ r, score: rerollScore(r, terms), i }));
+      const scored = pool.map((r, i) => ({ r, score: rerollScore(r, terms) + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), i }));
       scored.sort((a, b) => b.score - a.score || a.i - b.i);
       hit = scored[0].r;
       break;
