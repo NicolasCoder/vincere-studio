@@ -24,7 +24,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const current = renders[0];
   const progress = current?.progress ?? 0;
   const defaultProfile = profileFor(project.format);
-  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { include: { voiceTracks: { select: { durationMs: true, captions: { select: { id: true } } } }, scenes: { select: { filePath: true } } } } } });
+  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { include: { voiceTracks: { select: { durationMs: true, provider: true, voiceId: true, fallbackUsed: true, captions: { select: { id: true } } } }, scenes: { select: { filePath: true } } } } } });
   const blocks = script?.blocks ?? [];
   const voiced = blocks.filter((b) => b.voiceTracks.length).length;
   const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
@@ -32,6 +32,8 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const ready = scenes.filter((s) => s.filePath).length;
   const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
   const canRender = voiced === blocks.length && blocks.length > 0;
+  const voiceSet = new Set(blocks.filter((b) => b.voiceTracks[0]).map((b) => `${b.voiceTracks[0].provider}/${b.voiceTracks[0].voiceId}`));
+  const mixedVoices = voiceSet.size > 1;
 
   return (
     <>
@@ -52,6 +54,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
             <select name="profile" defaultValue={defaultProfile.id} className="field w-full px-3 py-2 text-sm">
               {Object.values(PROFILES).map((p) => <option key={p.id} value={p.id} className="bg-surface-low">{p.label} — {p.description}</option>)}
             </select>
+            <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="music" defaultChecked className="accent-primary" /> Trilha ambiente (sua em storage/music ou gerada pelo app)</label>
             <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="captions" defaultChecked className="accent-primary" /> Queimar legendas ({format.captions.style === "bold-center-animated" ? "karaokê central" : "rodapé discreto"})</label>
             <Button type="submit" variant="primary" icon="movie" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>Iniciar Render (FFmpeg)</Button>
             {!canRender && <span className="font-mono text-[10px] text-warning">{voiced}/{blocks.length} atos com locução — complete o Passo 3</span>}
@@ -125,6 +128,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               <h3 className="font-display font-semibold"><Icon name="verified_user" className="mr-1 align-middle text-primary-bright" />Verificação Pré-Voo</h3>
               <ul className="mt-3 space-y-2 text-xs text-fg-secondary">
                 <li className="flex gap-2"><Icon name={canRender ? "check_circle" : "radio_button_unchecked"} className={`text-[16px] ${canRender ? "text-success" : "text-muted"}`} />Locução completa ({voiced}/{blocks.length} atos)</li>
+                <li className="flex gap-2"><Icon name={mixedVoices ? "warning" : "check_circle"} className={`text-[16px] ${mixedVoices ? "text-warning" : "text-success"}`} />{mixedVoices ? `Vozes misturadas (${[...voiceSet].join(", ")}) — regrave no Passo 3` : "Voz consistente em todos os atos"}</li>
                 <li className="flex gap-2"><Icon name={captioned === blocks.length && blocks.length ? "check_circle" : "radio_button_unchecked"} className={`text-[16px] ${captioned === blocks.length && blocks.length ? "text-success" : "text-muted"}`} />Legendas alinhadas ({captioned}/{blocks.length})</li>
                 <li className="flex gap-2"><Icon name={ready === scenes.length && scenes.length ? "check_circle" : "warning"} className={`text-[16px] ${ready === scenes.length && scenes.length ? "text-success" : "text-warning"}`} />Cenas com mídia ({ready}/{scenes.length}); as demais viram cartão de título</li>
               </ul>

@@ -22,6 +22,7 @@ export interface StockAsset {
   durationSec?: number;
   author?: string;
   license: string;
+  tags?: string;
 }
 export interface StockProvider {
   readonly name: "PEXELS" | "PIXABAY";
@@ -51,11 +52,11 @@ export class PexelsProvider implements StockProvider {
         })
         .filter((a) => a.url);
     }
-    return (json.photos ?? []).map((p) => ({ provider: "PEXELS" as const, id: String(p.id), type: "image" as const, url: p.src.large2x ?? p.src.original, pageUrl: p.url, thumbUrl: p.src.medium, width: p.width, height: p.height, author: p.photographer, license: "Pexels License (uso livre, atribuição opcional)" }));
+    return (json.photos ?? []).map((p) => ({ provider: "PEXELS" as const, id: String(p.id), type: "image" as const, url: p.src.large2x ?? p.src.original, pageUrl: p.url, thumbUrl: p.src.medium, width: p.width, height: p.height, author: p.photographer, license: "Pexels License (uso livre, atribuição opcional)", tags: p.alt }));
   }
 }
 interface PexelsVideo { id: number; url: string; image: string; duration: number; width: number; height: number; user?: { name: string }; video_files: { link: string; file_type: string; width?: number; height?: number }[] }
-interface PexelsPhoto { id: number; url: string; width: number; height: number; photographer: string; src: { original: string; large2x?: string; medium: string } }
+interface PexelsPhoto { id: number; url: string; width: number; height: number; photographer: string; alt?: string; src: { original: string; large2x?: string; medium: string } }
 
 export class PixabayProvider implements StockProvider {
   readonly name = "PIXABAY" as const;
@@ -77,15 +78,15 @@ export class PixabayProvider implements StockProvider {
       .map((h) => {
         if (q.type === "video") {
           const v = h.videos!.large?.url ? h.videos!.large : h.videos!.medium;
-          return { provider: "PIXABAY" as const, id: String(h.id), type: "video" as const, url: v.url, pageUrl: h.pageURL, thumbUrl: v.thumbnail, width: v.width, height: v.height, durationSec: h.duration, author: h.user, license: "Pixabay Content License (uso livre)" };
+          return { provider: "PIXABAY" as const, id: String(h.id), type: "video" as const, url: v.url, pageUrl: h.pageURL, thumbUrl: v.thumbnail, width: v.width, height: v.height, durationSec: h.duration, author: h.user, license: "Pixabay Content License (uso livre)", tags: h.tags };
         }
-        return { provider: "PIXABAY" as const, id: String(h.id), type: "image" as const, url: h.largeImageURL ?? h.webformatURL ?? "", pageUrl: h.pageURL, thumbUrl: h.previewURL, width: h.imageWidth ?? 0, height: h.imageHeight ?? 0, author: h.user, license: "Pixabay Content License (uso livre)" };
+        return { provider: "PIXABAY" as const, id: String(h.id), type: "image" as const, url: h.largeImageURL ?? h.webformatURL ?? "", pageUrl: h.pageURL, thumbUrl: h.previewURL, width: h.imageWidth ?? 0, height: h.imageHeight ?? 0, author: h.user, license: "Pixabay Content License (uso livre)", tags: h.tags };
       })
       .filter((a) => a.url)
       .filter((a) => (q.type === "video" ? (q.orientation === "portrait" ? a.height >= a.width : a.width >= a.height) : true));
   }
 }
-interface PixabayHit { id: number; pageURL: string; user: string; duration?: number; previewURL?: string; webformatURL?: string; largeImageURL?: string; imageWidth?: number; imageHeight?: number; videos?: Record<string, { url: string; width: number; height: number; thumbnail?: string }> }
+interface PixabayHit { id: number; pageURL: string; user: string; tags?: string; duration?: number; previewURL?: string; webformatURL?: string; largeImageURL?: string; imageWidth?: number; imageHeight?: number; videos?: Record<string, { url: string; width: number; height: number; thumbnail?: string }> }
 
 export function getStockProviders(): StockProvider[] {
   return [new PexelsProvider(), new PixabayProvider()].filter((p) => p.enabled);

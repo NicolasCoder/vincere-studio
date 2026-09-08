@@ -6,7 +6,7 @@ import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, setVisualStyle, setVoiceProfile, synthesizeVoice } from "./actions";
+import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setVisualStyle, setVoiceProfile, synthesizeVoice } from "./actions";
 import path from "node:path";
 
 const GEMINI_VOICES = ["Charon", "Fenrir", "Enceladus", "Orus", "Kore", "Aoede", "Leda", "Puck"];
@@ -30,6 +30,9 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
   const ready = scenes.filter((s) => s.filePath).length;
   const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
   const fallbackCount = blocks.filter((b) => b.voiceTracks[0]?.fallbackUsed).length;
+  const fallbackIds = blocks.filter((b) => b.voiceTracks[0]?.fallbackUsed).map((b) => b.id);
+  const voiceSet = new Set(blocks.filter((b) => b.voiceTracks[0]).map((b) => `${b.voiceTracks[0].provider}/${b.voiceTracks[0].voiceId}`));
+  const mixedVoices = voiceSet.size > 1;
   const bySource = { STOCK: scenes.filter((s) => s.source === "STOCK").length, IMPORTED: scenes.filter((s) => s.source === "IMPORTED").length, GENERATED: scenes.filter((s) => s.source === "GENERATED" && s.filePath).length };
   const inboxPath = path.join(storageRoot(), "projects", id, "inbox");
   const hasStock = !!(process.env.PEXELS_API_KEY || process.env.PIXABAY_API_KEY);
@@ -62,6 +65,15 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
         </div>
 
         {job && <div className="mt-4"><JobWatcher jobId={job} label="Estúdio de mídia trabalhando" /></div>}
+        {(mixedVoices || fallbackCount > 0) && !job && (
+          <div className="mt-4 flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
+            <Icon name="warning" className="text-[18px] text-warning" />
+            <div className="flex-1 text-warning">
+              <span className="font-semibold">Vozes misturadas:</span> {fallbackCount} ato(s) foram gravados com a voz de reserva ({[...voiceSet].join(" · ")}). Regrave-os com a principal antes de publicar.
+            </div>
+            <form action={synthesizeVoice.bind(null, project.id, fallbackIds, true)}><Button type="submit" size="sm" variant="primary" icon="mic" disabled={busy}>Regravar os {fallbackCount} ato(s) de reserva</Button></form>
+          </div>
+        )}
 
         <div className="mt-6 grid grid-cols-[1fr_22rem] gap-6">
           <div className="space-y-4">
@@ -117,6 +129,14 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                             <div className="flex items-center justify-between"><span className="font-mono text-[10px] text-fg-secondary">{fmtMs(s.startMs)}–{fmtMs(s.endMs)}</span><Badge tone={s.filePath ? (s.source === "STOCK" ? "cyan" : "violet") : "neutral"}>{s.filePath ? (s.source === "STOCK" ? s.provider : "Flow/Import") : "pendente"}</Badge></div>
                             <p className="mt-1 line-clamp-2 text-[11px] text-fg-secondary" title={s.prompt ?? ""}>{s.description ?? s.prompt}</p>
                             <div className="mt-1 flex items-center justify-between"><span className="truncate font-mono text-[9px] text-muted">{s.keywords}</span>{s.filePath && <form action={clearScene.bind(null, project.id, s.id)}><button className="font-mono text-[9px] text-muted hover:text-error">limpar</button></form>}</div>
+                            {hasStock && (
+                              <form action={rerollScene.bind(null, project.id, s.id)} className="mt-1 flex items-center gap-1">
+                                <input name="keywords" placeholder="outro termo de busca (opcional)" className="field h-6 flex-1 px-1.5 text-[9px]" />
+                                <button type="submit" title="Trocar por outra opção do acervo (fora de contexto?)" className="grid h-6 w-6 shrink-0 place-items-center rounded border border-line text-muted hover:border-primary-bright hover:text-primary-bright" disabled={busy}>
+                                  <Icon name="sync" className="text-[13px]" />
+                                </button>
+                              </form>
+                            )}
                           </div>
                         </div>
                       ))}

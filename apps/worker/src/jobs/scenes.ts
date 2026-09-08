@@ -97,8 +97,26 @@ export async function importInbox(ctx: JobContext) {
   return { imported };
 }
 
+const STOPWORDS = new Set(["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "with", "from", "by", "is", "are", "this", "that", "scene", "shot", "footage", "video", "image", "close", "up", "wide", "view"]);
+
+/** Extrai termos relevantes de keywords + descrição para pontuar candidatos do acervo. */
+function relevanceTerms(keywords: string | null, description: string | null): string[] {
+  const raw = `${keywords ?? ""} ${description ?? ""}`.toLowerCase();
+  const words = raw.split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !STOPWORDS.has(w));
+  return Array.from(new Set(words));
+}
+
+/** Pontua um candidato do acervo pela sobreposição entre suas tags/página e os termos relevantes da cena. */
+function scoreAsset(asset: { tags?: string; pageUrl?: string }, terms: string[]): number {
+  if (!terms.length) return 0;
+  const haystack = `${asset.tags ?? ""} ${asset.pageUrl ?? ""}`.toLowerCase();
+  if (!haystack.trim()) return 0;
+  return terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+}
+
 /**
- * HUNT_BROLL: para cenas sem mídia, busca no Pexels/Pixabay pelas keywords e baixa o melhor resultado.
+ * HUNT_BROLL: para cenas sem mídia, busca no Pexels/Pixabay pelas keywords e baixa o resultado mais relevante
+ * (pontuado por sobreposição de palavras-chave/descrição com as tags do candidato, quando disponíveis).
  * payload: { projectId, onlyPreferVideo?: boolean }
  */
 export async function huntBroll(ctx: JobContext) {
@@ -124,18 +142,30 @@ export async function huntBroll(ctx: JobContext) {
     if (await ctx.isCancelled()) return { cancelled: true };
     await ctx.progress({ percent: (i / targets.length) * 95, message: `Cena ${sceneFileStem(act, s.order)}: buscando "${s.keywords}"` });
     const minDur = Math.ceil((s.endMs - s.startMs) / 1000);
-    let hit = null as null | Awaited<ReturnType<(typeof providers)[number]["search"]>>[number];
+    const terms = relevanceTerms(s.keywords, s.description);
+    type Asset = Awaited<ReturnType<(typeof providers)[number]["search"]>>[number];
+    let hit: Asset | null = null;
     for (const type of s.preferVideo ? (["video", "image"] as const) : (["image", "video"] as const)) {
+      const pool: Asset[] = [];
       for (const p of providers) {
         try {
-          const results = await p.search({ keywords: s.keywords ?? s.description ?? "", orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 8);
-          hit = results.find((r) => !used.has(`${r.provider}:${r.id}`)) ?? null;
-          if (hit) break;
+          const results = await p.search({ keywords: s.keywords ?? s.description ?? "", orientation: format.broll.imageOrientation, type, minDurationSec: type === "video" ? minDur : undefined }, 10);
+          pool.push(...results.filter((r) => !used.has(`${r.provider}:${r.id}`)));
         } catch (err) {
           await ctx.log(`${p.name}: ${String(err).slice(0, 100)}`);
         }
       }
-      if (hit) break;
+      if (pool.length) {
+        // Mantém a ordem original de cada provider como desempate (ranking próprio deles já é relevante),
+        // só reordena quando a pontuação por sobreposição de termos indica um candidato melhor.
+        const scored = pool.map((r, i) => ({ r, score: scoreAsset(r, terms), i }));
+        scored.sort((a, b) => b.score - a.score || a.i - b.i);
+        hit = scored[0].r;
+        if (scored[0].score === 0 && terms.length) {
+          await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nenhum candidato com tags compatíveis para "${s.keywords}" — usando melhor resultado da busca mesmo assim`);
+        }
+        break;
+      }
     }
     if (!hit) {
       await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nada encontrado para "${s.keywords}"`);

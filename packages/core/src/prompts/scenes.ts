@@ -8,7 +8,7 @@ export const SceneSchema = z.object({
   order: z.number().describe("Ordem da cena dentro do ato, começando em 1"),
   durationSec: z.number().describe("Duração da cena em segundos"),
   description: z.string().describe("Descrição visual concreta da cena em inglês, 1 a 2 frases: sujeito, ação, ambiente, época, enquadramento. Sem texto na imagem."),
-  keywords: z.string().describe("3 a 5 palavras-chave em inglês para busca em banco de imagens/vídeos, separadas por vírgula"),
+  keywords: z.string().describe("3 a 5 termos de busca em inglês para banco de imagens/vídeos (Pexels/Pixabay), separados por vírgula, ORDENADOS DO MAIS ESPECÍFICO PARA O MAIS GENÉRICO. Cada termo deve descrever um substantivo/ação CONCRETA e visível na cena (ex.: 'cave painting close up', 'ancient rock art', não 'history' ou 'mystery'). Evite palavras abstratas, emocionais ou conceituais que não aparecem numa busca de banco de imagens."),
   preferVideo: z.boolean().describe("true se a cena pede movimento real (multidão, natureza, cidade); false se uma imagem gerada funciona melhor"),
 });
 export const ScenesResponseSchema = z.object({ scenes: z.array(SceneSchema) });
@@ -30,7 +30,8 @@ export function scenesPrompt(opts: { format: VideoFormat; style: VisualStyle; ti
     `Estilo visual do projeto: ${opts.style.label} — ${opts.style.description}.`,
     opts.brollCue ? `Direção visual do ato: ${opts.brollCue}` : "",
     `Divida a narração abaixo em exatamente ${n} cenas visuais em sequência, com durações que somem ${opts.durationSec}s (cada uma em torno de ${Math.round(avg)}s, entre ${Math.max(2, Math.round(avg * 0.6))} e ${Math.round(avg * 1.6)}s).`,
-    "Cada cena ilustra o trecho da narração naquele momento. Descrições em inglês, concretas, sem texto/legendas na imagem, sem rostos de pessoas reais identificáveis.",
+    "Cada cena ilustra o trecho da narração naquele momento — a descrição e as keywords devem corresponder ao que é dito NAQUELE trecho específico, não ao tema geral do vídeo. Descrições em inglês, concretas, sem texto/legendas na imagem, sem rostos de pessoas reais identificáveis.",
+    "Se o trecho da narração for abstrato ou não tiver um equivalente visual óbvio (ex.: uma reflexão, uma transição de ideia), prefira keywords de um visual de apoio concreto e genérico coerente com o estilo (ex.: paisagem, textura, silhueta) em vez de tentar ilustrar o conceito abstrato literalmente.",
     "Retorne apenas o JSON.",
     "--- NARRAÇÃO ---",
     opts.narration,

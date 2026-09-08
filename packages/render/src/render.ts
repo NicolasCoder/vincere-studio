@@ -79,7 +79,8 @@ async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptio
   const common = ["-y", "-hide_banner", "-loglevel", "error"];
   const enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(fps), "-an"];
   if (s.file && existsSync(s.file) && s.mediaType === "video") {
-    await run(FFMPEG, [...common, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${cover(W, H)},fps=${fps}`, ...enc, out]);
+    const seek = s.startOffsetSec && s.startOffsetSec > 0 ? ["-ss", s.startOffsetSec.toFixed(2)] : [];
+    await run(FFMPEG, [...common, ...seek, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${cover(W, H)},fps=${fps}`, ...enc, out]);
     return;
   }
   if (s.file && existsSync(s.file)) {

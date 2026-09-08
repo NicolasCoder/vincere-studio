@@ -4,7 +4,7 @@ import { readdir } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, getVisualStyle, type VideoFormat } from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
-import { fitScenesToVoice, profileFor, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
+import { borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
 /**
@@ -41,8 +41,10 @@ export async function renderVideo(ctx: JobContext) {
       durationMs: Math.max(1, s.endMs - s.startMs),
       motion: (JSON.parse(s.motion || "{}").kind as TimelineScene["motion"]) ?? style.motion,
       title: b.title, // cartão de título em português (o prompt em inglês fica só para geração)
+      mediaDurationMs: s.durationMs,
     }));
-    return { act: b.act, title: b.title, voiceFile: absPath(t.filePath), voiceDurationMs: t.durationMs, scenes: fitScenesToVoice(scenes.length ? scenes : [{ id: `card-${b.id}`, file: null, mediaType: "image" as const, durationMs: t.durationMs, motion: "static" as const, title: b.title }], t.durationMs), words };
+    const fitted = fitScenesToVoice(scenes.length ? scenes : [{ id: `card-${b.id}`, file: null, mediaType: "image" as const, durationMs: t.durationMs, motion: "static" as const, title: b.title }], t.durationMs);
+    return { act: b.act, title: b.title, voiceFile: absPath(t.filePath), voiceDurationMs: t.durationMs, scenes: randomizeVideoOffsets(borrowNeighborMedia(fitted)), words };
   });
 
   // Trilha: storage/music/<projeto>.mp3 ou storage/music/default.mp3 (opcional)
@@ -53,10 +55,16 @@ export async function renderVideo(ctx: JobContext) {
     const pick = files.find((f) => f.startsWith(projectId)) ?? files.find((f) => /^default\.(mp3|wav|m4a)$/i.test(f));
     if (pick) musicFile = path.join(musicDir, pick);
   }
+  // Sem trilha do usuário: gera uma cama ambiente procedural no estilo do projeto (payload.music=false desliga)
+  if (!musicFile && ctx.payload.music !== false) {
+    musicFile = await ensureProceduralMusic(musicDir, project.visualStyle, 180, projectId);
+    await ctx.log(`Trilha procedural: ${path.basename(musicFile)}`);
+  }
 
   const timeline: Timeline = { acts, gapMs: 350, musicFile };
   const missing = acts.reduce((s, a) => s + a.scenes.filter((x) => !x.file).length, 0);
-  await appendLog(`Timeline: ${acts.length} atos · ${acts.reduce((s, a) => s + a.scenes.length, 0)} cenas (${missing} sem mídia → cartão) · perfil ${profile.label} · trilha ${musicFile ? path.basename(musicFile) : "nenhuma"}`);
+  const borrowed = acts.reduce((s, a) => s + a.scenes.filter((x) => x.borrowed).length, 0);
+  await appendLog(`Timeline: ${acts.length} atos · ${acts.reduce((s, a) => s + a.scenes.length, 0)} cenas (${borrowed} herdadas da vizinha, ${missing} cartão) · perfil ${profile.label} · trilha ${musicFile ? path.basename(musicFile) : "nenhuma"}`);
 
   const outDir = await projectDir(projectId, "renders");
   const workDir = await projectDir(projectId, "renders/work");
