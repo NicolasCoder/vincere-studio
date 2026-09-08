@@ -9,3 +9,8 @@ export async function renderVideo(projectId: string, formData: FormData) {
   const job = await prisma.job.create({ data: { type: "RENDER_VIDEO", projectId, payload: JSON.stringify({ projectId, profile: profile || undefined, captions, music }) } });
   redirect(`/projects/${projectId}/render?job=${job.id}`);
 }
+
+export async function generateThumbnail(projectId: string) {
+  const job = await prisma.job.create({ data: { type: "GENERATE_THUMBNAIL", projectId, payload: JSON.stringify({ projectId }) } });
+  redirect(`/projects/${projectId}/render?job=${job.id}`);
+}

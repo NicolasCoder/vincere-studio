@@ -6,7 +6,7 @@ import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { renderVideo } from "./actions";
+import { renderVideo, generateThumbnail } from "./actions";
 
 const STAGES = [
   ["Áudio & Ducking", "Concatenação das locuções, trilha com ducking e normalização -14 LUFS", 68],
@@ -119,6 +119,25 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
                   </div>
                 ))}
               </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-semibold"><Icon name="image" className="mr-1 align-middle text-primary-bright" />Thumbnail</h3>
+                <form action={generateThumbnail.bind(null, project.id)}>
+                  <Button type="submit" size="sm" icon="auto_awesome" disabled={busy || ready === 0}>{project.thumbnailPath ? "Gerar de novo" : "Gerar (grátis)"}</Button>
+                </form>
+              </div>
+              {project.thumbnailPath ? (
+                <div className="mt-3">
+                  <img src={`/api/media/${project.thumbnailPath}`} alt="Thumbnail gerada" className="w-full rounded border border-line" />
+                  <div className="mt-2 flex items-center justify-between font-mono text-[10px] text-muted">
+                    <span>{project.thumbnailUpdatedAt ? new Date(project.thumbnailUpdatedAt).toLocaleString("pt-BR") : ""}</span>
+                    <a href={`/api/media/${project.thumbnailPath}?download=1`} className="text-primary-bright"><Icon name="download" className="text-[16px]" /></a>
+                  </div>
+                </div>
+              ) : (
+                <p className="mt-2 text-xs text-fg-secondary">Composição gratuita via FFmpeg (cover-crop da melhor cena + grade punchy + título). Qualidade tipo IA (Nano Banana Pro) fica pra quando entrarmos com API paga.</p>
+              )}
             </Card>
             <Card className="p-4">
               <h3 className="font-display font-semibold"><Icon name="music_note" className="mr-1 align-middle text-primary-bright" />Trilha sonora</h3>

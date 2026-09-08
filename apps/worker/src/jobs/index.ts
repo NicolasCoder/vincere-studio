@@ -10,6 +10,7 @@ import { alignCaptions } from "./align-captions";
 import { generateScenePrompts, huntBroll, importInbox } from "./scenes";
 import { previewVoice } from "./preview-voice";
 import { renderVideo } from "./render-video";
+import { generateThumbnail } from "./generate-thumbnail";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -28,6 +29,7 @@ export const handlers: Record<JobType, JobHandler> = {
   HUNT_BROLL: huntBroll,
   ALIGN_CAPTIONS: alignCaptions,
   RENDER_VIDEO: renderVideo,
+  GENERATE_THUMBNAIL: generateThumbnail,
   PUBLISH_YOUTUBE: notImplemented("Sprint 5"),
   RUN_WORKFLOW: runWorkflow,
   REWRITE_BLOCK: rewriteBlock,
