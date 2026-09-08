@@ -1,4 +1,5 @@
 "use client";
+import { createContext, useContext, useState } from "react";
 import { useReactFlow, type Node, type NodeProps, type NodeTypes } from "@xyflow/react";
 import type { WorkflowNodeData, NodeKind } from "@docupulse/core";
 import { Icon } from "@docupulse/ui";
@@ -6,18 +7,42 @@ import { Field, Meter, NodeShell, Thumb } from "./NodeShell";
 
 export type CanvasNode = Node<WorkflowNodeData & { index?: number }, NodeKind>;
 
+/** Id do workflow atual — os nós precisam pra saber onde salvar imagens de referência enviadas. */
+export const WorkflowIdContext = createContext<string>("");
+
 function useUpdate(id: string) {
   const { updateNodeData } = useReactFlow();
   return (patch: Record<string, unknown>) => updateNodeData(id, patch);
 }
 
+/** Upload de imagem de referência (Avatar/Produto) — salva em storage/workflows/<id>/refs. */
+function useImageUpload(nodeId: string, set: (patch: Record<string, unknown>) => void) {
+  const workflowId = useContext(WorkflowIdContext);
+  const [uploading, setUploading] = useState(false);
+  const onPick = async (file: File) => {
+    setUploading(true);
+    try {
+      const fd = new FormData();
+      fd.append("file", file);
+      fd.append("nodeId", nodeId);
+      const res = await fetch(`/api/workflows/${workflowId}/upload`, { method: "POST", body: fd });
+      const json = await res.json();
+      if (json.imageUrl) set({ imageUrl: json.imageUrl });
+    } finally {
+      setUploading(false);
+    }
+  };
+  return { onPick, uploading };
+}
+
 function AvatarNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "AVATAR" }> & { index?: number };
   const set = useUpdate(id);
+  const { onPick, uploading } = useImageUpload(id, set);
   return (
     <NodeShell kind="AVATAR" index={d.index ?? 1} selected={selected}>
       <div className="flex gap-3 rounded border border-line bg-void/40 p-3">
-        <Thumb label="9:16 FEED" icon="person" />
+        <Thumb label="9:16 FEED" icon="person" imageUrl={d.imageUrl} onPick={onPick} uploading={uploading} />
         <div className="min-w-0 flex-1 space-y-2">
           <div className="flex items-center justify-between">
             <input className="nodrag w-full bg-transparent font-display text-base font-semibold outline-none" value={d.name} onChange={(e) => set({ name: e.target.value })} />
@@ -39,10 +64,11 @@ function AvatarNode({ id, data, selected }: NodeProps<CanvasNode>) {
 function ProductNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "PRODUCT" }> & { index?: number };
   const set = useUpdate(id);
+  const { onPick, uploading } = useImageUpload(id, set);
   return (
     <NodeShell kind="PRODUCT" index={d.index ?? 2} selected={selected}>
       <div className="flex gap-3 rounded border border-line bg-void/40 p-3">
-        <Thumb label="ASSET 3D" icon="deployed_code" />
+        <Thumb label="ASSET 3D" icon="deployed_code" imageUrl={d.imageUrl} onPick={onPick} uploading={uploading} />
         <div className="min-w-0 flex-1 space-y-2">
           <input className="nodrag w-full bg-transparent font-display text-base font-semibold outline-none" value={d.name} onChange={(e) => set({ name: e.target.value })} />
           <input className="nodrag w-full bg-transparent font-mono text-[11px] text-fg-secondary outline-none" value={d.description} onChange={(e) => set({ description: e.target.value })} />

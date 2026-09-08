@@ -17,9 +17,9 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { NODE_KINDS, NODE_META, canConnect, defaultNodeData, type NodeKind, type WorkflowGraph } from "@docupulse/core";
+import { NODE_KINDS, NODE_META, canConnect, defaultNodeData, type NodeKind, type WorkflowGraph, type WorkflowNodeData } from "@docupulse/core";
 import { Badge, Button, Icon, cn } from "@docupulse/ui";
-import { nodeTypes, type CanvasNode } from "./nodes";
+import { nodeTypes, WorkflowIdContext, type CanvasNode } from "./nodes";
 import { TONE } from "./NodeShell";
 import { runWorkflow, saveWorkflow } from "@/app/(studio)/workflow/actions";
 
@@ -43,10 +43,46 @@ function toEdges(g: WorkflowGraph, nodes: CanvasNode[]): Edge[] {
   return g.edges.map((e) => styledEdge({ id: e.id, source: e.source, target: e.target }, nodes));
 }
 
+/**
+ * Monta um roteiro de shots em texto simples pra colar no Google Flow (labs.google/flow) — motores
+ * de vídeo de ponta que ainda não integramos por API (custam caro). Cada nó Prompt vira um bloco com
+ * o contexto de Avatar/Produto/Voz conectados; imagens de referência ficam salvas em
+ * storage/workflows/<id>/refs e o export só aponta o caminho, porque o Flow pede o anexo manual.
+ */
+function buildFlowExport(nodes: CanvasNode[], edges: Edge[], name: string, workflowId: string): string {
+  const byId = new Map(nodes.map((n) => [n.id, n]));
+  const incoming = (nid: string) => edges.filter((e) => e.target === nid).map((e) => byId.get(e.source)).filter(Boolean) as CanvasNode[];
+  const prompts = nodes.filter((n) => n.type === "PROMPT");
+  const lines: string[] = [
+    `# Roteiro de shots — ${name}`,
+    `# Exportado do Workflow Studio (DocuPulse.AI) para gerar externamente no Google Flow (labs.google/flow).`,
+    `# Cole cada bloco "Prompt positivo/negativo" no Flow, escolhendo o motor indicado; anexe manualmente`,
+    `# as imagens de referência listadas (estão salvas na sua máquina em storage/workflows/${workflowId}/refs/).`,
+    "",
+  ];
+  if (!prompts.length) lines.push("(Nenhum node de Prompt no grafo ainda — adicione um pra gerar o roteiro de shots.)");
+  prompts.forEach((p, i) => {
+    const d = p.data as Extract<WorkflowNodeData, { kind: "PROMPT" }>;
+    const ctx = incoming(p.id);
+    const avatar = ctx.find((n) => n.type === "AVATAR")?.data as Extract<WorkflowNodeData, { kind: "AVATAR" }> | undefined;
+    const product = ctx.find((n) => n.type === "PRODUCT")?.data as Extract<WorkflowNodeData, { kind: "PRODUCT" }> | undefined;
+    const voice = ctx.find((n) => n.type === "VOICE")?.data as Extract<WorkflowNodeData, { kind: "VOICE" }> | undefined;
+    lines.push(`=== Shot ${i + 1} — ${d.format} · ${d.fps}fps · motor sugerido: ${d.engine} ===`);
+    if (avatar) lines.push(`Avatar: ${avatar.name} (${avatar.role}) — olhar: ${avatar.gaze}, expressão: ${avatar.expression}, pose: ${avatar.headPose}${avatar.imageUrl ? ` [imagem de referência: ${avatar.imageUrl}]` : " [sem imagem de referência anexada]"}`);
+    if (product) lines.push(`Produto: ${product.name} — ${product.description} (luz: ${product.lighting}, interação: ${product.interaction})${product.imageUrl ? ` [imagem de referência: ${product.imageUrl}]` : " [sem imagem de referência anexada]"}`);
+    lines.push("Prompt positivo:", d.positive || "(vazio)", "Prompt negativo:", d.negative || "(vazio)");
+    if (voice) lines.push(`Roteiro de voz conectado (${voice.provider}, ${voice.durationSec}s): ${voice.script || "(vazio)"}`);
+    lines.push("");
+  });
+  return lines.join("\n");
+}
+
 export function WorkflowCanvas(props: { id: string; name: string; status: string; initialGraph: WorkflowGraph }) {
   return (
     <ReactFlowProvider>
-      <Canvas {...props} />
+      <WorkflowIdContext.Provider value={props.id}>
+        <Canvas {...props} />
+      </WorkflowIdContext.Provider>
     </ReactFlowProvider>
   );
 }
@@ -177,6 +213,17 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
 
   const totalSec = nodes.filter((n) => n.type === "VOICE").reduce((s, n) => s + Number((n.data as { durationSec?: number }).durationSec ?? 0), 0);
 
+  const exportToFlow = () => {
+    const text = buildFlowExport(nodes, edges, name, id);
+    const blob = new Blob([text], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `flow-shots-${id.slice(-6)}.txt`;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
   return (
     <div className="relative h-full w-full bg-void">
       <ReactFlow
@@ -244,6 +291,7 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
             {savedAt && !dirty && <span className="font-mono text-[10px] text-muted">salvo {new Date(savedAt).toLocaleTimeString("pt-BR")}</span>}
             {dirty && <span className="font-mono text-[10px] text-warning">{pending ? "salvando..." : "salvando em instantes"}</span>}
             <Button variant="icon" icon="terminal" title="Log da execução" className={cn(showLog && "bg-primary/15 text-primary-bright")} onClick={() => setShowLog((v) => !v)} />
+            <Button icon="ios_share" title="Exporta os prompts pra colar no Google Flow (labs.google/flow) e gerar externamente com motores de ponta" onClick={exportToFlow}>Exportar p/ Flow</Button>
             <Button icon="save" onClick={save} disabled={pending}>Salvar Grafo</Button>
             <Button variant="primary" icon="motion_play" onClick={run} disabled={pending || liveStatus === "RUNNING"}>
               Executar Fluxo Vertical <kbd className="ml-1 rounded-sm bg-void/30 px-1 font-mono text-[10px] font-normal">F5</kbd>

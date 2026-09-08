@@ -1,5 +1,5 @@
 "use client";
-import type { ReactNode } from "react";
+import { useRef, type ReactNode } from "react";
 import { Handle, Position } from "@xyflow/react";
 import { NODE_META, type NodeKind } from "@docupulse/core";
 import { Icon, cn } from "@docupulse/ui";
@@ -113,10 +113,54 @@ export function Meter({ label, value, max = 100, unit = "%", tone = "cyan" }: { 
   );
 }
 
-export function Thumb({ label, icon, ratio = "portrait" }: { label: string; icon: string; ratio?: "portrait" | "square" }) {
+export function Thumb({
+  label,
+  icon,
+  ratio = "portrait",
+  imageUrl,
+  onPick,
+  uploading,
+}: {
+  label: string;
+  icon: string;
+  ratio?: "portrait" | "square";
+  /** relPath (storage/…) da imagem de referência já enviada, se houver. */
+  imageUrl?: string;
+  /** Quando definido, o thumb vira clicável e abre um seletor de arquivo. */
+  onPick?: (file: File) => void;
+  uploading?: boolean;
+}) {
+  const inputRef = useRef<HTMLInputElement>(null);
   return (
-    <div className={cn("relative shrink-0 overflow-hidden rounded border border-line bg-gradient-to-br from-surface-low via-void to-secondary/20", ratio === "portrait" ? "h-36 w-24" : "size-24")}>
-      <div className="absolute inset-0 grid place-items-center text-muted"><Icon name={icon} className="text-[28px]" /></div>
+    <div className={cn("group relative shrink-0 overflow-hidden rounded border border-line bg-gradient-to-br from-surface-low via-void to-secondary/20", ratio === "portrait" ? "h-36 w-24" : "size-24")}>
+      {imageUrl ? (
+        <img src={`/api/media/${imageUrl}`} alt={label} className="absolute inset-0 h-full w-full object-cover" />
+      ) : (
+        <div className="absolute inset-0 grid place-items-center text-muted"><Icon name={icon} className="text-[28px]" /></div>
+      )}
+      {onPick && (
+        <button
+          type="button"
+          title="Anexar imagem de referência"
+          className="nodrag absolute inset-0 grid place-items-center bg-void/0 opacity-0 transition-opacity group-hover:bg-void/70 group-hover:opacity-100"
+          onClick={() => inputRef.current?.click()}
+        >
+          <Icon name={uploading ? "sync" : "upload"} className={cn("text-[20px] text-primary-bright", uploading && "animate-spin")} />
+        </button>
+      )}
+      {onPick && (
+        <input
+          ref={inputRef}
+          type="file"
+          accept="image/*"
+          className="hidden"
+          onChange={(e) => {
+            const f = e.target.files?.[0];
+            if (f) onPick(f);
+            e.target.value = "";
+          }}
+        />
+      )}
       <span className="absolute bottom-1 left-1 rounded-sm bg-void/80 px-1 font-mono text-[9px] text-primary-bright">{label}</span>
     </div>
   );
