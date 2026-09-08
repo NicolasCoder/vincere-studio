@@ -39,5 +39,7 @@ export const JOB_TYPES = [
   "RENDER_VIDEO",
   "PUBLISH_YOUTUBE",
   "RUN_WORKFLOW",
+  "REWRITE_BLOCK",
+  "SCRIPT_SUGGESTIONS",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];

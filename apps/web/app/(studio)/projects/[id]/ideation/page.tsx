@@ -97,6 +97,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
                     <div className="label-mono mt-3 text-primary-bright">{idea.category}</div>
                     <h3 className={`mt-1 font-display text-lg font-semibold leading-snug ${idea.recommended ? "text-primary-bright" : ""}`}>{idea.title}</h3>
                     <p className="mt-2 line-clamp-3 text-sm text-fg-secondary">{idea.synopsis}</p>
+                    {idea.viralityReason && <p className="mt-1 text-[11px] italic text-muted">“{idea.viralityReason}”</p>}
                     <div className="mt-3 rounded border border-line bg-void/60 p-3">
                       <div className="label-mono mb-2 flex items-center justify-between text-fg-secondary"><span><Icon name="record_voice_over" className="mr-1 text-[12px]" />O Gancho (primeiros 30s)</span><span className="normal-case tracking-normal">Teleprompter</span></div>
                       <ol className="space-y-1.5 font-mono text-[11px] leading-relaxed text-fg-secondary">
@@ -107,6 +108,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
                       <div><div className="label-mono text-muted">Retenção Estimada</div><div className="mt-0.5"><span className="font-display text-base font-semibold text-primary-bright">{idea.retention30s}%</span> aos 30s</div></div>
                       <div><div className="label-mono text-muted">Ritmo de Edição</div><div className="mt-0.5 font-medium">{idea.editingPace}</div></div>
                     </div>
+                    {idea.model && <div className="mt-2 font-mono text-[9px] text-muted">{idea.model} · {idea.promptVersion}</div>}
                     <form action={selectIdea.bind(null, project.id, idea.id)} className="mt-4">
                       <Button type="submit" variant={idea.recommended ? "primary" : "ghost"} className="w-full" iconRight="arrow_forward">
                         {idea.recommended ? "Selecionar e Iniciar Roteiro" : "Selecionar e Avançar"}

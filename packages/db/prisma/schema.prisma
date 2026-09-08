@@ -49,6 +49,9 @@ model Idea {
   recommended  Boolean  @default(false)
   coverPath    String?
   selected     Boolean  @default(false)
+  promptVersion String?
+  model        String?
+  viralityReason String?
   createdAt    DateTime @default(now())
 
   scripts Script[]
@@ -64,6 +67,11 @@ model Script {
   wordCount         Int      @default(0)
   estimatedDuration Int      @default(0) // segundos
   retentionCurve    String   @default("[]") // JSON number[]
+  metrics           String   @default("{}") // JSON RetentionResult
+  suggestions       String   @default("[]") // JSON sugestões IA
+  promptVersion     String?
+  model             String?
+  logline           String?
   createdAt         DateTime @default(now())
 
   blocks ScriptBlock[]
@@ -83,6 +91,8 @@ model ScriptBlock {
   endMs     Int?
   brollCue  String?
   soundCue  String?
+  retentionScore Int?
+  note      String?
 
   voiceTracks VoiceTrack[]
   scenes      Scene[]

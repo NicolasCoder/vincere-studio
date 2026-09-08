@@ -48,6 +48,9 @@ export async function generateIdeas(ctx: JobContext) {
     score: Math.round(i.score),
     retention30s: Math.round(i.retention30s),
     editingPace: i.editingPace,
+    viralityReason: i.viralityReason,
+    promptVersion: IDEATION_PROMPT_VERSION,
+    model: `${usage.provider}/${usage.model}`,
   }));
 
   await prisma.$transaction(async (tx) => {
