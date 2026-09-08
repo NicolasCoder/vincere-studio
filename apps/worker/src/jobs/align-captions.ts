@@ -62,7 +62,8 @@ function proportional(words: string[], durationMs: number): Word[] {
 
 async function alignWithWhisper(audio: string, model: string, words: string[], durationMs: number): Promise<Word[]> {
   const out = `${audio}.whisper.json`;
-  await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", audio, "-af", `whisper=model=${model.replace(/\\/g, "/")}:language=pt:queue=3:destination=${out.replace(/\\/g, "/")}:format=json`, "-f", "null", "-"]);
+  const esc = (p: string) => p.replace(/\\/g, "/").replace(/:/g, "\\:");
+  await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", audio, "-af", `whisper=model=${esc(model)}:language=pt:queue=3:destination=${esc(out)}:format=json`, "-f", "null", "-"]);
   const raw = await readFile(out, "utf8").catch(() => "");
   await rm(out).catch(() => {});
   // O filtro grava um objeto JSON por linha: {"start":ms,"end":ms,"text":"..."}
@@ -82,8 +83,10 @@ async function alignWithWhisper(audio: string, model: string, words: string[], d
     const count = si === segs.length - 1 ? words.length - wi : Math.max(1, Math.round(share * words.length));
     const chunk = words.slice(wi, wi + count);
     wi += chunk.length;
-    const start = Number(seg.start) < 1000 && Number(seg.end) < 1000 && durationMs > 2000 ? Number(seg.start) * 1000 : Number(seg.start);
-    const end = Number(seg.end) < 1000 && durationMs > 2000 ? Number(seg.end) * 1000 : Number(seg.end);
+    const start = Number(seg.start);
+    const next = segs[si + 1];
+    // Janelas do whisper se sobrepõem; o fim útil de um segmento é o início do próximo.
+    const end = Math.min(Number(seg.end), next ? Number(next.start) : durationMs, durationMs);
     for (const w of proportional(chunk, Math.max(200, end - start))) result.push({ text: w.text, startMs: Math.round(start + w.startMs), endMs: Math.round(start + w.endMs) });
     if (wi >= words.length) break;
   }

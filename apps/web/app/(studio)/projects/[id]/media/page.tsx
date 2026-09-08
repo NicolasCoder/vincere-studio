@@ -52,7 +52,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <form action={synthesizeVoice.bind(null, project.id, [])}><Button type="submit" variant={voiced ? "ghost" : "primary"} icon="mic" className="w-full" disabled={busy || !blocks.length || !profile}>{voiced ? "Regravar toda a locução" : "Sintetizar locução"}</Button></form>
+            <form action={synthesizeVoice.bind(null, project.id, [], voiced === blocks.length && blocks.length > 0)}><Button type="submit" variant={voiced === blocks.length && blocks.length ? "ghost" : "primary"} icon="mic" className="w-full" disabled={busy || !blocks.length || !profile}>{voiced === blocks.length && blocks.length ? "Regravar toda a locução" : voiced ? `Sintetizar atos restantes (${blocks.length - voiced})` : "Sintetizar locução"}</Button></form>
             <form action={alignCaptions.bind(null, project.id)}><Button type="submit" icon="subtitles" className="w-full" disabled={busy || !voiced}>Alinhar legendas (Whisper)</Button></form>
             <div className="flex gap-2">
               <form action={generateScenePrompts.bind(null, project.id, "sparse")} className="flex-1"><Button type="submit" variant={voiced && !scenes.length ? "primary" : "ghost"} icon="auto_awesome" className="w-full" disabled={busy || !blocks.length} title="Cenas longas (8–12s): menos imagens para gerar à mão no Flow">{scenes.length ? "Replanejar (Flow)" : "Planejar cenas (Flow)"}</Button></form>
@@ -84,7 +84,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                         <div className="flex items-center gap-3">
                           <audio controls preload="none" src={`/api/media/${t.filePath}`} className="h-9 flex-1" />
                           <div className="text-right font-mono text-[10px] text-muted">{t.provider} · {t.voiceId}{t.fallbackUsed && <span className="ml-1 text-warning">(reserva)</span>}</div>
-                          <form action={synthesizeVoice.bind(null, project.id, [b.id])}><Button type="submit" variant="icon" icon="refresh" title="Regravar este ato" disabled={busy} /></form>
+                          <form action={synthesizeVoice.bind(null, project.id, [b.id], true)}><Button type="submit" variant="icon" icon="refresh" title="Regravar este ato" disabled={busy} /></form>
                         </div>
                         {words.length > 0 && (
                           <div className="mt-3 max-h-16 overflow-hidden font-mono text-[10px] leading-relaxed text-fg-secondary">
@@ -94,7 +94,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                         )}
                       </>
                     ) : (
-                      <div className="flex items-center justify-between text-xs text-muted"><span><Icon name="mic_off" className="mr-1 align-middle text-[16px]" />Sem locução ainda</span><form action={synthesizeVoice.bind(null, project.id, [b.id])}><Button type="submit" size="sm" icon="mic" disabled={busy || !profile}>Sintetizar só este ato</Button></form></div>
+                      <div className="flex items-center justify-between text-xs text-muted"><span><Icon name="mic_off" className="mr-1 align-middle text-[16px]" />Sem locução ainda</span><form action={synthesizeVoice.bind(null, project.id, [b.id], true)}><Button type="submit" size="sm" icon="mic" disabled={busy || !profile}>Sintetizar só este ato</Button></form></div>
                     )}
                   </div>
 

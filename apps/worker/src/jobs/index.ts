@@ -9,6 +9,7 @@ import { synthesizeVoice } from "./synthesize-voice";
 import { alignCaptions } from "./align-captions";
 import { generateScenePrompts, huntBroll, importInbox } from "./scenes";
 import { previewVoice } from "./preview-voice";
+import { renderVideo } from "./render-video";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -26,7 +27,7 @@ export const handlers: Record<JobType, JobHandler> = {
   SYNTHESIZE_VOICE: synthesizeVoice,
   HUNT_BROLL: huntBroll,
   ALIGN_CAPTIONS: alignCaptions,
-  RENDER_VIDEO: notImplemented("Sprint 4"),
+  RENDER_VIDEO: renderVideo,
   PUBLISH_YOUTUBE: notImplemented("Sprint 5"),
   RUN_WORKFLOW: runWorkflow,
   REWRITE_BLOCK: rewriteBlock,

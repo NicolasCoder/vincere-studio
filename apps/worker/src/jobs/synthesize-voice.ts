@@ -1,7 +1,7 @@
 import path from "node:path";
 import { prisma } from "@docupulse/db";
 import { pauseMs } from "@docupulse/core";
-import { concatWithSilences, getVoiceProvider, projectDir, relPath, type VoiceProvider } from "@docupulse/providers";
+import { concatWithSilences, getVoiceProvider, projectDir, relPath, trimLongSilences, type VoiceProvider } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -21,10 +21,18 @@ export async function synthesizeVoice(ctx: JobContext) {
   if (!profile) throw new Error("Nenhum perfil de voz. Crie um em Settings.");
   const fallbacks = JSON.parse(profile.fallbacks || "[]") as { provider: string; voiceId: string }[];
   const chain = [{ provider: profile.provider, voiceId: profile.voiceId }, ...fallbacks];
-  const blocks = script.blocks.filter((b) => (!only || only.includes(b.id)) && b.narration.trim().length > 0);
+  const force = Boolean(ctx.payload.force ?? false) || !!only; // regravar tudo / atos específicos
+  const done = new Set((Array.isArray(ctx.payload.doneBlockIds) ? (ctx.payload.doneBlockIds as string[]) : []));
+  const withTracks = new Set((await prisma.voiceTrack.findMany({ where: { block: { scriptId: script.id } }, select: { scriptBlockId: true } })).map((t) => t.scriptBlockId));
+  const blocks = script.blocks.filter((b) => (!only || only.includes(b.id)) && b.narration.trim().length > 0 && !done.has(b.id) && (force || !withTracks.has(b.id)));
+  if (!blocks.length) {
+    await ctx.log("Todos os atos já têm locução (use Regravar para refazer).");
+    return { totalMs: 0, fallbackCount: 0, skipped: true };
+  }
   const dir = await projectDir(projectId, "voice");
   let totalMs = 0;
   let fallbackCount = 0;
+  let primaryDownUntil = 0; // após falha da principal, evita tentar de novo por alguns minutos (mantém o job fluindo)
 
   for (let i = 0; i < blocks.length; i++) {
     if (await ctx.isCancelled()) return { cancelled: true };
@@ -57,6 +65,10 @@ export async function synthesizeVoice(ctx: JobContext) {
     let units = 0;
     let cost = 0;
     for (let c = 0; c < chain.length && !used; c++) {
+      if (c === 0 && primaryDownUntil > Date.now()) {
+        await ctx.log(`Ato ${b.act}: principal ${chain[0].provider} em pausa após falha; usando reserva`);
+        continue;
+      }
       try {
         provider = getVoiceProvider(chain[c].provider);
         files = [];
@@ -75,13 +87,18 @@ export async function synthesizeVoice(ctx: JobContext) {
         }
       } catch (err) {
         lastErr = err;
+        if (c === 0) primaryDownUntil = Date.now() + Number(process.env.VOICE_PRIMARY_COOLDOWN_MS ?? 8 * 60_000);
         await ctx.log(`Ato ${b.act}: ${chain[c].provider} falhou — ${String(err).split("\n")[0].slice(0, 160)}`);
       }
     }
     if (!used || !provider) throw new Error(`Ato ${b.act}: nenhum provedor de voz conseguiu sintetizar. Último erro: ${String(lastErr).slice(0, 200)}`);
 
     const finalFile = path.join(dir, `a${String(b.act).padStart(2, "0")}.wav`);
-    await concatWithSilences(files, finalFile, { normalize: true });
+    const rawFile = path.join(dir, `tmp-a${String(b.act).padStart(2, "0")}-raw.wav`);
+    await concatWithSilences(files, rawFile, { normalize: true });
+    // Apara silêncios longos do TTS (pausas viram ~0.9s; o resto fica natural)
+    const trim = await trimLongSilences(rawFile, finalFile, { maxSilenceMs: Number(process.env.VOICE_MAX_SILENCE_MS ?? 1200), keepMs: Number(process.env.VOICE_KEEP_SILENCE_MS ?? 900) });
+    if (trim.count) await ctx.log(`Ato ${b.act}: ${trim.count} silêncio(s) longo(s) aparado(s), -${(trim.removedMs / 1000).toFixed(1)}s`);
     const { probeDurationMs } = await import("@docupulse/providers");
     const durationMs = await probeDurationMs(finalFile);
     totalMs += durationMs;
@@ -92,6 +109,9 @@ export async function synthesizeVoice(ctx: JobContext) {
     await prisma.usage.create({ data: { projectId, provider: used.provider, unit: "AUDIO_SECONDS", quantity: durationMs / 1000, costUsd: cost } });
     await prisma.project.update({ where: { id: projectId }, data: { costUsd: { increment: cost } } });
     await ctx.log(`Ato ${b.act}: ${(durationMs / 1000).toFixed(1)}s · ${used.provider} ${used.voiceId}${used !== chain[0] ? " (reserva)" : ""}`);
+    // Marca o bloco como concluído no payload: se o worker reiniciar, o job retoma de onde parou.
+    done.add(b.id);
+    await prisma.job.update({ where: { id: ctx.job.id }, data: { payload: JSON.stringify({ ...ctx.payload, doneBlockIds: [...done] }) } }).catch(() => {});
   }
 
   // Limpa temporários

@@ -14,7 +14,8 @@
     "@docupulse/db": "workspace:*",
     "tsx": "^4.20.0",
     "zod": "^3.23.0",
-    "@docupulse/providers": "workspace:*"
+    "@docupulse/providers": "workspace:*",
+    "@docupulse/render": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

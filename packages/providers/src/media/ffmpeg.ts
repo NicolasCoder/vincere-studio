@@ -80,3 +80,37 @@ export async function hasWhisperFilter(): Promise<boolean> {
     return false;
   }
 }
+
+/**
+ * Apara silêncios longos da locução: pausas acima de `maxSilenceMs` são encurtadas para `keepMs`,
+ * e silêncios curtos entre frases ficam como estão. Mantém a voz intacta.
+ * Implementação: detecta silêncio (silencedetect) e remonta o áudio só com os trechos desejados.
+ */
+export async function trimLongSilences(input: string, output: string, opts: { maxSilenceMs?: number; keepMs?: number; thresholdDb?: number } = {}) {
+  const maxSilence = opts.maxSilenceMs ?? 1200;
+  const keep = opts.keepMs ?? 900;
+  const th = opts.thresholdDb ?? -38;
+  const log = await run(FFMPEG, ["-hide_banner", "-i", input, "-af", `silencedetect=noise=${th}dB:d=${(maxSilence / 1000).toFixed(2)}`, "-f", "null", "-"]).catch((e) => String(e));
+  const starts = [...log.matchAll(/silence_start: ([\d.]+)/g)].map((m) => parseFloat(m[1]));
+  const ends = [...log.matchAll(/silence_end: ([\d.]+)/g)].map((m) => parseFloat(m[1]));
+  const total = (await probeDurationMs(input)) / 1000;
+  const silences = starts.map((s, i) => ({ start: s, end: ends[i] ?? total })).filter((x) => x.end - x.start > maxSilence / 1000);
+  if (!silences.length) {
+    await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-c", "copy", output]);
+    return { removedMs: 0, count: 0 };
+  }
+  // Segmentos a manter: [0, s1.start + keep/2], [s1.end - keep/2, s2.start + keep/2], ...
+  const half = keep / 2000;
+  const parts: [number, number][] = [];
+  let cursor = 0;
+  for (const sil of silences) {
+    parts.push([cursor, Math.min(sil.start + half, sil.end)]);
+    cursor = Math.max(sil.end - half, sil.start);
+  }
+  parts.push([cursor, total]);
+  const filters = parts.map(([a, b], i) => `[0:a]atrim=start=${a.toFixed(3)}:end=${b.toFixed(3)},asetpts=PTS-STARTPTS[p${i}]`);
+  const concat = parts.map((_, i) => `[p${i}]`).join("") + `concat=n=${parts.length}:v=0:a=1[out]`;
+  await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", input, "-filter_complex", [...filters, concat].join(";"), "-map", "[out]", output]);
+  const removedMs = Math.round(silences.reduce((s, x) => s + Math.max(0, x.end - x.start - keep / 1000), 0) * 1000);
+  return { removedMs, count: silences.length };
+}

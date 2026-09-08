@@ -9,8 +9,8 @@ async function enqueue(projectId: string, type: string, payload: Record<string, 
   back(projectId, job.id);
 }
 
-export async function synthesizeVoice(projectId: string, blockIds: string[] = []) {
-  await enqueue(projectId, "SYNTHESIZE_VOICE", blockIds.length ? { blockIds } : {});
+export async function synthesizeVoice(projectId: string, blockIds: string[] = [], force = false) {
+  await enqueue(projectId, "SYNTHESIZE_VOICE", { ...(blockIds.length ? { blockIds } : {}), force });
 }
 export async function alignCaptions(projectId: string) {
   await enqueue(projectId, "ALIGN_CAPTIONS");

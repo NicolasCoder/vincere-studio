@@ -3,7 +3,7 @@ import { pcmToWav, probeDurationMs } from "../media/ffmpeg";
 import type { VoiceProvider, VoiceRequest, VoiceResult } from "./types";
 
 const MODELS = (process.env.GEMINI_TTS_MODEL || "gemini-2.5-flash-preview-tts,gemini-3.1-flash-tts-preview").split(",").map((m) => m.trim()).filter(Boolean);
-const TIMEOUT_MS = Number(process.env.GEMINI_TTS_TIMEOUT_MS ?? 300_000);
+const TIMEOUT_MS = Number(process.env.GEMINI_TTS_TIMEOUT_MS ?? 150_000);
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 /** US$ por 1M tokens de saída de áudio (≈ 1 token por caractere de entrada; estimativa). */
 const PRICE_OUT_PER_M = 10;

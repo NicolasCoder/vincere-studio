@@ -104,13 +104,14 @@ export async function importInbox(ctx: JobContext) {
 export async function huntBroll(ctx: JobContext) {
   const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
   const onlyPreferVideo = Boolean(ctx.payload.onlyPreferVideo ?? false);
+  const limit = Number(ctx.payload.limit ?? 0) || Infinity;
   const providers = getStockProviders();
   if (!providers.length) throw new Error("Nenhuma chave de acervo: configure PEXELS_API_KEY e/ou PIXABAY_API_KEY no .env");
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
   const format = FORMATS[project.format as VideoFormat];
   const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { scenes: { orderBy: { order: "asc" } } } } } });
   if (!script) throw new Error("Sem roteiro");
-  const targets = script.blocks.flatMap((b) => b.scenes.filter((s) => !s.filePath && (!onlyPreferVideo || s.preferVideo)).map((s) => ({ s, act: b.act })));
+  const targets = script.blocks.flatMap((b) => b.scenes.filter((s) => !s.filePath && (!onlyPreferVideo || s.preferVideo)).map((s) => ({ s, act: b.act }))).slice(0, limit === Infinity ? undefined : limit);
   if (!targets.length) {
     await ctx.log("Nenhuma cena pendente");
     return { found: 0 };

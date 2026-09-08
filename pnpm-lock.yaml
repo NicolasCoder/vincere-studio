@@ -26,6 +26,9 @@ importers:
       '@docupulse/providers':
         specifier: workspace:*
         version: link:../../packages/providers
+      '@docupulse/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       '@docupulse/ui':
         specifier: workspace:*
         version: link:../../packages/ui
@@ -81,6 +84,9 @@ importers:
       '@docupulse/providers':
         specifier: workspace:*
         version: link:../../packages/providers
+      '@docupulse/render':
+        specifier: workspace:*
+        version: link:../../packages/render
       tsx:
         specifier: ^4.20.0
         version: 4.23.13
@@ -147,6 +153,22 @@ importers:
       zod:
         specifier: ^3.23.0
         version: 3.25.76
+    devDependencies:
+      '@types/node':
+        specifier: ^22.0.0
+        version: 22.20.1
+      typescript:
+        specifier: ^5.9.0
+        version: 5.9.3
+
+  packages/render:
+    dependencies:
+      '@docupulse/core':
+        specifier: workspace:*
+        version: link:../core
+      '@docupulse/providers':
+        specifier: workspace:*
+        version: link:../providers
     devDependencies:
       '@types/node':
         specifier: ^22.0.0

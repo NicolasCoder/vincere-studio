@@ -18,7 +18,9 @@
     "ELEVENLABS_API_KEY",
     "ELEVENLABS_MODEL",
     "GEMINI_TTS_TIMEOUT_MS",
-    "VOICE_SPLIT_PAUSES"
+    "VOICE_SPLIT_PAUSES",
+    "VOICE_MAX_SILENCE_MS",
+    "VOICE_KEEP_SILENCE_MS"
   ],
   "tasks": {
     "build": {

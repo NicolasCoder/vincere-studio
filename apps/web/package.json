@@ -19,7 +19,8 @@
     "dotenv": "^16.4.0",
     "@xyflow/react": "^12.8.0",
     "zustand": "^5.0.0",
-    "@docupulse/providers": "workspace:*"
+    "@docupulse/providers": "workspace:*",
+    "@docupulse/render": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",
