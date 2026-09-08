@@ -54,6 +54,32 @@ function kenBurns(motion: TimelineScene["motion"], W: number, H: number, fps: nu
   }
 }
 
+/**
+ * "Foto emoldurada": composição vintage com fundo desfocado/escurecido + a foto centralizada com
+ * moldura creme, vinheta e grão sutil, e um leve zoom geral. Inspirado em cortes de documentário
+ * que usam esse tratamento para dar destaque a uma foto de arquivo específica.
+ */
+function framedPhoto(W: number, H: number, fps: number, durationMs: number): string {
+  const frames = Math.max(2, Math.round((durationMs / 1000) * fps));
+  const boxW = Math.round(W * 0.78);
+  const boxH = Math.round(H * 0.78);
+  const border = Math.max(14, Math.round(W * 0.017));
+  return (
+    `split=2[bgsrc][fgsrc];` +
+    `[bgsrc]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,boxblur=24:3,eq=brightness=-0.12:saturation=0.55[bg];` +
+    `[fgsrc]scale=${boxW}:${boxH}:force_original_aspect_ratio=decrease,pad=iw+${border * 2}:ih+${border * 2}:${border}:${border}:color=0xF3ECDD,vignette=PI/3.4,eq=saturation=0.82:contrast=1.05,noise=alls=7:allf=t+u[fg];` +
+    `[bg][fg]overlay=(W-w)/2:(H-h)/2,zoompan=z='1.0+0.05*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps},format=yuv420p[vout]`
+  );
+}
+
+// Seleção determinística de "algumas fotos apenas" para a moldura vintage — mesma cena sempre dá o
+// mesmo resultado (não é aleatório a cada render), mas varia entre cenas para não ser repetitivo.
+function shouldFrame(id: string): boolean {
+  let h = 0;
+  for (const ch of id) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return h % 6 === 0; // ~1 em cada 6 fotos
+}
+
 async function detectEncoder(pref: RenderOptions["encoder"]): Promise<{ codec: string; args: string[] }> {
   if (pref && pref !== "auto") return encoderArgs(pref);
   const out = await run(FFMPEG, ["-hide_banner", "-encoders"]).catch(() => "");
@@ -84,6 +110,11 @@ async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptio
     return;
   }
   if (s.file && existsSync(s.file)) {
+    if (s.mediaType === "image" && shouldFrame(s.id)) {
+      const filter = framedPhoto(W, H, fps, s.durationMs + extraMs);
+      await run(FFMPEG, [...common, "-loop", "1", "-framerate", String(fps), "-i", s.file, "-t", dur.toFixed(3), "-filter_complex", filter, "-map", "[vout]", ...enc, out]);
+      return;
+    }
     const pre = `${cover(Math.round(W * 1.25), Math.round(H * 1.25))}`;
     await run(FFMPEG, [...common, "-loop", "1", "-framerate", String(fps), "-i", s.file, "-t", dur.toFixed(3), "-vf", `${pre},${kenBurns(s.motion, W, H, fps, s.durationMs + extraMs)},format=yuv420p`, ...enc, out]);
     return;
