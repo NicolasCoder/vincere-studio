@@ -81,7 +81,7 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
               <h3 className="font-display font-semibold">Próximos passos</h3>
               <div className="mt-3 flex flex-col gap-2">
                 <Link href="/projects"><Button icon="add" className="w-full">Criar Novo Documentário</Button></Link>
-                <Button icon="content_cut" disabled>Gerar Shorts a partir deste (Sprint 7)</Button>
+                <Link href={`/projects/${project.id}/repurposing`}><Button icon="content_cut" variant="ghost" className="w-full">Ver cortes sugeridos & transcrição</Button></Link>
               </div>
             </Card>
           </aside>
