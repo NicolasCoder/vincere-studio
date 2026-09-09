@@ -23,6 +23,7 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
 5. **Automação do Google Flow via navegador**: ainda pendente de teste (usar a conta Plus do usuário via Claude-in-Chrome, sem custo de API). É a frente de maior impacto pra escalar produção de imagem/vídeo.
 6. **Pipeline paralelo**: hoje um projeto de cada vez; rodar mais de um em paralelo quando o volume aumentar.
 7. **Painel de saúde do sistema** dentro da própria ferramenta (uptime do worker, jobs travados, uso de memória), pra não depender de diagnóstico manual via terminal.
+8. **Responsividade para mobile**: hoje a UI (kanban, telas de projeto, referências) é pensada pra desktop; falta revisar layouts (grids, sidebar, tabelas) pra funcionar bem em telas pequenas.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
 
