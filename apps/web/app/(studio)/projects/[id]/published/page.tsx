@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { Badge, Button, Card, Chip, Icon, Stat } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
+import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration, parseJson } from "@/lib/data";
-import { generateSeoMetadata } from "./actions";
+import { getYoutubeConnection } from "@docupulse/providers";
+import { generateSeoMetadata, publishToYoutube } from "./actions";
 
-export default async function PublishedPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PublishedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
   const { id } = await params;
-  const { project, header } = await loadProjectShell(id, "PUBLISH");
+  const { blocked, job } = await searchParams;
+  const [{ project, header, busy }, youtubeConnection] = await Promise.all([loadProjectShell(id, "PUBLISH", blocked, job), getYoutubeConnection()]);
   const pub = project.publications[0];
   const master = project.renderJobs[0];
   const stats = parseJson<{ views?: number; ctr?: number; avgViewDuration?: number }>(pub?.stats, {});
   const tags = parseJson<string[]>(pub?.tags, []);
   const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
+  const canPublish = !!pub && !!master?.outputPath;
 
   return (
     <>
@@ -39,9 +43,26 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
             ) : (
               <Button icon="download" disabled title="Renderize o vídeo no Passo 4 primeiro">Baixar Master</Button>
             )}
-            <Button variant="primary" icon="check_circle" disabled>Publicado no YouTube</Button>
+            {pub?.publishedAt ? (
+              <Button variant="primary" icon="check_circle" disabled>Publicado no YouTube</Button>
+            ) : youtubeConnection ? (
+              <form action={publishToYoutube.bind(null, project.id)} className="flex flex-col gap-1.5">
+                <select name="privacyStatus" defaultValue="private" className="field px-2 py-1.5 text-xs">
+                  <option value="private" className="bg-surface-low">Privado</option>
+                  <option value="unlisted" className="bg-surface-low">Não listado</option>
+                  <option value="public" className="bg-surface-low">Público</option>
+                </select>
+                <Button type="submit" variant="primary" icon="cloud_upload" className="w-full" disabled={busy || !canPublish} title={canPublish ? "" : "Gere os metadados de SEO e finalize o render no Passo 4 antes"}>
+                  Publicar no YouTube
+                </Button>
+              </form>
+            ) : (
+              <Link href="/settings"><Button icon="link" variant="ghost" className="w-full">Conectar canal (Settings)</Button></Link>
+            )}
           </div>
         </div>
+
+        {job && <div className="mt-4"><JobWatcher jobId={job} label="Publicando no YouTube" /></div>}
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-4">

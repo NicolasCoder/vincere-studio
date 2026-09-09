@@ -19,3 +19,4 @@ export * from "./voice";
 export * from "./stock";
 export * from "./media/ffmpeg";
 export * from "./media/storage";
+export * from "./youtube";

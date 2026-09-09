@@ -1,8 +1,20 @@
 "use server";
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { prisma } from "@docupulse/db";
 import { getTextProvider, recordUsage } from "@docupulse/providers";
 import { z } from "zod";
+
+/** Enfileira o upload real pro YouTube (job PUBLISH_YOUTUBE) — nasce no privacyStatus
+ * escolhido no formulário (padrão: privado, pra sempre dar chance de revisão antes de
+ * tornar público). Ação com efeito real e irreversível-ish: só dispara com clique explícito. */
+export async function publishToYoutube(projectId: string, formData: FormData) {
+  const privacyStatus = String(formData.get("privacyStatus") ?? "private");
+  const job = await prisma.job.create({
+    data: { type: "PUBLISH_YOUTUBE", projectId, payload: JSON.stringify({ projectId, privacyStatus }) },
+  });
+  redirect(`/projects/${projectId}/published?job=${job.id}`);
+}
 
 const SeoResponseSchema = z.object({
   title: z.string(),

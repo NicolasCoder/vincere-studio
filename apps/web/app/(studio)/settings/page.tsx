@@ -3,10 +3,10 @@ import { Badge, Button, Card, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { ensureDefaultVoiceProfiles, getSettings, getUsageSummary, listJobs } from "@/lib/data";
-import { enqueueDemoJob } from "./actions";
+import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
 import { prisma } from "@docupulse/db";
-import { EdgeVoiceProvider } from "@docupulse/providers";
+import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured } from "@docupulse/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
 
@@ -19,16 +19,27 @@ const PROVIDERS = [
   ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "cota diária gratuita"],
 ];
 
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string }> }) {
-  const { job } = await searchParams;
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string }> }) {
+  const { job, youtube, msg, channel } = await searchParams;
   await ensureDefaultVoiceProfiles();
-  const [usage, settings, jobs, profiles] = await Promise.all([getUsageSummary(), getSettings(), listJobs(8), prisma.voiceProfile.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] })]);
+  const [usage, settings, jobs, profiles, youtubeConnection] = await Promise.all([
+    getUsageSummary(),
+    getSettings(),
+    listJobs(8),
+    prisma.voiceProfile.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] }),
+    getYoutubeConnection(),
+  ]);
   const edgeVoices = new EdgeVoiceProvider().voices();
+  const ytCredentialsSet = youtubeCredentialsConfigured();
   return (
     <>
       <Topbar crumbs={["Settings"]} costUsd={usage.costUsd} />
       <main className="space-y-6 p-6">
         <PageHeader icon="settings" title="Configurações" subtitle="Provedores, padrões do estúdio e teste do worker." />
+        {youtube === "connected" && <div className="flex items-center gap-3 rounded border border-success/40 bg-success/10 px-4 py-3 text-sm text-success"><Icon name="check_circle" className="text-[18px]" />Canal "{channel}" conectado com sucesso.</div>}
+        {youtube === "denied" && <div className="flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"><Icon name="warning" className="text-[18px]" />Autorização negada no Google — nada foi conectado.</div>}
+        {youtube === "no_credentials" && <div className="flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"><Icon name="warning" className="text-[18px]" />Configure YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET no .env antes de conectar (veja o card abaixo).</div>}
+        {youtube === "error" && <div className="flex items-center gap-3 rounded border border-error/40 bg-error/10 px-4 py-3 text-sm text-error"><Icon name="error" className="text-[18px]" />Falha ao conectar: {msg}</div>}
         {job && <JobWatcher jobId={job} label="Gerando prévia de voz" />}
         <VoiceGallery back="/settings" busy={!!job} elevenProfiles={profiles.filter((p) => p.provider === "ELEVENLABS").map((p) => ({ voiceId: p.voiceId, name: p.name, style: p.style }))} />
         <Card className="p-5">
@@ -58,6 +69,33 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <Button type="submit" size="sm" variant="primary" icon="add" className="w-full">Criar perfil</Button>
             </form>
           </div>
+        </Card>
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-lg font-semibold"><Icon name="smart_display" className="mr-1 align-middle text-primary-bright" />Canal do YouTube</h3>
+            {youtubeConnection && <Badge tone="success" pill dot>Conectado</Badge>}
+          </div>
+          <p className="mt-1 text-xs text-fg-secondary">Conecta sua conta do YouTube via OAuth do Google (login e permissão acontecem no site do próprio Google — o app nunca vê sua senha) pra publicar vídeos direto do Passo 5, sem custo de API.</p>
+          {youtubeConnection ? (
+            <div className="mt-4 flex items-center gap-3 rounded border border-line bg-void/40 p-3 text-sm">
+              {youtubeConnection.channel_thumbnail ? (
+                <img src={youtubeConnection.channel_thumbnail} alt="" className="size-10 shrink-0 rounded-full border border-line" />
+              ) : (
+                <div className="grid size-10 shrink-0 place-items-center rounded-full border border-line bg-void/60 text-muted"><Icon name="smart_display" className="text-[18px]" /></div>
+              )}
+              <div className="flex-1">
+                <div className="font-semibold">{youtubeConnection.channel_title}</div>
+                <div className="font-mono text-[11px] text-muted">conectado em {new Date(youtubeConnection.connected_at).toLocaleString("pt-BR")}</div>
+              </div>
+              <form action={disconnectYoutubeAction}><Button type="submit" size="sm" variant="ghost" icon="link_off">Desconectar</Button></form>
+            </div>
+          ) : ytCredentialsSet ? (
+            <a href="/api/auth/youtube/start" className="mt-4 block"><Button icon="link" variant="primary">Conectar canal do YouTube</Button></a>
+          ) : (
+            <div className="mt-4 rounded border border-dashed border-line p-4 text-xs text-fg-secondary">
+              Falta criar as credenciais OAuth no Google Cloud Console (Client ID/Secret da YouTube Data API v3) e colar em <code className="font-mono text-[10px]">YOUTUBE_CLIENT_ID</code> / <code className="font-mono text-[10px]">YOUTUBE_CLIENT_SECRET</code> no <code>.env</code>. Veja o passo a passo em <code className="font-mono text-[10px]">docs/PROGRESSO_SESSAO.md</code>.
+            </div>
+          )}
         </Card>
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="p-5">

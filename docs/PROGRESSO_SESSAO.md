@@ -20,16 +20,41 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
 - **Responsividade mobile**: sidebar virou um drawer off-canvas em telas pequenas (toggle via checkbox+CSS, sem JS extra), Topbar esconde/encolhe busca e badges em telas estreitas, e todos os grids fixos das páginas do estúdio (dashboard, health, metrics, projects, ideation, script, media, published, render, references, skills, workflow, settings) agora colapsam pra 1-2 colunas no mobile. Testado: todas as páginas 200 OK, desktop (1280px) idêntico via screenshot, dashboard em 390px (iPhone) sem overflow horizontal.
 - **Pipeline paralelo**: worker processa vários jobs ao mesmo tempo (`WORKER_CONCURRENCY`, padrão 2) em vez de um por vez. `RENDER_VIDEO` continua sempre exclusivo (só 1 por vez, mesmo com concorrência maior) por ser o único pesado de CPU/RAM (ffmpeg) — os demais (ideias, roteiro, voz, legendas, thumbnail, cenas) podem rodar em paralelo entre projetos diferentes. Como agora há escrita concorrente no SQLite, ativei `journal_mode=WAL` + `busy_timeout=5000` (worker e web) pra evitar erros de "banco travado". Testado: 4 jobs de teste enfileirados de uma vez rodaram em pares simultâneos, sem erro de lock.
 - **Correções na tela de Publicado**: a thumbnail gerada por IA (já funcionava no worker, só faltava UI) agora aparece de verdade em vez do texto fixo "aparece aqui (Sprint 5)" — com os botões de overlay reposicionados pro topo da imagem pra não cobrir o título já embutido na própria thumbnail. "Baixar Master" também virou um link real pro último render concluído em vez de ficar sempre desabilitado. Testado visualmente (screenshot) e via HTML (200 OK, `<img>` e link de download apontando pros arquivos certos).
+- **Publicação automática no YouTube**: job `PUBLISH_YOUTUBE` deixou de ser placeholder — agora sobe o vídeo renderizado de verdade pro canal conectado via OAuth (título/descrição/tags/capítulos do SEO já gerado, thumbnail personalizada, privacidade escolhida no formulário — padrão **Privado**). Conexão de conta em Settings → "Canal do YouTube" (login e autorização acontecem na tela oficial do Google, o app nunca vê a senha). Falta só o passo manual único de criar a credencial OAuth no Google Cloud Console — veja a seção abaixo.
+
+## Publicação automática no YouTube — como ativar
+
+O app publica direto no seu canal via OAuth do Google (login e permissão acontecem no site do próprio Google — o DocuPulse.AI nunca vê nem guarda sua senha). Falta só criar uma credencial OAuth gratuita no Google Cloud Console. Passo a passo (dá pra fazer até pelo celular):
+
+1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e crie um projeto novo (ou use um existente).
+2. Menu → **APIs e serviços** → **Biblioteca** → busque **"YouTube Data API v3"** → **Ativar**.
+3. Menu → **APIs e serviços** → **Tela de consentimento OAuth**:
+   - Tipo de usuário: **Externo**.
+   - Preencha nome do app (ex.: "DocuPulse.AI"), e-mail de suporte e e-mail de contato do desenvolvedor.
+   - Em "Usuários de teste", adicione o seu próprio e-mail do Google/YouTube — sem isso o Google bloqueia o login.
+4. Menu → **APIs e serviços** → **Credenciais** → **Criar credenciais** → **ID do cliente OAuth**:
+   - Tipo de aplicativo: **App para computador** (Desktop app).
+   - Nome: qualquer um (ex.: "DocuPulse.AI Desktop").
+5. Copie o **Client ID** e o **Client Secret** gerados.
+6. Cole no `.env` do projeto:
+   ```
+   YOUTUBE_CLIENT_ID="seu-client-id-aqui"
+   YOUTUBE_CLIENT_SECRET="seu-client-secret-aqui"
+   ```
+7. Reinicie o `pnpm dev` (só uma vez, pra carregar as novas variáveis).
+8. Vá em **Settings** → card **"Canal do YouTube"** → **Conectar canal do YouTube** → autorize na tela do próprio Google.
+9. Pronto — na página de Publicação de qualquer projeto (Passo 5) vai aparecer o botão **"Publicar no YouTube"** com um seletor de privacidade (Privado/Não listado/Público, padrão **Privado** por segurança).
+
+O app nunca pede nem armazena sua senha do Google em nenhum momento — a autenticação inteira acontece na tela oficial do Google.
 
 ## Backlog de melhorias identificado (priorizado)
 
 1. **Fechar o ciclo de retenção real**: hoje o roteiro já calcula uma curva de retenção prevista; falta puxar métricas reais do YouTube publicadas e comparar, pra calibrar os próximos roteiros.
 2. **Automação do Google Flow via navegador**: testada nesta sessão e bloqueada — o navegador embutido do Claude nunca teve login do Google (e eu não posso digitar credenciais em nome do usuário, nem uma vez). Usuário está fora de casa e vai retomar depois. Pendente de um dos dois: (a) conectar a extensão Claude in Chrome (usa o Chrome real, já logado — toda tentativa até agora reportou "não conectada"), ou (b) o usuário logar manualmente no navegador embutido (visível dentro do app Claude desktop). Importante: 120+ cenas (como no vídeo longo atual) é pesado demais pra pilotar manualmente via navegador — o teste inicial deve ser com poucas cenas (ex.: 10-15, ou um Short inteiro). Automação de verdade em background (sem alguém pilotando ao vivo) exigiria um robô tipo Playwright guardando a sessão logada, o que tem risco real de ToS/bloqueio — só evoluir pra isso com decisão consciente do usuário.
-3. **Publicação automática no YouTube**: job `PUBLISH_YOUTUBE` é só um placeholder ("chega na Sprint 5"). Hoje o upload final pro YouTube é manual, mesmo com vídeo/SEO/thumbnail já prontos. Fecharia o ciclo de ponta a ponta.
-4. **Channel Manager mockado**: sem OAuth real com o YouTube (badge "3" fixo). Só vale a pena quando o usuário tiver mais de um canal ativo de verdade.
-5. **Media Assets (biblioteca de mídia) vazia/não navegável**: já existe bastante coisa gerada em `storage/` (cenas, thumbnails, renders) que dava pra reunir numa biblioteca central pesquisável e reaproveitável entre projetos.
-6. **Teleprompter desabilitado** no roteiro: modo leitura em tela cheia pro narrador, mencionado na UI mas nunca ligado.
-7. **Sem testes automatizados**: vários bugs desta sessão (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. Nem que seja um smoke test simples (abrir cada página, checar 200 OK) ajudaria a pegar regressão mais cedo.
+3. **Channel Manager mockado**: sem OAuth real com o YouTube (badge "3" fixo). Só vale a pena quando o usuário tiver mais de um canal ativo de verdade.
+4. **Media Assets (biblioteca de mídia) vazia/não navegável**: já existe bastante coisa gerada em `storage/` (cenas, thumbnails, renders) que dava pra reunir numa biblioteca central pesquisável e reaproveitável entre projetos.
+5. **Teleprompter desabilitado** no roteiro: modo leitura em tela cheia pro narrador, mencionado na UI mas nunca ligado.
+6. **Sem testes automatizados**: vários bugs desta sessão (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. Nem que seja um smoke test simples (abrir cada página, checar 200 OK) ajudaria a pegar regressão mais cedo.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
 
