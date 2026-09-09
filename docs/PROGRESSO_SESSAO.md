@@ -15,15 +15,15 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
 - **Vídeo novo gerado ponta a ponta**: "O Desastre Nuclear Que A URSS Escondeu Por 31 Anos" (9min24s, render finalizado 04:21) — ideia, roteiro, locução, legendas, 121 cenas de B-roll grátis (Pexels/Pixabay), render e thumbnail, tudo sem gastar em API de imagem paga. Entregue ao usuário (prévia de 35s + thumbnail).
 - **Biblioteca de "Skills"** (`/skills`): salvar estruturas de roteiro/ganchos/prompts que funcionaram bem, reutilizáveis entre projetos. Model `ScriptSkill` no Prisma.
 - **Niche Finder**: `generate-ideas` agora chama o provedor de texto pra sugerir 6-10 ângulos/subtemas em alta no nicho antes de gerar as ideias (sem API de tendências paga, usa o conhecimento do próprio modelo). Resiliente — se falhar, segue sem travar a ideação. Testado end-to-end.
+- **Repurposing** (`/projects/[id]/repurposing`, link a partir de "Publicado"): transcrição completa do roteiro com timestamps + ranking dos blocos com maior potencial de virar Short (retenção estimada + tipo: gancho/clímax/revelação). Usa dados que já existem no pipeline (sem transcrição por voz externa, sem custo extra).
 
 ## Backlog de melhorias identificado (priorizado)
 
 1. **Fechar o ciclo de retenção real**: hoje o roteiro já calcula uma curva de retenção prevista; falta puxar métricas reais do YouTube publicadas e comparar, pra calibrar os próximos roteiros.
-2. **Ferramenta de transcrição/repurposing**: transcrever vídeos já publicados pra gerar cortes/shorts, aumentando volume de produção sem gerar tudo do zero.
-3. **Automação do Google Flow via navegador**: ainda pendente de teste (usar a conta Plus do usuário via Claude-in-Chrome, sem custo de API). É a frente de maior impacto pra escalar produção de imagem/vídeo. Importante: 120+ cenas (como no vídeo longo atual) é pesado demais pra pilotar manualmente via navegador — o teste inicial deve ser com poucas cenas (ex.: 10-15, ou um Short inteiro), não o vídeo longo inteiro. Automação de verdade em background (sem alguém pilotando ao vivo) exigiria um robô tipo Playwright guardando a sessão logada, o que tem risco real de ToS/bloqueio — só evoluir pra isso com decisão consciente do usuário.
-4. **Pipeline paralelo**: hoje um projeto de cada vez; rodar mais de um em paralelo quando o volume aumentar.
-5. **Painel de saúde do sistema** dentro da própria ferramenta (uptime do worker, jobs travados, uso de memória), pra não depender de diagnóstico manual via terminal.
-6. **Responsividade para mobile**: hoje a UI (kanban, telas de projeto, referências) é pensada pra desktop; falta revisar layouts (grids, sidebar, tabelas) pra funcionar bem em telas pequenas.
+2. **Automação do Google Flow via navegador**: ainda pendente de teste (usar a conta Plus do usuário via Claude-in-Chrome, sem custo de API). É a frente de maior impacto pra escalar produção de imagem/vídeo. Importante: 120+ cenas (como no vídeo longo atual) é pesado demais pra pilotar manualmente via navegador — o teste inicial deve ser com poucas cenas (ex.: 10-15, ou um Short inteiro), não o vídeo longo inteiro. Automação de verdade em background (sem alguém pilotando ao vivo) exigiria um robô tipo Playwright guardando a sessão logada, o que tem risco real de ToS/bloqueio — só evoluir pra isso com decisão consciente do usuário.
+3. **Pipeline paralelo**: hoje um projeto de cada vez; rodar mais de um em paralelo quando o volume aumentar.
+4. **Painel de saúde do sistema** dentro da própria ferramenta (uptime do worker, jobs travados, uso de memória), pra não depender de diagnóstico manual via terminal.
+5. **Responsividade para mobile**: hoje a UI (kanban, telas de projeto, referências) é pensada pra desktop; falta revisar layouts (grids, sidebar, tabelas) pra funcionar bem em telas pequenas.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
 
