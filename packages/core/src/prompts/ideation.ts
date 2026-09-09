@@ -3,6 +3,24 @@ import { FORMATS, type VideoFormat } from "../formats";
 
 export const IDEATION_PROMPT_VERSION = "ideation.v1";
 
+/** Niche Finder: um passo leve e opcional antes da ideação, pra ampliar o leque de ângulos/subtemas
+ * considerados (usa o conhecimento do próprio modelo de texto — sem API de tendências externa paga). */
+export const TREND_PROMPT_VERSION = "trend.v1";
+export const TrendAnglesSchema = z.object({
+  angles: z.array(z.string()).describe("Ângulos ou subtemas específicos dentro do nicho, cada um em até 12 palavras"),
+});
+export function trendAnglesSystemPrompt() {
+  return "Você é um pesquisador de tendências de conteúdo para YouTube, especializado em identificar subtemas e ângulos específicos (não genéricos) dentro de um nicho, que tendem a despertar curiosidade e ter bom desempenho em vídeos de documentário/mistério.";
+}
+export function trendAnglesUserPrompt(niche: string) {
+  return [
+    `Liste de 6 a 10 ângulos ou subtemas específicos e atuais dentro do nicho "${niche}" que poderiam virar vídeos de documentário/mistério de sucesso.`,
+    "Evite temas genéricos demais (ex.: não repita o próprio nome do nicho) — prefira casos, fenômenos, eventos ou perguntas concretas e pouco exploradas.",
+    "Não invente fatos específicos (datas, nomes) — descreva o ângulo em termos gerais, a pesquisa detalhada vem depois.",
+    "Retorne apenas o JSON pedido.",
+  ].join("\n");
+}
+
 /** Schema de uma ideia gerada (structured output). */
 export const IdeaSchema = z.object({
   title: z.string().describe("Título magnético em português, no máximo 70 caracteres, com curiosidade ou tensão"),
@@ -29,6 +47,8 @@ export interface IdeationInput {
   /** Títulos já gerados, para pedir variações diferentes. */
   avoidTitles?: string[];
   focus?: "all" | "viral" | "hooks";
+  /** Ângulos/subtemas sugeridos pelo passo opcional de Niche Finder (ver trendAnglesUserPrompt). */
+  trendAngles?: string[];
 }
 
 export function ideationSystemPrompt() {
@@ -57,6 +77,7 @@ export function ideationUserPrompt(i: IdeationInput) {
     i.tone ? `Tom narrativo: ${i.tone}.` : "",
     i.audience ? `Público-alvo e canal: ${i.audience}.` : "",
     i.hooks.length ? `Micro-hooks obrigatórios: ${i.hooks.join(", ")}.` : "",
+    i.trendAngles?.length ? `Ângulos/subtemas em alta pra considerar (não é obrigatório usar todos): ${i.trendAngles.join(" · ")}.` : "",
     focus,
     i.avoidTitles?.length ? `Evite repetir ou parafrasear estes títulos já gerados: ${i.avoidTitles.map((t) => `"${t}"`).join(", ")}.` : "",
     "Cada ideia deve ser sobre um caso, fenômeno ou evento diferente. Retorne apenas o JSON pedido.",

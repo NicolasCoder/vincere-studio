@@ -1,5 +1,14 @@
 import { prisma } from "@docupulse/db";
-import { IDEATION_PROMPT_VERSION, IdeasResponseSchema, ideationSystemPrompt, ideationUserPrompt, type VideoFormat } from "@docupulse/core";
+import {
+  IDEATION_PROMPT_VERSION,
+  IdeasResponseSchema,
+  ideationSystemPrompt,
+  ideationUserPrompt,
+  TrendAnglesSchema,
+  trendAnglesSystemPrompt,
+  trendAnglesUserPrompt,
+  type VideoFormat,
+} from "@docupulse/core";
 import { getTextProvider, recordUsage } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
@@ -16,6 +25,25 @@ export async function generateIdeas(ctx: JobContext) {
   const project = await prisma.project.findUnique({ where: { id: projectId }, include: { ideas: true } });
   if (!project) throw new Error(`Projeto ${projectId} não encontrado`);
 
+  const provider = getTextProvider();
+
+  // Niche Finder: passo leve e opcional pra ampliar o leque de ângulos antes da ideação.
+  // Nunca deve travar a geração de ideias — se falhar por qualquer motivo, segue sem ele.
+  let trendAngles: string[] = [];
+  await ctx.progress({ percent: 5, message: "Buscando ângulos em alta no nicho (Niche Finder)" });
+  try {
+    const { data: trendData, usage: trendUsage } = await provider.generateJson(
+      trendAnglesUserPrompt(project.niche),
+      TrendAnglesSchema,
+      { system: trendAnglesSystemPrompt(), temperature: 1.0 },
+    );
+    trendAngles = trendData.angles.slice(0, 10);
+    await ctx.log(`Niche Finder: ${trendAngles.length} ângulo(s) sugerido(s) — ${trendAngles.join(" · ")}`);
+    await recordUsage(projectId, trendUsage);
+  } catch (err) {
+    await ctx.log(`Niche Finder indisponível, seguindo sem ele: ${err instanceof Error ? err.message : String(err)}`);
+  }
+
   await ctx.progress({ percent: 10, message: "Montando prompt de ideação" });
   const hooks = JSON.parse(project.hooks || "[]") as string[];
   const prompt = ideationUserPrompt({
@@ -28,10 +56,10 @@ export async function generateIdeas(ctx: JobContext) {
     count,
     focus,
     avoidTitles: project.ideas.map((i) => i.title),
+    trendAngles,
   });
   await ctx.log(`Prompt ${IDEATION_PROMPT_VERSION} · ${count} ideias · foco ${focus} · formato ${project.format}`);
 
-  const provider = getTextProvider();
   await ctx.progress({ percent: 25, message: `Chamando ${provider.name}...` });
   const { data, usage } = await provider.generateJson(prompt, IdeasResponseSchema, { system: ideationSystemPrompt(), temperature: 1.0 });
   await ctx.log(`${provider.name}/${usage.model}: ${usage.tokensIn} in · ${usage.tokensOut} out · US$ ${usage.costUsd.toFixed(4)}`);
