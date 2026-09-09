@@ -190,9 +190,18 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
       if (!r) return;
       setLiveStatus(r.status);
       setJob(r.job);
+      // Quando terminar, traz de volta o resultado real do node Renderizador (vídeo composto,
+      // status) que o worker gravou direto no banco — o canvas não reconsulta isso sozinho.
+      if (r.status !== "RUNNING" && r.graph) {
+        try {
+          const fresh = JSON.parse(r.graph) as WorkflowGraph;
+          const freshRender = fresh.nodes.find((n) => n.type === "RENDER");
+          if (freshRender) setNodes((ns) => ns.map((n) => (n.type === "RENDER" ? { ...n, data: { ...freshRender.data, index: n.data.index } } : n)));
+        } catch {}
+      }
     }, 2000);
     return () => clearInterval(t);
-  }, [liveStatus, id]);
+  }, [liveStatus, id, setNodes]);
 
   const save = () =>
     startTransition(async () => {

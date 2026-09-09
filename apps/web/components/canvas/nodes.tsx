@@ -184,14 +184,18 @@ function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
   return (
     <NodeShell kind="RENDER" index={5} selected={selected} isTarget>
       <div className="relative overflow-hidden rounded border border-line bg-gradient-to-b from-secondary/20 via-void to-primary/20" style={{ height: 260 }}>
-        <div className="absolute inset-0 grid place-items-center text-center">
-          <div>
-            <div className="font-display text-xl font-bold">{d.title}</div>
-            <div className="mt-1 font-mono text-[10px] text-fg-secondary">{d.width} × {d.height} · {d.fps} FPS</div>
-            <div className="mt-3 text-[11px] text-fg-secondary">Composição multimodal: Avatar IA + Packshot 3D com lip-sync sincronizado e legendas automáticas.</div>
+        {d.outputUrl ? (
+          <video controls preload="metadata" src={`/api/media/${d.outputUrl}`} className="nodrag h-full w-full bg-black object-contain" />
+        ) : (
+          <div className="absolute inset-0 grid place-items-center text-center">
+            <div>
+              <div className="font-display text-xl font-bold">{d.title}</div>
+              <div className="mt-1 font-mono text-[10px] text-fg-secondary">{d.width} × {d.height} · {d.fps} FPS</div>
+              <div className="mt-3 text-[11px] text-fg-secondary">Prévia gratuita: Ken Burns nas imagens de referência + locução real (Edge TTS). Motor de vídeo por IA fica pro Flow.</div>
+            </div>
           </div>
-        </div>
-        <span className="absolute left-2 top-2 rounded-sm bg-void/80 px-1.5 font-mono text-[9px] text-primary-bright">PREVIEW 9:16</span>
+        )}
+        <span className="absolute left-2 top-2 rounded-sm bg-void/80 px-1.5 font-mono text-[9px] text-primary-bright">{d.outputUrl ? "RENDER REAL" : "PREVIEW 9:16"}</span>
       </div>
       <div className="grid grid-cols-2 gap-2">
         <Field label="Resolução" value={`${d.width} × ${d.height}`} tone="emerald" />

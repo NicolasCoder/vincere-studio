@@ -65,6 +65,10 @@ export const RenderData = z.object({
   bitrate: z.string().default("24 Mbps H.265"),
   captions: z.boolean().default(true),
   status: z.enum(["IDLE", "READY", "RENDERING", "DONE", "FAILED"]).default("IDLE"),
+  /** relPath (storage/…) do MP4 de fato renderizado pela última execução (montagem gratuita via
+   * ffmpeg a partir das imagens de referência + voz do fluxo — não é geração de vídeo por IA). */
+  outputUrl: z.string().optional(),
+  renderedAt: z.string().optional(),
 });
 
 export const WorkflowNodeData = z.discriminatedUnion("kind", [AvatarData, ProductData, PromptData, VoiceData, RenderData]);
