@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { prisma } from "@docupulse/db";
 import { unstable_noStore as noStore } from "next/cache";
-import { NODE_META, WorkflowGraph } from "@docupulse/core";
+import { NODE_META, WORKFLOW_KINDS, WORKFLOW_KIND_META, WorkflowGraph, type WorkflowKind } from "@docupulse/core";
 import { Badge, Button, Card, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
@@ -22,6 +22,11 @@ export default async function WorkflowListPage() {
           right={
             <form action={createWorkflow} className="flex flex-col gap-2 sm:flex-row sm:items-center">
               <div className="field flex h-10 items-center px-3"><input name="name" placeholder="Nome do fluxo (ex.: Campanha Aura Serum)" className="w-full bg-transparent text-sm outline-none placeholder:text-muted sm:w-72" /></div>
+              <select name="kind" defaultValue="VERTICAL_COMMERCIAL" className="field h-10 px-3 text-sm" title="Tipo de workflow: define os nós com que o fluxo já começa">
+                {WORKFLOW_KINDS.map((k) => (
+                  <option key={k} value={k}>{WORKFLOW_KIND_META[k].label}</option>
+                ))}
+              </select>
               <Button type="submit" variant="primary" icon="add">Novo Fluxo</Button>
             </form>
           }
@@ -32,7 +37,7 @@ export default async function WorkflowListPage() {
             return (
               <Link key={w.id} href={`/workflow/${w.id}`}>
                 <Card className="h-full p-4 hover:border-line-glow" accent="dual">
-                  <div className="flex items-center justify-between"><Badge tone="violet">{w.kind.replace("_", " ")}</Badge><Badge tone={w.status === "READY" ? "success" : w.status === "RUNNING" ? "cyan" : "neutral"} pill dot={w.status === "RUNNING"}>{w.status}</Badge></div>
+                  <div className="flex items-center justify-between"><Badge tone="violet">{WORKFLOW_KIND_META[w.kind as WorkflowKind]?.label ?? w.kind.replace("_", " ")}</Badge><Badge tone={w.status === "READY" ? "success" : w.status === "RUNNING" ? "cyan" : "neutral"} pill dot={w.status === "RUNNING"}>{w.status}</Badge></div>
                   <div className="mt-3 font-display text-lg font-semibold">{w.name}</div>
                   <div className="mt-2 flex flex-wrap gap-1">
                     {g.nodes.map((n) => <span key={n.id} className="inline-flex items-center gap-1 rounded-sm border border-line bg-void/60 px-1.5 py-0.5 font-mono text-[10px] text-fg-secondary"><Icon name={NODE_META[n.type].icon} className="text-[12px]" />{NODE_META[n.type].label.split(" ")[0]}</span>)}

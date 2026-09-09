@@ -125,3 +125,52 @@ export const ALLOWED_EDGES: Record<NodeKind, NodeKind[]> = {
   RENDER: [],
 };
 export const canConnect = (from: NodeKind, to: NodeKind) => ALLOWED_EDGES[from].includes(to);
+
+/**
+ * "Tipo de workflow": hoje é só um rótulo salvo no banco (Workflow.kind). Passa a ter efeito real
+ * na criação — cada tipo começa com um template de nós já encadeado, em vez de sempre a mesma
+ * tela em branco com 1 nó Renderizador.
+ */
+export const WORKFLOW_KINDS = ["VERTICAL_COMMERCIAL", "UGC", "CUSTOM"] as const;
+export type WorkflowKind = (typeof WORKFLOW_KINDS)[number];
+
+export const WORKFLOW_KIND_META: Record<WorkflowKind, { label: string; description: string; icon: string }> = {
+  VERTICAL_COMMERCIAL: { label: "Comercial Vertical", icon: "shelves", description: "Produto em destaque: packshot + prompt de cena + locução, prontos pra conectar." },
+  UGC: { label: "UGC / Influencer", icon: "face_6", description: "Avatar/criador digital falando direto pra câmera, com prompt de cena e locução já ligados a ele." },
+  CUSTOM: { label: "Personalizado", icon: "hub", description: "Canvas em branco — só o nó Renderizador, você monta o fluxo do seu jeito." },
+};
+
+function edge(source: string, target: string): WorkflowEdge {
+  return { id: `e-${source}-${target}`, source, target };
+}
+
+/** Grafo inicial de cada tipo de workflow, usado ao criar um fluxo novo. */
+export function templateGraph(kind: WorkflowKind): WorkflowGraph {
+  if (kind === "VERTICAL_COMMERCIAL") {
+    return {
+      nodes: [
+        { id: "product-1", type: "PRODUCT", position: { x: 80, y: 160 }, data: defaultNodeData("PRODUCT") },
+        { id: "prompt-1", type: "PROMPT", position: { x: 560, y: 60 }, data: defaultNodeData("PROMPT") },
+        { id: "voice-1", type: "VOICE", position: { x: 560, y: 420 }, data: defaultNodeData("VOICE") },
+        { id: "render-1", type: "RENDER", position: { x: 1080, y: 220 }, data: defaultNodeData("RENDER") },
+      ],
+      edges: [edge("product-1", "prompt-1"), edge("prompt-1", "voice-1"), edge("prompt-1", "render-1"), edge("voice-1", "render-1")],
+    };
+  }
+  if (kind === "UGC") {
+    return {
+      nodes: [
+        { id: "avatar-1", type: "AVATAR", position: { x: 80, y: 160 }, data: defaultNodeData("AVATAR") },
+        { id: "prompt-1", type: "PROMPT", position: { x: 560, y: 60 }, data: defaultNodeData("PROMPT") },
+        { id: "voice-1", type: "VOICE", position: { x: 560, y: 420 }, data: defaultNodeData("VOICE") },
+        { id: "render-1", type: "RENDER", position: { x: 1080, y: 220 }, data: defaultNodeData("RENDER") },
+      ],
+      edges: [edge("avatar-1", "prompt-1"), edge("avatar-1", "voice-1"), edge("prompt-1", "render-1"), edge("voice-1", "render-1")],
+    };
+  }
+  // CUSTOM: canvas em branco, só o alvo do fluxo.
+  return {
+    nodes: [{ id: "render-1", type: "RENDER", position: { x: 900, y: 200 }, data: defaultNodeData("RENDER") }],
+    edges: [],
+  };
+}

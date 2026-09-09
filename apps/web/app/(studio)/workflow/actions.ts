@@ -2,16 +2,19 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
-import { WorkflowGraph, defaultNodeData } from "@docupulse/core";
+import { WORKFLOW_KINDS, WorkflowGraph, templateGraph, type WorkflowKind } from "@docupulse/core";
 
 export async function createWorkflow(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim() || "Novo fluxo vertical";
-  // Começa com um nó de render (alvo) para o usuário encadear os demais.
-  const graph: WorkflowGraph = {
-    nodes: [{ id: "render-1", type: "RENDER", position: { x: 900, y: 200 }, data: defaultNodeData("RENDER") }],
-    edges: [],
-  };
-  const wf = await prisma.workflow.create({ data: { name, graph: JSON.stringify(graph) } });
+  const kindRaw = String(formData.get("kind") ?? "");
+  const kind: WorkflowKind = (WORKFLOW_KINDS as readonly string[]).includes(kindRaw) ? (kindRaw as WorkflowKind) : "CUSTOM";
+  // Cada tipo já entra com um template de nós encadeado (ver templateGraph em @docupulse/core),
+  // em vez de sempre a mesma tela em branco.
+  const graph = templateGraph(kind);
+  const hasRender = graph.nodes.some((n) => n.type === "RENDER");
+  const wf = await prisma.workflow.create({
+    data: { name, kind, graph: JSON.stringify(graph), status: hasRender && graph.edges.length > 0 ? "READY" : "DRAFT" },
+  });
   redirect(`/workflow/${wf.id}`);
 }
 
