@@ -13,8 +13,13 @@ export interface JobContext {
   isCancelled: () => Promise<boolean>;
 }
 
-export async function claimNext(): Promise<Job | null> {
-  const next = await prisma.job.findFirst({ where: { status: "QUEUED" }, orderBy: { createdAt: "asc" } });
+/** Reivindica o próximo job QUEUED, opcionalmente pulando tipos "pesados" que já
+ * estão rodando em outro slot (ex.: RENDER_VIDEO, pra não sobrecarregar CPU/RAM). */
+export async function claimNext(excludeTypes: string[] = []): Promise<Job | null> {
+  const next = await prisma.job.findFirst({
+    where: { status: "QUEUED", ...(excludeTypes.length ? { type: { notIn: excludeTypes } } : {}) },
+    orderBy: { createdAt: "asc" },
+  });
   if (!next) return null;
   // Claim atômico: só ganha quem ainda vê QUEUED.
   const claimed = await prisma.job.updateMany({
