@@ -1,11 +1,51 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
-import { readdir } from "node:fs/promises";
+import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, getVisualStyle, type VideoFormat } from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
+
+// Quantos renders finais (mp4) manter por projeto — os mais antigos são apagados
+// automaticamente depois de um render novo bem-sucedido, pra não acumular espaço em disco
+// à toa (o histórico de "Renders" na UI já mostra o registro no banco, só o arquivo grande some).
+const KEEP_LAST_RENDERS = 3;
+
+async function cleanupWorkDir(workDir: string, log: (line: string) => Promise<void>) {
+  // renders/work/ guarda só arquivos intermediários do ffmpeg (mix.wav, video-all.mp4, act-*.mp4 etc.)
+  // — são recriados do zero a cada render, então não têm valor nenhum depois que o MP4 final sai.
+  try {
+    if (!existsSync(workDir)) return;
+    const before = await readdir(workDir).catch(() => []);
+    if (!before.length) return;
+    await rm(workDir, { recursive: true, force: true });
+    await log(`Limpeza: removidos ${before.length} arquivo(s) temporário(s) de renders/work`);
+  } catch (err) {
+    await log(`Limpeza de renders/work falhou (não crítico): ${(err as Error).message}`);
+  }
+}
+
+async function pruneOldRenders(outDir: string, keptOutFile: string, log: (line: string) => Promise<void>) {
+  try {
+    const entries = await readdir(outDir).catch(() => []);
+    const mp4s = entries.filter((f) => f.endsWith(".mp4") && path.join(outDir, f) !== keptOutFile);
+    if (mp4s.length <= KEEP_LAST_RENDERS - 1) return;
+    const withTimes = await Promise.all(
+      mp4s.map(async (f) => {
+        const full = path.join(outDir, f);
+        const s = await stat(full);
+        return { full, mtime: s.mtimeMs };
+      }),
+    );
+    withTimes.sort((a, b) => b.mtime - a.mtime);
+    const toDelete = withTimes.slice(KEEP_LAST_RENDERS - 1);
+    for (const f of toDelete) await unlink(f.full).catch(() => {});
+    if (toDelete.length) await log(`Limpeza: removidos ${toDelete.length} render(s) antigo(s) (mantendo os ${KEEP_LAST_RENDERS} mais recentes)`);
+  } catch (err) {
+    await log(`Limpeza de renders antigos falhou (não crítico): ${(err as Error).message}`);
+  }
+}
 
 /**
  * RENDER_VIDEO: monta a timeline (voz + cenas + legendas) e renderiza o MP4 final.
@@ -86,5 +126,11 @@ export async function renderVideo(ctx: JobContext) {
   await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: 100, outputPath: relPath(outFile), finishedAt: new Date() } });
   await prisma.project.update({ where: { id: projectId }, data: { stage: project.stage === "MEDIA" || project.stage === "RENDER" ? "RENDER" : project.stage } });
   await appendLog(`Render concluído: ${relPath(outFile)} · ${(durationMs / 1000 / 60).toFixed(1)} min · encoder ${res.encoder}`);
+
+  // Limpeza automática pós-render: arquivos de trabalho do ffmpeg (sempre) e renders
+  // antigos demais (mantendo os mais recentes) — evita acumular gigabytes à toa a cada render.
+  await cleanupWorkDir(workDir, appendLog);
+  await pruneOldRenders(outDir, outFile, appendLog);
+
   return { outputPath: relPath(outFile), durationMs, encoder: res.encoder, renderJobId: renderJob.id };
 }
