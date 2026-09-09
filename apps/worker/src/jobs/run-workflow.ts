@@ -12,8 +12,11 @@ import type { JobContext } from "../queue";
  * uma imagem de verdade via Gemini ("Nano Banana", image-to-image quando há Avatar/Produto de
  * referência) — exige GEMINI_IMAGE_API_KEY (normalmente com faturamento habilitado; não é o
  * nível grátis do texto). Sem a chave, cai de volta pra composição só com as imagens de
- * referência, como antes. Geração de vídeo por IA (Veo/Wan) continua fora do escopo — segue
- * pro "Exportar p/ Flow".
+ * referência, como antes. Quando o grafo tem mais de 1 nó Prompt com imagem gerada, os shots
+ * entram em sequência (concat) na prévia final, na ordem topológica — uma adaptação real da ideia
+ * de "linha do tempo" do mockup do Stitch, sem as partes fictícias (telemetria de consistência,
+ * color science, ponte com DaVinci/Unreal). Geração de vídeo por IA (Veo/Wan) continua fora do
+ * escopo — segue pro "Exportar p/ Flow".
  */
 export async function runWorkflow(ctx: JobContext) {
   const workflowId = String(ctx.payload.workflowId ?? "");
@@ -87,7 +90,9 @@ export async function runWorkflow(ctx: JobContext) {
     // motor de vídeo — só a Voz sintetiza de verdade).
     let voiceFile: string | null = null;
     let voiceDurationMs = 0;
-    let promptImg: string | null = null;
+    // Um item por nó Prompt que gerou imagem de verdade, na ordem topológica — vira 1 shot na
+    // sequência final quando há mais de 1 (concatenados), ou a única imagem quando há só 1.
+    const promptShots: { file: string; nodeId: string }[] = [];
     const outDir = path.join(storageRoot(), "workflows", workflowId, "renders");
     await mkdir(outDir, { recursive: true });
 
@@ -118,10 +123,11 @@ export async function runWorkflow(ctx: JobContext) {
               aspectRatio,
             });
             const ext = result.mimeType.includes("png") ? "png" : "jpg";
-            promptImg = path.join(outDir, `prompt-${node.id}-${Date.now()}.${ext}`);
-            await writeFile(promptImg, result.buffer);
+            const shotFile = path.join(outDir, `prompt-${node.id}-${Date.now()}.${ext}`);
+            await writeFile(shotFile, result.buffer);
+            promptShots.push({ file: shotFile, nodeId: node.id });
             await ctx.log(
-              `[${node.type}] ${meta.label}: imagem gerada de verdade via Gemini (Nano Banana)${refs.length ? ` usando ${refs.length} referência(s)` : ""} — ${path.basename(promptImg)}`,
+              `[${node.type}] ${meta.label}: imagem gerada de verdade via Gemini (Nano Banana)${refs.length ? ` usando ${refs.length} referência(s)` : ""} — ${path.basename(shotFile)}`,
             );
           } catch (err) {
             const msg = err instanceof ProviderError ? err.message : err instanceof Error ? err.message : String(err);
@@ -148,7 +154,7 @@ export async function runWorkflow(ctx: JobContext) {
 
     // 3ª passada: compõe o vídeo final se der pra montar algo real (pelo menos 1 imagem — gerada
     // pelo Prompt, ou de referência do Avatar/Produto).
-    if (!promptImg && !avatarImg && !productImg) {
+    if (!promptShots.length && !avatarImg && !productImg) {
       await prisma.workflow.update({ where: { id: wf.id }, data: { status: "READY" } });
       await ctx.log("Nenhuma imagem disponível (nem gerada pelo Prompt, nem de referência do Avatar/Produto) — sem isso não dá pra montar uma prévia real ainda.");
       return { order, composed: false };
@@ -164,7 +170,25 @@ export async function runWorkflow(ctx: JobContext) {
 
     const inputs: string[] = [];
     let filter: string;
-    if (!promptImg && avatarImg && productImg) {
+    if (promptShots.length >= 2) {
+      // Sequência: 1 shot por nó Prompt que gerou imagem, concatenados na ordem topológica. Cada
+      // shot recebe uma fatia proporcional da duração total e seu próprio Ken Burns, depois
+      // "concat" costura tudo num único vídeo antes de aplicar a locução/áudio.
+      const n = promptShots.length;
+      const perSec = Math.max(1.2, durationSec / n);
+      const perFrames = Math.max(2, Math.round(perSec * fps));
+      for (const shot of promptShots) {
+        inputs.push("-loop", "1", "-framerate", String(fps), "-t", perSec.toFixed(2), "-i", shot.file);
+      }
+      const chain = promptShots
+        .map(
+          (_, i) =>
+            `[${i}:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,zoompan=z='1+0.08*on/${perFrames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${perFrames}:s=${W}x${H}:fps=${fps}[s${i}];`,
+        )
+        .join("");
+      const concatInputs = promptShots.map((_, i) => `[s${i}]`).join("");
+      filter = `${chain}${concatInputs}concat=n=${n}:v=1:a=0,format=yuv420p[vout]`;
+    } else if (!promptShots.length && avatarImg && productImg) {
       let topH = Math.round(H * 0.56);
       topH -= topH % 2; // yuv420p exige dimensões pares — ímpar aqui derruba o ffmpeg
       const botH = H - topH;
@@ -177,7 +201,7 @@ export async function runWorkflow(ctx: JobContext) {
     } else {
       // A imagem gerada pelo Prompt (quando existe) é o resultado mais "final" — tem prioridade
       // sobre as referências cruas de Avatar/Produto na composição de 1 imagem só.
-      const only = promptImg || avatarImg || productImg!;
+      const only = promptShots[0]?.file || avatarImg || productImg!;
       inputs.push("-loop", "1", "-framerate", String(fps), "-t", durationSec.toFixed(2), "-i", only);
       filter = `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,zoompan=z='1+0.08*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps},format=yuv420p[vout]`;
     }
@@ -198,12 +222,21 @@ export async function runWorkflow(ctx: JobContext) {
       "-shortest", "-movflags", "+faststart",
       outFile,
     ]);
-    const visualSource = promptImg ? "imagem gerada pelo Prompt (IA)" : avatarImg && productImg ? "Avatar + Produto" : "1 imagem de referência";
+    const visualSource = promptShots.length
+      ? promptShots.length > 1
+        ? `sequência de ${promptShots.length} shots gerados pelo Prompt (IA)`
+        : "imagem gerada pelo Prompt (IA)"
+      : avatarImg && productImg
+        ? "Avatar + Produto"
+        : "1 imagem de referência";
     await ctx.log(`Prévia composta (${visualSource}${voiceFile ? " + locução real" : " + áudio mudo"}): ${path.basename(outFile)}`);
 
     renderData.status = "DONE";
     renderData.outputUrl = relPath(outFile);
     renderData.renderedAt = new Date().toISOString();
+    if (promptShots.length) {
+      renderData.shots = promptShots.map((s, i) => ({ url: relPath(s.file), label: `Shot ${i + 1}` }));
+    }
     await prisma.workflow.update({ where: { id: wf.id }, data: { status: "DONE", graph: JSON.stringify(graph) } });
     return { order, composed: true, outputUrl: relPath(outFile) };
   } catch (err) {

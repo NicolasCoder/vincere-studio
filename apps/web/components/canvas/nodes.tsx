@@ -263,6 +263,22 @@ function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
         )}
         <span className="absolute left-2 top-2 rounded-sm bg-void/80 px-1.5 font-mono text-[9px] text-primary-bright">{d.outputUrl ? "RENDER REAL" : "PREVIEW 9:16"}</span>
       </div>
+      {d.shots && d.shots.length > 1 ? (
+        <div className="rounded border border-line bg-void/60 p-2">
+          <div className="label-mono mb-1.5 flex items-center gap-1 text-muted">
+            <Icon name="view_timeline" className="text-[13px]" />
+            Sequência · {d.shots.length} shots
+          </div>
+          <div className="nodrag flex gap-1.5 overflow-x-auto">
+            {d.shots.map((shot, i) => (
+              <div key={shot.url + i} className="relative shrink-0 overflow-hidden rounded border border-line" style={{ width: 52, height: 92 }}>
+                <img src={`/api/media/${shot.url}`} alt={shot.label ?? `Shot ${i + 1}`} className="h-full w-full object-cover" />
+                <span className="absolute bottom-0.5 left-0.5 rounded-sm bg-void/80 px-1 font-mono text-[8px] text-primary-bright">{i + 1}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : null}
       <div className="grid grid-cols-2 gap-2">
         <Field label="Resolução" value={`${d.width} × ${d.height}`} tone="emerald" />
         <Field label="Bitrate" value={d.bitrate} tone="emerald" />

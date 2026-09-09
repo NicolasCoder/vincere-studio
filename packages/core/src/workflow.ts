@@ -80,6 +80,9 @@ export const RenderData = z.object({
    * ffmpeg a partir das imagens de referência + voz do fluxo — não é geração de vídeo por IA). */
   outputUrl: z.string().optional(),
   renderedAt: z.string().optional(),
+  /** Lista de shots (1 por nó Prompt com imagem gerada) que entraram na sequência final, na
+   * ordem em que aparecem no vídeo — alimenta a tira de miniaturas "linha do tempo" no node. */
+  shots: z.array(z.object({ url: z.string(), label: z.string().optional() })).optional(),
 });
 
 export const WorkflowNodeData = z.discriminatedUnion("kind", [AvatarData, ProductData, SceneData, PromptData, VoiceData, RenderData]);
