@@ -53,6 +53,10 @@ export const PromptData = z.object({
   /** relPath (storage/…) do último keyframe gerado de fato via prévia sob demanda (botão
    * "Gerar Keyframe" no node) — cache visual, não interfere na geração da execução completa. */
   keyframeUrl: z.string().optional(),
+  /** Qual motor gera a imagem de verdade: GEMINI (pago, melhor consistência de Avatar/Produto,
+   * controlado por orçamento em Settings) ou POLLINATIONS (grátis, sem chave, sem controle de
+   * referência — só pra testar o fluxo sem gastar). */
+  imageProvider: z.enum(["GEMINI", "POLLINATIONS"]).default("GEMINI"),
 });
 
 export const VoiceData = z.object({

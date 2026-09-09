@@ -11,3 +11,9 @@ export async function recordUsage(projectId: string | null, usage: UsageInfo) {
   });
   if (projectId) await prisma.project.update({ where: { id: projectId }, data: { costUsd: { increment: usage.costUsd } } });
 }
+
+/** Registra o consumo de 1 imagem gerada por IA paga (Gemini/Nano Banana etc.) no medidor. */
+export async function recordImageUsage(projectId: string | null, provider: string, costUsd: number, quantity = 1) {
+  await prisma.usage.create({ data: { projectId, provider, unit: "IMAGES", quantity, costUsd } });
+  if (projectId) await prisma.project.update({ where: { id: projectId }, data: { costUsd: { increment: costUsd } } });
+}

@@ -2,7 +2,7 @@ import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { WorkflowGraph, NODE_META, type NodeKind, type WorkflowNodeData } from "@docupulse/core";
-import { EdgeVoiceProvider, EDGE_VOICES, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, ProviderError } from "@docupulse/providers";
+import { EdgeVoiceProvider, EDGE_VOICES, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, generateImagePollinations, estimateImageCostUsd, checkBudget, recordImageUsage, ProviderError } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -116,18 +116,25 @@ export async function runWorkflow(ctx: JobContext) {
           try {
             const aspectRatio = /9:16|16:9|1:1/.exec(d.format ?? "")?.[0];
             const prompt = [d.positive.trim(), sceneContext || null].filter(Boolean).join(" ");
-            const result = await generateImageGemini({
-              prompt,
-              negativePrompt: d.negative?.trim() || undefined,
-              referenceImagePaths: refs,
-              aspectRatio,
-            });
+            const genInput = { prompt, negativePrompt: d.negative?.trim() || undefined, referenceImagePaths: refs, aspectRatio };
+            let result: Awaited<ReturnType<typeof generateImageGemini>>;
+            let engineLabel: string;
+            if (d.imageProvider === "POLLINATIONS") {
+              result = await generateImagePollinations(genInput);
+              engineLabel = "Pollinations.ai (grátis)";
+            } else {
+              const estimatedCost = estimateImageCostUsd();
+              await checkBudget(estimatedCost); // não gasta nada se estourar o orçamento — lança antes de chamar a API paga
+              result = await generateImageGemini(genInput);
+              await recordImageUsage(null, "GEMINI_IMAGE", estimatedCost);
+              engineLabel = "Gemini (Nano Banana)";
+            }
             const ext = result.mimeType.includes("png") ? "png" : "jpg";
             const shotFile = path.join(outDir, `prompt-${node.id}-${Date.now()}.${ext}`);
             await writeFile(shotFile, result.buffer);
             promptShots.push({ file: shotFile, nodeId: node.id });
             await ctx.log(
-              `[${node.type}] ${meta.label}: imagem gerada de verdade via Gemini (Nano Banana)${refs.length ? ` usando ${refs.length} referência(s)` : ""} — ${path.basename(shotFile)}`,
+              `[${node.type}] ${meta.label}: imagem gerada de verdade via ${engineLabel}${refs.length ? ` usando ${refs.length} referência(s)` : ""} — ${path.basename(shotFile)}`,
             );
           } catch (err) {
             const msg = err instanceof ProviderError ? err.message : err instanceof Error ? err.message : String(err);

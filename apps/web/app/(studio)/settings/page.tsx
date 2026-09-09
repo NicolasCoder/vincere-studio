@@ -5,8 +5,9 @@ import { PageHeader } from "@/components/PageHeader";
 import { ensureDefaultVoiceProfiles, getSettings, getUsageSummary, listJobs } from "@/lib/data";
 import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
+import { updateBudget } from "./budget-actions";
 import { prisma } from "@docupulse/db";
-import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured } from "@docupulse/providers";
+import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, getBudgetStatus } from "@docupulse/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
 
@@ -22,12 +23,13 @@ const PROVIDERS = [
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string }> }) {
   const { job, youtube, msg, channel } = await searchParams;
   await ensureDefaultVoiceProfiles();
-  const [usage, settings, jobs, profiles, youtubeConnection] = await Promise.all([
+  const [usage, settings, jobs, profiles, youtubeConnection, budget] = await Promise.all([
     getUsageSummary(),
     getSettings(),
     listJobs(8),
     prisma.voiceProfile.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] }),
     getYoutubeConnection(),
+    getBudgetStatus(),
   ]);
   const edgeVoices = new EdgeVoiceProvider().voices();
   const ytCredentialsSet = youtubeCredentialsConfigured();
@@ -41,6 +43,39 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {youtube === "no_credentials" && <div className="flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"><Icon name="warning" className="text-[18px]" />Configure YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET no .env antes de conectar (veja o card abaixo).</div>}
         {youtube === "error" && <div className="flex items-center gap-3 rounded border border-error/40 bg-error/10 px-4 py-3 text-sm text-error"><Icon name="error" className="text-[18px]" />Falha ao conectar: {msg}</div>}
         {job && <JobWatcher jobId={job} label="Gerando prévia de voz" />}
+        <Card className="p-5">
+          <div className="flex items-center justify-between">
+            <h3 className="font-display text-lg font-semibold"><Icon name="savings" className="mr-1 align-middle text-primary-bright" />Orçamento de IA paga (imagem/vídeo)</h3>
+            <Badge tone={budget.capUsd <= 0 ? "warning" : budget.remainingUsd <= 0 ? "error" : "success"} pill dot>
+              {budget.capUsd <= 0 ? "Bloqueado" : budget.remainingUsd <= 0 ? "Teto atingido" : "Liberado"}
+            </Badge>
+          </div>
+          <p className="mt-1 text-xs text-fg-secondary">
+            Teto mensal que trava a geração paga (Gemini/Nano Banana e qualquer motor pago futuro de vídeo) ANTES de gastar além do combinado — nada é cobrado sem passar por esse limite.
+            Começa em US$ 0 de propósito: enquanto estiver assim, só a opção grátis (Pollinations.ai) funciona nos nós de Prompt.
+          </p>
+          <div className="mt-4 flex flex-wrap items-end gap-6">
+            <div>
+              <div className="label-mono text-muted">Gasto este mês</div>
+              <div className="font-display text-2xl font-bold">US$ {budget.spentUsd.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="label-mono text-muted">Teto atual</div>
+              <div className="font-display text-2xl font-bold">US$ {budget.capUsd.toFixed(2)}</div>
+            </div>
+            <div>
+              <div className="label-mono text-muted">Disponível</div>
+              <div className="font-display text-2xl font-bold text-primary-bright">US$ {budget.remainingUsd.toFixed(2)}</div>
+            </div>
+            <form action={updateBudget} className="ml-auto flex items-end gap-2">
+              <label className="text-xs">
+                <span className="label-mono text-muted">Novo teto mensal (US$)</span>
+                <input name="budgetUsd" type="number" step="0.5" min="0" defaultValue={budget.capUsd} className="field mt-1 w-32 px-3 py-2" />
+              </label>
+              <Button type="submit" size="sm" variant="primary" icon="save">Salvar teto</Button>
+            </form>
+          </div>
+        </Card>
         <VoiceGallery back="/settings" busy={!!job} elevenProfiles={profiles.filter((p) => p.provider === "ELEVENLABS").map((p) => ({ voiceId: p.voiceId, name: p.name, style: p.style }))} />
         <Card className="p-5">
           <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="record_voice_over" className="mr-1 align-middle text-primary-bright" />Perfis de voz do canal</h3><Badge tone="cyan">{profiles.length} perfil(is)</Badge></div>

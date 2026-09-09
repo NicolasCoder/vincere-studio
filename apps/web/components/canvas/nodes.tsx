@@ -118,7 +118,7 @@ function usePromptKeyframe(nodeId: string, data: Extract<WorkflowNodeData, { kin
       const res = await fetch(`/api/workflows/${workflowId}/keyframe-preview`, {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ nodeId, positive: data.positive, negative: data.negative, format: data.format }),
+        body: JSON.stringify({ nodeId, positive: data.positive, negative: data.negative, format: data.format, imageProvider: data.imageProvider }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "falha ao gerar keyframe");
@@ -154,6 +154,17 @@ function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
         <Field label="Motion Strength" value={d.motionStrength} onChange={(v) => set({ motionStrength: Number(v) || 0 })} />
       </div>
       <Field label="Sampling Steps" value={`${d.steps} Steps · Euler A`} />
+      <div className="rounded border border-line bg-void/60 px-3 py-2">
+        <span className="label-mono text-muted">Motor de imagem</span>
+        <select
+          className="nodrag mt-1 w-full bg-transparent font-mono text-[12px] text-primary-bright outline-none"
+          value={d.imageProvider}
+          onChange={(e) => set({ imageProvider: e.target.value })}
+        >
+          <option value="GEMINI" className="bg-surface-low">Gemini · Nano Banana (pago, controlado por orçamento)</option>
+          <option value="POLLINATIONS" className="bg-surface-low">Pollinations.ai (grátis, sem referência)</option>
+        </select>
+      </div>
       <div className="nodrag flex items-center gap-2">
         <button
           type="button"

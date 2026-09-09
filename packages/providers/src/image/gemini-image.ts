@@ -11,6 +11,19 @@ import { ProviderError } from "../types";
 const BASE = "https://generativelanguage.googleapis.com/v1beta";
 const MODEL = process.env.GEMINI_IMAGE_MODEL || "gemini-2.5-flash-image";
 
+/**
+ * Estimativa de custo por imagem em USD, só pra alimentar o controle de orçamento (checkBudget)
+ * ANTES de chamar a API — não é o valor de cobrança oficial (esse vem da fatura do Google Cloud).
+ * Baseado no preço público por modelo (ai.google.dev/gemini-api/docs/pricing, consultado 09/2026):
+ * Nano Banana 2 (3.1 Flash Image) ~US$0.067/imagem, Nano Banana Pro (3 Pro Image) ~US$0.134/imagem
+ * (2K) ou US$0.24 (4K). Sem entrada específica pro modelo configurado, usa a estimativa mais alta
+ * da família Flash como margem de segurança (superestimar é mais seguro que subestimar o teto).
+ */
+export function estimateImageCostUsd(model = MODEL): number {
+  if (/pro-image|nano-banana-pro/i.test(model)) return 0.14;
+  return 0.07;
+}
+
 export interface GenerateImageInput {
   /** Descrição do que gerar. */
   prompt: string;

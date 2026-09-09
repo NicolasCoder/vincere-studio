@@ -3,7 +3,7 @@ import { mkdir, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
 import { prisma } from "@docupulse/db";
 import { WorkflowGraph, type WorkflowNodeData } from "@docupulse/core";
-import { generateImageGemini, ProviderError, storageRoot, relPath, absPath } from "@docupulse/providers";
+import { generateImageGemini, generateImagePollinations, estimateImageCostUsd, checkBudget, recordImageUsage, ProviderError, storageRoot, relPath, absPath } from "@docupulse/providers";
 
 /**
  * Prévia de keyframe sob demanda pro nó de Prompt: gera 1 imagem de verdade via Gemini
@@ -20,6 +20,7 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   const positive = String(body.positive ?? "").trim();
   const negative = String(body.negative ?? "").trim();
   const format = String(body.format ?? "");
+  const imageProvider = body.imageProvider === "POLLINATIONS" ? "POLLINATIONS" : "GEMINI";
   if (!positive) return NextResponse.json({ error: "escreva o prompt positivo antes de gerar o keyframe" }, { status: 400 });
 
   const wf = await prisma.workflow.findUnique({ where: { id } });
@@ -52,7 +53,16 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
   try {
     const aspectRatio = /9:16|16:9|1:1/.exec(format)?.[0];
     const prompt = [positive, sceneContext || null].filter(Boolean).join(" ");
-    const result = await generateImageGemini({ prompt, negativePrompt: negative || undefined, referenceImagePaths: refs, aspectRatio });
+    let result: Awaited<ReturnType<typeof generateImageGemini>>;
+    let estimatedCost = 0;
+    if (imageProvider === "POLLINATIONS") {
+      result = await generateImagePollinations({ prompt, negativePrompt: negative || undefined, referenceImagePaths: refs, aspectRatio });
+    } else {
+      estimatedCost = estimateImageCostUsd();
+      await checkBudget(estimatedCost); // não gasta nada se estourar o orçamento — lança antes de chamar a API paga
+      result = await generateImageGemini({ prompt, negativePrompt: negative || undefined, referenceImagePaths: refs, aspectRatio });
+      await recordImageUsage(null, "GEMINI_IMAGE", estimatedCost);
+    }
     const ext = result.mimeType.includes("png") ? "png" : "jpg";
     const dir = path.join(storageRoot(), "workflows", id, "keyframes");
     await mkdir(dir, { recursive: true });
