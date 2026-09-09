@@ -5,7 +5,7 @@ import { Icon, cn } from "@docupulse/ui";
 
 const nav = [
   { href: "/dashboard", icon: "dashboard", label: "Dashboard" },
-  { href: "/channels", icon: "smart_display", label: "Channel Manager", badge: "3" },
+  { href: "/channels", icon: "smart_display", label: "Channel Manager" },
   { href: "/projects", icon: "lightbulb", label: "Ideation Hub", badge: "AI", accent: true },
   { href: "/workflow", icon: "account_tree", label: "Workflow Studio", badge: "NEW", live: true },
   { href: "/history", icon: "history_edu", label: "Histórico de Produção", badge: "docs" },
@@ -17,7 +17,17 @@ const nav = [
   { href: "/settings", icon: "settings", label: "Settings" },
 ];
 
-export function Sidebar({ docsCount, quotaUsed, quotaTotal }: { docsCount: number; quotaUsed: number; quotaTotal: number }) {
+export function Sidebar({
+  docsCount,
+  quotaUsed,
+  quotaTotal,
+  youtubeConnected,
+}: {
+  docsCount: number;
+  quotaUsed: number;
+  quotaTotal: number;
+  youtubeConnected?: boolean;
+}) {
   const path = usePathname();
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-sidebar -translate-x-full flex-col border-r border-line bg-surface-low transition-transform duration-200 peer-checked/nav:translate-x-0 lg:translate-x-0 lg:bg-surface-low/95">
@@ -52,6 +62,17 @@ export function Sidebar({ docsCount, quotaUsed, quotaTotal }: { docsCount: numbe
             >
               <Icon name={item.icon} className="text-[20px]" filled={active} />
               <span className="flex-1 truncate">{item.label}</span>
+              {item.href === "/channels" && (
+                <span
+                  className={cn(
+                    "rounded-sm border px-1.5 py-0.5 font-mono text-[10px] tracking-wider",
+                    youtubeConnected ? "border-primary/40 bg-primary/10 text-primary-bright" : "border-line text-muted",
+                  )}
+                >
+                  {youtubeConnected && <span className="mr-1 inline-block size-1.5 rounded-full bg-primary-bright align-middle" />}
+                  {youtubeConnected ? "Conectado" : "Conectar"}
+                </span>
+              )}
               {item.badge && (
                 <span
                   className={cn(

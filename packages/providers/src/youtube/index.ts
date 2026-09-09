@@ -129,3 +129,68 @@ export async function getAuthenticatedYoutubeClient() {
 
   return { youtube: google.youtube({ version: "v3", auth: client }), channelId: stored.channel_id, channelTitle: stored.channel_title };
 }
+
+export interface YoutubeChannelUpload {
+  videoId: string;
+  title: string;
+  thumbnail?: string;
+  publishedAt?: string | null;
+}
+
+export interface YoutubeChannelManagerData {
+  channelId: string;
+  channelTitle: string;
+  channelThumbnail?: string;
+  subscriberCount?: number;
+  hiddenSubscriberCount: boolean;
+  viewCount?: number;
+  videoCount?: number;
+  recentUploads: YoutubeChannelUpload[];
+}
+
+/** Dados de verdade do canal (estatísticas + últimos uploads) pro Channel Manager — chamada de
+ * rede real na API, então só usar em páginas (não em cada request de fundo). null = desconectado. */
+export async function getYoutubeChannelManagerData(): Promise<YoutubeChannelManagerData | null> {
+  let auth: Awaited<ReturnType<typeof getAuthenticatedYoutubeClient>>;
+  try {
+    auth = await getAuthenticatedYoutubeClient();
+  } catch {
+    return null;
+  }
+  const { youtube, channelId, channelTitle } = auth;
+
+  const res = await youtube.channels.list({ part: ["snippet", "statistics", "contentDetails"], id: [channelId] });
+  const channel = res.data.items?.[0];
+  if (!channel) return null;
+
+  const stats = channel.statistics;
+  const uploadsPlaylistId = channel.contentDetails?.relatedPlaylists?.uploads;
+
+  let recentUploads: YoutubeChannelUpload[] = [];
+  if (uploadsPlaylistId) {
+    try {
+      const items = await youtube.playlistItems.list({ part: ["snippet", "contentDetails"], playlistId: uploadsPlaylistId, maxResults: 12 });
+      recentUploads = (items.data.items ?? [])
+        .map((it) => ({
+          videoId: it.contentDetails?.videoId ?? "",
+          title: it.snippet?.title ?? "",
+          thumbnail: it.snippet?.thumbnails?.medium?.url ?? it.snippet?.thumbnails?.default?.url ?? undefined,
+          publishedAt: it.contentDetails?.videoPublishedAt ?? it.snippet?.publishedAt ?? null,
+        }))
+        .filter((v) => v.videoId);
+    } catch {
+      // cota da API estourada ou playlist privada — segue sem os uploads recentes.
+    }
+  }
+
+  return {
+    channelId,
+    channelTitle: channel.snippet?.title ?? channelTitle,
+    channelThumbnail: channel.snippet?.thumbnails?.default?.url ?? undefined,
+    subscriberCount: stats?.hiddenSubscriberCount ? undefined : stats?.subscriberCount != null ? Number(stats.subscriberCount) : undefined,
+    hiddenSubscriberCount: !!stats?.hiddenSubscriberCount,
+    viewCount: stats?.viewCount != null ? Number(stats.viewCount) : undefined,
+    videoCount: stats?.videoCount != null ? Number(stats.videoCount) : undefined,
+    recentUploads,
+  };
+}
