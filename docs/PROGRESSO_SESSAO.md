@@ -55,6 +55,7 @@ O app nunca pede nem armazena sua senha do Google em nenhum momento — a autent
 3. **Channel Manager mockado**: sem OAuth real com o YouTube (badge "3" fixo). Só vale a pena quando o usuário tiver mais de um canal ativo de verdade — agora que o OAuth do YouTube existe (item acima), dá pra puxar o canal de verdade em vez do mock.
 4. **Teleprompter desabilitado** no roteiro: modo leitura em tela cheia pro narrador, mencionado na UI mas nunca ligado.
 5. **Sem testes automatizados**: vários bugs desta sessão (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. Nem que seja um smoke test simples (abrir cada página, checar 200 OK) ajudaria a pegar regressão mais cedo.
+6. **Novos "formatos de vídeo" (motor de render alternativo)**: hoje só existe um estilo real implementado — documentário dark (B-roll + texto + legenda). Ideias levantadas pelo usuário: vídeo com boneco stickman, personagem 3D, outros estilos de edição inteiramente diferentes. Isso NÃO é uma "Skill" (Skills guarda texto reaproveitável — ganchos, estrutura de ato, CTA, prompt de cena — dentro do estilo que já existe); é um motor de renderização novo, provavelmente via uma ferramenta de composição tipo Remotion ou geração de vídeo com IA de personagem, selecionável como uma opção nova de `visualStyle`. Trabalho pesado, tratar como feature própria quando o usuário quiser expandir pra outros formatos.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
 
