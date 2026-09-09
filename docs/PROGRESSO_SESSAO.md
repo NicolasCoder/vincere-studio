@@ -39,6 +39,8 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
   - Toda geração via Gemini bem-sucedida agora também registra o custo real no medidor (`recordImageUsage`, unidade `IMAGES`) — antes isso não acontecia, então o "US$ X equiv." da topbar nunca refletia gasto de imagem, só texto/voz.
   - Testado ao vivo: com teto US$ 0, chamada ao Gemini foi bloqueada ANTES da API (mensagem clara, sem gastar nada); com teto US$ 5, a chamada passou e chegou até o Gemini de verdade (bateu no mesmo 429 já conhecido — confirma que o bloqueio é só o orçamento, não um bug); Pollinations.ai gerou uma imagem real (580×1015, 9:16) mesmo com orçamento zerado, sem erro.
 
+- **Teste real ao vivo do fluxo com Pollinations.ai**: rodei o Workflow "Campanha Aura Serum" de ponta a ponta pelo navegador, trocando o nó Prompt para o motor grátis. Log real do worker confirmou: locução sintetizada (Edge TTS, 5.6s), imagem gerada de verdade via Pollinations.ai (`prompt-n3-*.jpg`) e composição final em MP4 9:16 (`run-*.mp4`) — sem gastar orçamento pago (segue em US$ 0). Entregue ao usuário como prévia.
+
 ## Publicação automática no YouTube — como ativar
 
 O app publica direto no seu canal via OAuth do Google (login e permissão acontecem no site do próprio Google — o DocuPulse.AI nunca vê nem guarda sua senha). Falta só criar uma credencial OAuth gratuita no Google Cloud Console. Passo a passo (dá pra fazer até pelo celular):
