@@ -8,6 +8,7 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
   const { id } = await params;
   const { project, header } = await loadProjectShell(id, "PUBLISH");
   const pub = project.publications[0];
+  const master = project.renderJobs[0];
   const stats = parseJson<{ views?: number; ctr?: number; avgViewDuration?: number }>(pub?.stats, {});
   const tags = parseJson<string[]>(pub?.tags, []);
   const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
@@ -33,7 +34,11 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
           </div>
           <div className="flex flex-col gap-2">
             {pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button icon="smart_display" className="w-full">Assistir no YouTube ↗</Button></a>}
-            <Button icon="download" disabled>Baixar Master</Button>
+            {master?.outputPath ? (
+              <a href={`/api/media/${master.outputPath}?download=1`}><Button icon="download" className="w-full">Baixar Master</Button></a>
+            ) : (
+              <Button icon="download" disabled title="Renderize o vídeo no Passo 4 primeiro">Baixar Master</Button>
+            )}
             <Button variant="primary" icon="check_circle" disabled>Publicado no YouTube</Button>
           </div>
         </div>
@@ -41,8 +46,16 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-4">
             <Card className="overflow-hidden" accent="dual">
-              <div className="relative grid aspect-video place-items-center bg-gradient-to-br from-void via-surface-low to-primary/20">
-                <div className="text-center"><div className="font-display text-3xl font-bold">{pub?.title ?? project.title}</div><div className="mt-2 font-mono text-xs text-fg-secondary">Thumbnail gerada com IA aparece aqui (Sprint 5)</div><div className="mt-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div></div>
+              <div className="relative grid aspect-video place-items-center overflow-hidden bg-gradient-to-br from-void via-surface-low to-primary/20">
+                {project.thumbnailPath ? (
+                  <>
+                    <img src={`/api/media/${project.thumbnailPath}`} alt={pub?.title ?? project.title} className="absolute inset-0 h-full w-full object-cover" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-void/70 via-transparent to-transparent" />
+                    <div className="absolute bottom-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div>
+                  </>
+                ) : (
+                  <div className="text-center"><div className="font-display text-3xl font-bold">{pub?.title ?? project.title}</div><div className="mt-2 font-mono text-xs text-fg-secondary">Gere a thumbnail no Passo 4 (Render) pra ela aparecer aqui</div><div className="mt-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div></div>
+                )}
               </div>
               <div className="grid grid-cols-1 divide-y divide-line border-t border-line text-xs sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div className="p-3"><div className="label-mono text-muted">URL oficial</div><div className="mt-1 truncate font-mono text-primary-bright">{pub?.url ?? "—"}</div></div>
