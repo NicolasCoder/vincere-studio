@@ -12,6 +12,7 @@ const nav = [
   { href: "/metrics", icon: "monitoring", label: "Métricas & Desempenho", badge: "Live", live: true },
   { href: "/assets", icon: "video_library", label: "Media Assets" },
   { href: "/references", icon: "collections_bookmark", label: "Referências" },
+  { href: "/skills", icon: "auto_stories", label: "Skills" },
   { href: "/settings", icon: "settings", label: "Settings" },
 ];
 

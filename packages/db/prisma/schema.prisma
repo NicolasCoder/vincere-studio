@@ -248,6 +248,19 @@ model ReferenceChannel {
   createdAt DateTime @default(now())
 }
 
+/// Biblioteca de Skills: estruturas de roteiro, ganchos e prompts que funcionaram bem,
+/// reutilizáveis entre projetos (mesmo padrão da Biblioteca de Referências).
+model ScriptSkill {
+  id        String   @id @default(cuid())
+  title     String
+  category  String   // GANCHO | ESTRUTURA_ATO | CTA | PROMPT_CENA | OUTRO
+  niche     String?
+  content   String   // o texto/estrutura reutilizável em si
+  notes     String?
+  projectId String?  // projeto de origem (opcional)
+  createdAt DateTime @default(now())
+}
+
 /// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @docupulse/core WorkflowGraph).
 model Workflow {
   id        String   @id @default(cuid())
