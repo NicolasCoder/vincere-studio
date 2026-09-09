@@ -5,6 +5,17 @@ import { handlers } from "./jobs";
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 1000);
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
+const HEARTBEAT_MS = 15_000;
+
+/** Grava um "pulso" periódico na tabela Setting, pra o painel de saúde do sistema saber
+ * se o worker está vivo mesmo sem nenhum job em andamento. */
+async function heartbeat() {
+  await prisma.setting.upsert({
+    where: { key: "worker_heartbeat" },
+    create: { key: "worker_heartbeat", value: new Date().toISOString() },
+    update: { value: new Date().toISOString() },
+  });
+}
 
 async function notify(event: string, data: unknown) {
   if (!WEBHOOK_URL) return;
@@ -36,11 +47,17 @@ async function main() {
   // Jobs que ficaram RUNNING de uma execução anterior voltam para a fila.
   const reset = await prisma.job.updateMany({ where: { status: "RUNNING" }, data: { status: "QUEUED" } });
   console.log(`DocuPulse worker online · poll ${POLL_MS}ms · ${reset.count} job(s) recuperado(s)`);
+  await heartbeat().catch((e) => console.warn("heartbeat falhou:", (e as Error).message));
+  let lastHeartbeat = Date.now();
   for (;;) {
     const did = await tick().catch((e) => {
       console.error("tick error", e);
       return false;
     });
+    if (Date.now() - lastHeartbeat > HEARTBEAT_MS) {
+      lastHeartbeat = Date.now();
+      await heartbeat().catch((e) => console.warn("heartbeat falhou:", (e as Error).message));
+    }
     if (!did) await new Promise((r) => setTimeout(r, POLL_MS));
   }
 }

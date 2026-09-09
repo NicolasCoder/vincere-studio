@@ -13,6 +13,7 @@ const nav = [
   { href: "/assets", icon: "video_library", label: "Media Assets" },
   { href: "/references", icon: "collections_bookmark", label: "Referências" },
   { href: "/skills", icon: "auto_stories", label: "Skills" },
+  { href: "/health", icon: "monitor_heart", label: "Saúde do Sistema" },
   { href: "/settings", icon: "settings", label: "Settings" },
 ];
 

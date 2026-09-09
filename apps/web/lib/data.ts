@@ -40,6 +40,57 @@ export async function getSettings() {
   return Object.fromEntries(rows.map((r) => [r.key, r.value])) as Record<string, string>;
 }
 
+/** Painel de saúde do sistema: worker vivo (heartbeat), fila, jobs travados e falhas recentes. */
+export async function getSystemHealth() {
+  noStore();
+  const [heartbeatSetting, counts, stuckJobs, recentFailed] = await Promise.all([
+    prisma.setting.findUnique({ where: { key: "worker_heartbeat" } }),
+    prisma.job.groupBy({ by: ["status"], _count: { _all: true } }),
+    // RUNNING há mais de 20min sem nenhuma atualização de progresso/log = provável travamento.
+    prisma.job.findMany({
+      where: { status: "RUNNING", updatedAt: { lt: new Date(Date.now() - 20 * 60 * 1000) } },
+      include: { project: true },
+      orderBy: { updatedAt: "asc" },
+    }),
+    prisma.job.findMany({
+      where: { status: "FAILED" },
+      orderBy: { finishedAt: "desc" },
+      take: 5,
+      include: { project: true },
+    }),
+  ]);
+
+  const heartbeatAt = heartbeatSetting ? new Date(heartbeatSetting.value) : null;
+  const heartbeatAgeMs = heartbeatAt ? Date.now() - heartbeatAt.getTime() : null;
+  // heartbeat a cada 15s; folga generosa pra não falsear "offline" por um tick lento.
+  const workerStatus: "online" | "atencao" | "offline" =
+    heartbeatAgeMs == null ? "offline" : heartbeatAgeMs < 60_000 ? "online" : heartbeatAgeMs < 5 * 60_000 ? "atencao" : "offline";
+
+  const byStatus = Object.fromEntries(counts.map((c) => [c.status, c._count._all])) as Record<string, number>;
+
+  return {
+    workerStatus,
+    heartbeatAt,
+    heartbeatAgeMs,
+    queued: byStatus.QUEUED ?? 0,
+    running: byStatus.RUNNING ?? 0,
+    done: byStatus.DONE ?? 0,
+    failed: byStatus.FAILED ?? 0,
+    stuckJobs,
+    recentFailed,
+  };
+}
+
+export const fmtAge = (ms: number | null) => {
+  if (ms == null) return "nunca";
+  const s = Math.floor(ms / 1000);
+  if (s < 60) return `${s}s atrás`;
+  const m = Math.floor(s / 60);
+  if (m < 60) return `${m}min atrás`;
+  const h = Math.floor(m / 60);
+  return `${h}h${m % 60}min atrás`;
+};
+
 export const fmtDuration = (s?: number | null) => {
   if (!s) return "—";
   const m = Math.floor(s / 60);

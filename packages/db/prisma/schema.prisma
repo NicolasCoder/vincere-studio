@@ -211,6 +211,7 @@ model Job {
   logs       String    @default("")
   result     String?
   createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @default(now()) @updatedAt
   startedAt  DateTime?
   finishedAt DateTime?
 
