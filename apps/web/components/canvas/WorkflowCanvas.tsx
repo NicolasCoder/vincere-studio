@@ -80,9 +80,7 @@ function buildFlowExport(nodes: CanvasNode[], edges: Edge[], name: string, workf
 export function WorkflowCanvas(props: { id: string; name: string; status: string; initialGraph: WorkflowGraph }) {
   return (
     <ReactFlowProvider>
-      <WorkflowIdContext.Provider value={props.id}>
-        <Canvas {...props} />
-      </WorkflowIdContext.Provider>
+      <Canvas {...props} />
     </ReactFlowProvider>
   );
 }
@@ -233,8 +231,11 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
     URL.revokeObjectURL(url);
   };
 
+  const workflowCtx = useMemo(() => ({ workflowId: id, markDirty: () => setDirty(true) }), [id]);
+
   return (
     <div className="relative h-full w-full bg-void">
+      <WorkflowIdContext.Provider value={workflowCtx}>
       <ReactFlow
         nodes={nodes}
         edges={edges}
@@ -358,6 +359,7 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
           </Panel>
         )}
       </ReactFlow>
+      </WorkflowIdContext.Provider>
     </div>
   );
 }

@@ -7,8 +7,8 @@ import { Field, Meter, NodeShell, Thumb } from "./NodeShell";
 
 export type CanvasNode = Node<WorkflowNodeData & { index?: number }, NodeKind>;
 
-/** Id do workflow atual — os nós precisam pra saber onde salvar imagens de referência enviadas. */
-export const WorkflowIdContext = createContext<string>("");
+/** Id do workflow atual + callback pra marcar o grafo como alterado (dispara o autosave). */
+export const WorkflowIdContext = createContext<{ workflowId: string; markDirty: () => void }>({ workflowId: "", markDirty: () => {} });
 
 function useUpdate(id: string) {
   const { updateNodeData } = useReactFlow();
@@ -17,7 +17,7 @@ function useUpdate(id: string) {
 
 /** Upload de imagem de referência (Avatar/Produto) — salva em storage/workflows/<id>/refs. */
 function useImageUpload(nodeId: string, set: (patch: Record<string, unknown>) => void) {
-  const workflowId = useContext(WorkflowIdContext);
+  const { workflowId, markDirty } = useContext(WorkflowIdContext);
   const [uploading, setUploading] = useState(false);
   const onPick = async (file: File) => {
     setUploading(true);
@@ -27,7 +27,12 @@ function useImageUpload(nodeId: string, set: (patch: Record<string, unknown>) =>
       fd.append("nodeId", nodeId);
       const res = await fetch(`/api/workflows/${workflowId}/upload`, { method: "POST", body: fd });
       const json = await res.json();
-      if (json.imageUrl) set({ imageUrl: json.imageUrl });
+      if (json.imageUrl) {
+        set({ imageUrl: json.imageUrl });
+        // updateNodeData não passa pelo onNodesChange do canvas, então sem isso o grafo nunca
+        // ficava "dirty" e a imagem enviada podia se perder se o usuário não salvasse na mão.
+        markDirty();
+      }
     } finally {
       setUploading(false);
     }
@@ -114,7 +119,7 @@ const EDGE_VOICES = [
 function VoiceNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "VOICE" }> & { index?: number };
   const set = useUpdate(id);
-  const workflowId = useContext(WorkflowIdContext);
+  const { workflowId } = useContext(WorkflowIdContext);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
