@@ -1,9 +1,9 @@
 import type { VoiceProvider } from "./types";
 import { GeminiVoiceProvider } from "./gemini-tts";
-import { EdgeVoiceProvider } from "./edge-tts";
+import { EdgeVoiceProvider, EDGE_VOICES } from "./edge-tts";
 import { ElevenLabsVoiceProvider } from "./elevenlabs";
 export * from "./types";
-export { GeminiVoiceProvider, EdgeVoiceProvider, ElevenLabsVoiceProvider };
+export { GeminiVoiceProvider, EdgeVoiceProvider, EDGE_VOICES, ElevenLabsVoiceProvider };
 
 export function getVoiceProvider(name: string): VoiceProvider {
   switch (name) {

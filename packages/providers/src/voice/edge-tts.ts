@@ -15,6 +15,11 @@ const VOICES = [
   { id: "pt-BR-MacerioMultilingualNeural", label: "Macério · Multilíngue", gender: "m", description: "Versátil" },
 ];
 
+/** Lista canônica de voiceIds válidos do Edge TTS — usada por quem grava um voiceId (ex.: o nó
+ * de Voz do Workflow Studio) pra validar antes de sintetizar, em vez de deixar o msedge-tts
+ * quebrar com "Could not infer voiceLocale from voiceName" quando o valor salvo não é um ID real. */
+export const EDGE_VOICES = VOICES;
+
 export class EdgeVoiceProvider implements VoiceProvider {
   readonly name = "EDGE_TTS";
   voices() {

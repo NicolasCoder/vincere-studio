@@ -2,7 +2,7 @@ import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { WorkflowGraph, NODE_META, type NodeKind, type WorkflowNodeData } from "@docupulse/core";
-import { EdgeVoiceProvider, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, ProviderError } from "@docupulse/providers";
+import { EdgeVoiceProvider, EDGE_VOICES, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, ProviderError } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -50,6 +50,7 @@ export async function runWorkflow(ctx: JobContext) {
     let productImg: string | null = null;
     let voiceScript = "";
     let voiceId = "pt-BR-FranciscaNeural";
+    let voiceIdFallbackWarning: string | null = null;
     for (const id of order) {
       const node = graph.nodes.find((n) => n.id === id)!;
       if (node.type === "AVATAR") {
@@ -64,7 +65,15 @@ export async function runWorkflow(ctx: JobContext) {
         const d = node.data as Extract<WorkflowNodeData, { kind: "VOICE" }>;
         if (d.script?.trim()) {
           voiceScript = d.script.trim();
-          voiceId = d.voiceId || voiceId;
+          // O campo de voiceId do nó só oferece opções reais do Edge TTS na UI atual, mas o
+          // grafo pode ter sido criado/editado com outro valor (ex.: rótulo do Gemini TTS tipo
+          // "Clara - Conversational", que o Edge não reconhece e derruba o job). Valida contra a
+          // lista canônica antes de usar; se não bater, cai pro default sem quebrar a execução.
+          if (d.voiceId && EDGE_VOICES.some((v) => v.id === d.voiceId)) {
+            voiceId = d.voiceId;
+          } else if (d.voiceId) {
+            voiceIdFallbackWarning = `voiceId salvo no nó ("${d.voiceId}") não é uma voz Edge TTS válida — usando "${voiceId}" no lugar.`;
+          }
         }
       }
     }
@@ -112,6 +121,10 @@ export async function runWorkflow(ctx: JobContext) {
           }
         }
       } else if (node.type === "VOICE") {
+        if (voiceIdFallbackWarning) {
+          await ctx.log(`[${node.type}] ${meta.label}: ${voiceIdFallbackWarning}`);
+          voiceIdFallbackWarning = null; // loga uma vez só
+        }
         if (voiceScript) {
           voiceFile = path.join(outDir, `voice-${Date.now()}.mp3`);
           const r = await new EdgeVoiceProvider().synthesize({ text: voiceScript, voiceId, rate: 1, language: "pt-BR" }, voiceFile);
