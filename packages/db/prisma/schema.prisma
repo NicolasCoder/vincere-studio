@@ -234,6 +234,20 @@ model Setting {
   value String
 }
 
+/// Biblioteca de Referências: canais concorrentes/inspiração salvos pra consultar título,
+/// thumbnail e estilo na hora de criar uma ideia nova. Global por padrão (projectId null),
+/// ou vinculado a um projeto específico.
+model ReferenceChannel {
+  id        String   @id @default(cuid())
+  url       String
+  name      String?
+  avatarUrl String?
+  niche     String
+  notes     String?
+  projectId String?
+  createdAt DateTime @default(now())
+}
+
 /// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @docupulse/core WorkflowGraph).
 model Workflow {
   id        String   @id @default(cuid())

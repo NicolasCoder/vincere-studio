@@ -6,7 +6,8 @@ import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setVisualStyle, setVoiceProfile, synthesizeVoice } from "./actions";
+import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
+import { SceneUpload } from "./SceneUpload";
 import path from "node:path";
 
 const GEMINI_VOICES = ["Charon", "Fenrir", "Enceladus", "Orus", "Kore", "Aoede", "Leda", "Puck"];
@@ -35,6 +36,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
   const mixedVoices = voiceSet.size > 1;
   const bySource = { STOCK: scenes.filter((s) => s.source === "STOCK").length, IMPORTED: scenes.filter((s) => s.source === "IMPORTED").length, GENERATED: scenes.filter((s) => s.source === "GENERATED" && s.filePath).length };
   const inboxPath = path.join(storageRoot(), "projects", id, "inbox");
+  const refPath = path.join(storageRoot(), "projects", id, "referencias");
   const hasStock = !!(process.env.PEXELS_API_KEY || process.env.PIXABAY_API_KEY);
   const edgeVoices = new EdgeVoiceProvider().voices();
 
@@ -128,7 +130,13 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                           <div className="min-w-0 flex-1">
                             <div className="flex items-center justify-between"><span className="font-mono text-[10px] text-fg-secondary">{fmtMs(s.startMs)}–{fmtMs(s.endMs)}</span><Badge tone={s.filePath ? (s.source === "STOCK" ? "cyan" : "violet") : "neutral"}>{s.filePath ? (s.source === "STOCK" ? s.provider : "Flow/Import") : "pendente"}</Badge></div>
                             <p className="mt-1 line-clamp-2 text-[11px] text-fg-secondary" title={s.prompt ?? ""}>{s.description ?? s.prompt}</p>
-                            <div className="mt-1 flex items-center justify-between"><span className="truncate font-mono text-[9px] text-muted">{s.keywords}</span>{s.filePath && <form action={clearScene.bind(null, project.id, s.id)}><button className="font-mono text-[9px] text-muted hover:text-error">limpar</button></form>}</div>
+                            <div className="mt-1 flex items-center justify-between gap-2">
+                              <span className="truncate font-mono text-[9px] text-muted">{s.keywords}</span>
+                              <div className="flex shrink-0 items-center gap-2">
+                                <SceneUpload action={uploadSceneMedia.bind(null, project.id, s.id)} />
+                                {s.filePath && <form action={clearScene.bind(null, project.id, s.id)}><button className="font-mono text-[9px] text-muted hover:text-error">limpar</button></form>}
+                              </div>
+                            </div>
                             {hasStock && (
                               <form action={rerollScene.bind(null, project.id, s.id)} className="mt-1 flex items-center gap-1">
                                 <input name="keywords" placeholder="outro termo de busca (opcional)" className="field h-6 flex-1 px-1.5 text-[9px]" />
@@ -190,6 +198,8 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
               </div>
               <div className="mt-3 rounded border border-line bg-void/60 p-2 font-mono text-[10px] text-muted break-all"><Icon name="folder" className="mr-1 align-middle text-[12px]" />{inboxPath}</div>
               <p className="mt-2 text-[11px] text-fg-secondary">Gere as imagens no Flow com os prompts do pacote, salve nesta pasta com os nomes indicados (a01-s03.png) e clique em Importar.</p>
+              <div className="mt-3 rounded border border-dashed border-line bg-void/40 p-2 font-mono text-[10px] text-muted break-all"><Icon name="collections_bookmark" className="mr-1 align-middle text-[12px]" />{refPath}</div>
+              <p className="mt-1 text-[11px] text-fg-secondary">Pasta de referências (opcional): coloque ali imagens de estilo/paleta do canal para manter consistência visual entre as cenas.</p>
             </Card>
           </aside>
         </div>

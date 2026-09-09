@@ -11,6 +11,7 @@ const nav = [
   { href: "/history", icon: "history_edu", label: "Histórico de Produção", badge: "docs" },
   { href: "/metrics", icon: "monitoring", label: "Métricas & Desempenho", badge: "Live", live: true },
   { href: "/assets", icon: "video_library", label: "Media Assets" },
+  { href: "/references", icon: "collections_bookmark", label: "Referências" },
   { href: "/settings", icon: "settings", label: "Settings" },
 ];
 

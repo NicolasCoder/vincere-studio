@@ -58,7 +58,9 @@ export async function generateScenePrompts(ctx: JobContext) {
   const file = path.join(dir, "flow-pack.md");
   await writeFile(file, pack.join("\n"), "utf8");
   await projectDir(projectId, "inbox");
+  const refDir = await projectDir(projectId, "referencias");
   await ctx.log(`${total} cenas planejadas (${density === "sparse" ? "esparso · Modo Flow" : "denso · acervo/API"}) · pacote em ${relPath(file)} · versão ${SCENES_PROMPT_VERSION}`);
+  await ctx.log(`Pasta de referências de estilo disponível em ${relPath(refDir)} (opcional — coloque imagens de referência visual do canal ali)`);
   return { scenes: total, pack: relPath(file) };
 }
 

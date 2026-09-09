@@ -1,5 +1,6 @@
 "use server";
 import path from "node:path";
+import { writeFile } from "node:fs/promises";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
@@ -124,6 +125,42 @@ export async function rerollScene(projectId: string, sceneId: string, formData: 
       status: "READY",
       license: `${hit.license}${hit.author ? ` · ${hit.author}` : ""}`,
       ...(custom ? { keywords: custom } : {}),
+    },
+  });
+  revalidatePath(`/projects/${projectId}/media`);
+}
+
+/**
+ * Upload manual (Passo 3): sobe a imagem/vídeo de UMA cena direto do navegador, sem precisar
+ * salvar na pasta inbox e clicar em Importar — mesmo destino/nome de arquivo que o import usa.
+ */
+export async function uploadSceneMedia(projectId: string, sceneId: string, formData: FormData) {
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) {
+    revalidatePath(`/projects/${projectId}/media`);
+    return;
+  }
+  const scene = await prisma.scene.findUnique({ where: { id: sceneId }, include: { block: true } });
+  if (!scene) return;
+  const isVideo = file.type.startsWith("video/");
+  const extFromName = path.extname(file.name || "").toLowerCase();
+  const ext = extFromName || (isVideo ? ".mp4" : ".jpg");
+  const dir = await projectDir(projectId, "scenes");
+  const dest = path.join(dir, `${sceneFileStem(scene.block.act, scene.order)}${ext}`);
+  const buf = Buffer.from(await file.arrayBuffer());
+  await writeFile(dest, buf);
+  const durationMs = isVideo ? await probeDurationMs(dest).catch(() => null) : null;
+  await prisma.scene.update({
+    where: { id: sceneId },
+    data: {
+      filePath: relPath(dest),
+      mediaType: isVideo ? "video" : "image",
+      source: "IMPORTED",
+      provider: "FLOW_MANUAL",
+      providerRef: null,
+      durationMs,
+      status: "READY",
+      license: "Gerado pelo usuário (Flow/Gemini)",
     },
   });
   revalidatePath(`/projects/${projectId}/media`);

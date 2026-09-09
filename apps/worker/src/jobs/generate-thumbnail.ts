@@ -6,7 +6,7 @@ import { FFMPEG, run } from "@docupulse/providers";
 import { absPath, projectDir, relPath } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
-/** Cor de destaque por estilo visual — só um acento na composição, nada de gerar imagem. */
+/** Cor de destaque por estilo visual — a linha de impacto (última linha) usa essa cor. */
 const ACCENTS: Record<string, string> = {
   DARK_DOC: "0xFF8A3D",
   HISTORIC_REAL: "0xE8C27A",
@@ -16,7 +16,8 @@ const ACCENTS: Record<string, string> = {
   TRUE_CRIME: "0xFF3B3B",
 };
 
-function wrapTitle(text: string, max: number) {
+/** Quebra o título em até 3 linhas curtas, no estilo "manchete" (poucas palavras por linha). */
+function wrapLines(text: string, max: number): string[] {
   const words = text.replace(/\s+/g, " ").trim().split(" ");
   const lines: string[] = [];
   let cur = "";
@@ -27,7 +28,7 @@ function wrapTitle(text: string, max: number) {
     } else cur = (cur + " " + w).trim();
   }
   if (cur) lines.push(cur);
-  return lines.slice(0, 3).join("\n");
+  return lines.slice(0, 3);
 }
 const winFont = () => (process.platform === "win32" ? "C:/Windows/Fonts/segoeuib.ttf" : "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
 const ffPath = (p: string) => p.replace(/\\/g, "/").replace(/:/g, "\\:");
@@ -35,8 +36,10 @@ const ffPath = (p: string) => p.replace(/\\/g, "/").replace(/:/g, "\\:");
 /**
  * GENERATE_THUMBNAIL: monta uma thumbnail 1280x720 gratuita via ffmpeg — sem gerador de imagem
  * (isso fica pra quando entrarmos com Nano Banana Pro/GPT Image). Pega a melhor cena com mídia já
- * baixada, faz um cover-crop, uma grade mais "punchy" (contraste/saturação) pra chamar atenção,
- * uma barra escura de legibilidade embaixo e o título em caixa alta com a cor do estilo visual.
+ * baixada, faz um cover-crop punchy (contraste/saturação bem acima do normal pra chamar atenção),
+ * um degradê escuro no terço inferior pra legibilidade, e o título em "manchete": linhas em branco
+ * com stroke grosso e a última linha bem maior na cor de destaque do estilo — no estilo dos canais
+ * de documentário/mistério do YouTube (texto grande, 2 tons, contorno preto pesado).
  * payload: { projectId, sceneId?, title? }
  */
 export async function generateThumbnail(ctx: JobContext) {
@@ -80,16 +83,33 @@ export async function generateThumbnail(ctx: JobContext) {
   }
 
   const out = path.join(outDir, `thumb-${stamp}.jpg`);
-  const txt = path.join(outDir, `thumb-${stamp}.txt`);
-  await writeFile(txt, wrapTitle(title.toUpperCase(), 22), "utf8");
   const fontFile = winFont();
+
+  const lines = wrapLines(title.toUpperCase(), 18);
+  const accentLine = lines[lines.length - 1] ?? title.toUpperCase();
+  const whiteLines = lines.slice(0, -1);
+  const longest = Math.max(accentLine.length, ...whiteLines.map((l) => l.length), 1);
+  const accentSize = Math.max(52, Math.min(104, Math.floor(1750 / longest)));
+  const whiteSize = Math.max(40, Math.round(accentSize * 0.66));
+
+  const txtAccent = path.join(outDir, `thumb-${stamp}-accent.txt`);
+  await writeFile(txtAccent, accentLine, "utf8");
+  let whiteDraw = "";
+  if (whiteLines.length) {
+    const txtWhite = path.join(outDir, `thumb-${stamp}-white.txt`);
+    await writeFile(txtWhite, whiteLines.join("\n"), "utf8");
+    whiteDraw = `,drawtext=fontfile='${ffPath(fontFile)}':textfile='${ffPath(txtWhite)}':fontcolor=white:fontsize=${whiteSize}:line_spacing=6:borderw=7:bordercolor=black@0.95:x=(w-text_w)/2:y=h*0.60`;
+  }
+  const accentY = whiteLines.length ? "h-text_h-46" : "h*0.80";
 
   const filter =
     `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,` +
-    `eq=contrast=1.12:saturation=1.25:brightness=0.01,` +
-    `drawbox=x=0:y=ih*0.58:w=iw:h=ih*0.42:color=black@0.55:t=fill,` +
-    `drawbox=x=iw*0.045:y=ih*0.79:w=iw*0.11:h=ih*0.045:color=${accent}@0.95:t=fill,` +
-    `drawtext=fontfile='${ffPath(fontFile)}':textfile='${ffPath(txt)}':fontcolor=white:fontsize=56:line_spacing=8:borderw=6:bordercolor=black@0.9:x=(w-text_w)/2:y=h*0.79`;
+    `eq=contrast=1.2:saturation=1.4:brightness=0.01,` +
+    `drawbox=x=0:y=ih*0.55:w=iw:h=ih*0.08:color=black@0.12:t=fill,` +
+    `drawbox=x=0:y=ih*0.63:w=iw:h=ih*0.12:color=black@0.30:t=fill,` +
+    `drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=black@0.62:t=fill` +
+    whiteDraw +
+    `,drawtext=fontfile='${ffPath(fontFile)}':textfile='${ffPath(txtAccent)}':fontcolor=${accent}:fontsize=${accentSize}:borderw=9:bordercolor=black@1.0:x=(w-text_w)/2:y=${accentY}`;
 
   await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-loop", "1", "-i", stillSource, "-frames:v", "1", "-vf", filter, out]);
 

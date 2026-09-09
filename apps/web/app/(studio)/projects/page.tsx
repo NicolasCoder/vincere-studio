@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { COST_MODES, FORMATS, STAGE_META, formatList, type Stage, type VideoFormat } from "@docupulse/core";
+import { COST_MODES, FORMATS, STAGES, STAGE_META, formatList, type Stage, type VideoFormat } from "@docupulse/core";
 import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
@@ -88,21 +88,30 @@ export default async function ProjectsPage() {
         </Card>
 
         <section>
-          <h2 className="mb-3 font-display text-lg font-semibold">Projetos ({projects.length})</h2>
-          <div className="grid grid-cols-3 gap-4">
-            {projects.map((p) => {
-              const stage = STAGE_META[p.stage as Stage];
+          <h2 className="mb-3 font-display text-lg font-semibold">Quadro de Produção ({projects.length})</h2>
+          <div className="grid grid-cols-5 gap-3">
+            {STAGES.map((stageKey) => {
+              const meta = STAGE_META[stageKey];
+              const col = projects.filter((p) => p.stage === stageKey);
               return (
-                <Link key={p.id} href={`/projects/${p.id}/${stage.href}`}>
-                  <Card className="h-full p-4 hover:border-line-glow" accent={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
-                    <div className="flex items-center justify-between">
-                      <Chip active tone={p.format === "SHORT_9_16" ? "violet" : "cyan"}>{FORMATS[p.format as VideoFormat].ratio}</Chip>
-                      <Badge tone="neutral">Passo {stage.step}</Badge>
-                    </div>
-                    <div className="mt-3 line-clamp-2 font-display font-semibold">{p.title}</div>
-                    <div className="mt-2 text-xs text-fg-secondary">{p.niche}</div>
-                  </Card>
-                </Link>
+                <div key={stageKey} className="min-w-0">
+                  <div className="mb-2 flex items-center justify-between px-1">
+                    <span className="label-mono flex items-center gap-1.5 text-fg-secondary"><Icon name={meta.step === 5 ? "task_alt" : "radio_button_unchecked"} className="text-[13px] text-primary-bright" />{meta.short}</span>
+                    <Badge tone="neutral">{col.length}</Badge>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    {col.length === 0 && <div className="rounded border border-dashed border-line p-4 text-center text-[11px] text-muted">vazio</div>}
+                    {col.map((p) => (
+                      <Link key={p.id} href={`/projects/${p.id}/${meta.href}`}>
+                        <Card className="h-full p-3 hover:border-line-glow" accent={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
+                          <Chip active tone={p.format === "SHORT_9_16" ? "violet" : "cyan"}>{FORMATS[p.format as VideoFormat].ratio}</Chip>
+                          <div className="mt-2 line-clamp-3 text-sm font-display font-semibold leading-snug">{p.title}</div>
+                          <div className="mt-1.5 line-clamp-1 text-[11px] text-fg-secondary">{p.niche}</div>
+                        </Card>
+                      </Link>
+                    ))}
+                  </div>
+                </div>
               );
             })}
           </div>

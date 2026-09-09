@@ -2,6 +2,7 @@ import Link from "next/link";
 import { Badge, Button, Card, Chip, Icon, Stat } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { fmtDuration, parseJson } from "@/lib/data";
+import { generateSeoMetadata } from "./actions";
 
 export default async function PublishedPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -9,6 +10,7 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
   const pub = project.publications[0];
   const stats = parseJson<{ views?: number; ctr?: number; avgViewDuration?: number }>(pub?.stats, {});
   const tags = parseJson<string[]>(pub?.tags, []);
+  const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
 
   return (
     <>
@@ -16,7 +18,16 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
       <main className="p-6">
         <div className="flex items-start justify-between gap-6">
           <div>
-            <div className="flex items-center gap-2"><Badge tone="success" pill dot>Publicado com sucesso</Badge><span className="font-mono text-[11px] text-muted">custo total US$ {project.costUsd.toFixed(2)}</span></div>
+            <div className="flex items-center gap-2">
+              {pub?.publishedAt ? (
+                <Badge tone="success" pill dot>Publicado com sucesso</Badge>
+              ) : pub ? (
+                <Badge tone="warning" pill dot>Metadados prontos · aguardando publicação manual</Badge>
+              ) : (
+                <Badge tone="neutral" pill dot>Ainda sem metadados de SEO</Badge>
+              )}
+              <span className="font-mono text-[11px] text-muted">custo total US$ {project.costUsd.toFixed(2)}</span>
+            </div>
             <h1 className="mt-2 max-w-3xl font-display text-3xl font-semibold leading-tight">{pub?.title ?? project.title}</h1>
             <div className="mt-3 flex flex-wrap gap-2"><Chip icon="timer">{fmtDuration(project.targetDuration)}</Chip><Chip icon="hd">1080p H.264</Chip><Chip icon="subtitles">Legendas sincronizadas</Chip></div>
           </div>
@@ -47,9 +58,24 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
           </div>
           <aside className="space-y-4">
             <Card className="p-4">
-              <h3 className="font-display font-semibold"><Icon name="auto_awesome" className="mr-1 align-middle text-primary-bright" />SEO & Metadados</h3>
-              <div className="mt-3 text-xs"><div className="label-mono text-muted">Descrição</div><p className="mt-1 line-clamp-5 text-fg-secondary">{pub?.description || "—"}</p></div>
+              <div className="flex items-center justify-between">
+                <h3 className="font-display font-semibold"><Icon name="auto_awesome" className="mr-1 align-middle text-primary-bright" />SEO & Metadados</h3>
+                <form action={generateSeoMetadata.bind(null, project.id)}>
+                  <Button type="submit" size="sm" variant={pub ? "ghost" : "primary"} icon="auto_awesome">
+                    {pub ? "Regerar com IA" : "Gerar com IA"}
+                  </Button>
+                </form>
+              </div>
+              <div className="mt-3 text-xs"><div className="label-mono text-muted">Descrição</div><p className="mt-1 whitespace-pre-wrap text-fg-secondary">{pub?.description || "Gere título, descrição, tags e capítulos automaticamente a partir do roteiro."}</p></div>
               <div className="mt-3 flex flex-wrap gap-1">{tags.map((t) => <Chip key={t}>#{t}</Chip>)}</div>
+              {chapters.length > 0 && (
+                <div className="mt-3 text-xs">
+                  <div className="label-mono text-muted">Capítulos</div>
+                  <div className="mt-1 space-y-0.5 font-mono text-[11px] text-fg-secondary">
+                    {chapters.map((c, i) => <div key={i}>{c.time} · {c.label}</div>)}
+                  </div>
+                </div>
+              )}
             </Card>
             <Card className="p-4">
               <h3 className="font-display font-semibold">Próximos passos</h3>
