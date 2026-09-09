@@ -50,8 +50,9 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
                 {project.thumbnailPath ? (
                   <>
                     <img src={`/api/media/${project.thumbnailPath}`} alt={pub?.title ?? project.title} className="absolute inset-0 h-full w-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-void/70 via-transparent to-transparent" />
-                    <div className="absolute bottom-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div>
+                    <div className="absolute inset-x-0 top-0 bg-gradient-to-b from-void/80 to-transparent p-3">
+                      <div className="flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div>
+                    </div>
                   </>
                 ) : (
                   <div className="text-center"><div className="font-display text-3xl font-bold">{pub?.title ?? project.title}</div><div className="mt-2 font-mono text-xs text-fg-secondary">Gere a thumbnail no Passo 4 (Render) pra ela aparecer aqui</div><div className="mt-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div></div>
