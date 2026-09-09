@@ -26,6 +26,7 @@ import { runWorkflow, saveWorkflow } from "@/app/(studio)/workflow/actions";
 const EDGE_COLOR: Record<NodeKind, string> = {
   AVATAR: TONE.violet.handle,
   PRODUCT: TONE.cyan.handle,
+  SCENE: TONE.violet.handle,
   PROMPT: TONE.violet.handle,
   VOICE: TONE.amber.handle,
   RENDER: TONE.emerald.handle,
@@ -66,10 +67,12 @@ function buildFlowExport(nodes: CanvasNode[], edges: Edge[], name: string, workf
     const ctx = incoming(p.id);
     const avatar = ctx.find((n) => n.type === "AVATAR")?.data as Extract<WorkflowNodeData, { kind: "AVATAR" }> | undefined;
     const product = ctx.find((n) => n.type === "PRODUCT")?.data as Extract<WorkflowNodeData, { kind: "PRODUCT" }> | undefined;
+    const scene = ctx.find((n) => n.type === "SCENE")?.data as Extract<WorkflowNodeData, { kind: "SCENE" }> | undefined;
     const voice = ctx.find((n) => n.type === "VOICE")?.data as Extract<WorkflowNodeData, { kind: "VOICE" }> | undefined;
     lines.push(`=== Shot ${i + 1} — ${d.format} · ${d.fps}fps · motor sugerido: ${d.engine} ===`);
     if (avatar) lines.push(`Avatar: ${avatar.name} (${avatar.role}) — olhar: ${avatar.gaze}, expressão: ${avatar.expression}, pose: ${avatar.headPose}${avatar.imageUrl ? ` [imagem de referência: ${avatar.imageUrl}]` : " [sem imagem de referência anexada]"}`);
     if (product) lines.push(`Produto: ${product.name} — ${product.description} (luz: ${product.lighting}, interação: ${product.interaction})${product.imageUrl ? ` [imagem de referência: ${product.imageUrl}]` : " [sem imagem de referência anexada]"}`);
+    if (scene) lines.push(`Cenário: ${scene.name} — ${scene.description} (clima: ${scene.mood}, iluminação: ${scene.timeOfDay})`);
     lines.push("Prompt positivo:", d.positive || "(vazio)", "Prompt negativo:", d.negative || "(vazio)");
     if (voice) lines.push(`Roteiro de voz conectado (${voice.provider}, ${voice.durationSec}s): ${voice.script || "(vazio)"}`);
     lines.push("");
@@ -333,7 +336,7 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
             </div>
             <div className="flex items-center gap-2 border-l border-line pl-3">
               <span className="label-mono text-muted">Biblioteca rápida:</span>
-              {(["AVATAR", "PRODUCT", "VOICE", "RENDER"] as NodeKind[]).map((k) => (
+              {(["AVATAR", "PRODUCT", "SCENE", "VOICE", "RENDER"] as NodeKind[]).map((k) => (
                 <button key={k} onClick={() => addNode(k)} className="flex items-center gap-1 rounded border border-line bg-void/60 px-2 py-1 font-mono text-[11px] text-fg-secondary hover:border-line-glow hover:text-fg">
                   <Icon name={NODE_META[k].icon} className="text-[14px]" />{NODE_META[k].label.split(" ")[0]}
                 </button>

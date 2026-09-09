@@ -48,6 +48,7 @@ export async function runWorkflow(ctx: JobContext) {
     // 1ª passada: recolhe o que já temos de real (imagens de referência + roteiro de voz).
     let avatarImg: string | null = null;
     let productImg: string | null = null;
+    let sceneContext = "";
     let voiceScript = "";
     let voiceId = "pt-BR-FranciscaNeural";
     let voiceIdFallbackWarning: string | null = null;
@@ -60,6 +61,10 @@ export async function runWorkflow(ctx: JobContext) {
       if (node.type === "PRODUCT") {
         const d = node.data as Extract<WorkflowNodeData, { kind: "PRODUCT" }>;
         if (d.imageUrl) productImg = absPath(d.imageUrl);
+      }
+      if (node.type === "SCENE") {
+        const d = node.data as Extract<WorkflowNodeData, { kind: "SCENE" }>;
+        sceneContext = `Cenário: ${d.name} — ${d.description} (clima: ${d.mood}, iluminação: ${d.timeOfDay}).`;
       }
       if (node.type === "VOICE") {
         const d = node.data as Extract<WorkflowNodeData, { kind: "VOICE" }>;
@@ -95,6 +100,8 @@ export async function runWorkflow(ctx: JobContext) {
       if (node.type === "AVATAR" || node.type === "PRODUCT") {
         const hasImg = node.type === "AVATAR" ? !!avatarImg : !!productImg;
         await ctx.log(`[${node.type}] ${meta.label}: ${hasImg ? "imagem de referência anexada, usada na composição" : "sem imagem de referência (composição vira placeholder ou some, se faltar dos dois)"}`);
+      } else if (node.type === "SCENE") {
+        await ctx.log(`[${node.type}] ${meta.label}: ${sceneContext ? "descrição de cenário anexada ao prompt do node Prompt conectado" : "sem descrição preenchida"}`);
       } else if (node.type === "PROMPT") {
         const d = node.data as Extract<WorkflowNodeData, { kind: "PROMPT" }>;
         if (!d.positive?.trim()) {
@@ -103,8 +110,9 @@ export async function runWorkflow(ctx: JobContext) {
           const refs = [avatarImg, productImg].filter((p): p is string => !!p);
           try {
             const aspectRatio = /9:16|16:9|1:1/.exec(d.format ?? "")?.[0];
+            const prompt = [d.positive.trim(), sceneContext || null].filter(Boolean).join(" ");
             const result = await generateImageGemini({
-              prompt: d.positive.trim(),
+              prompt,
               negativePrompt: d.negative?.trim() || undefined,
               referenceImagePaths: refs,
               aspectRatio,

@@ -8,7 +8,7 @@ import { z } from "zod";
  * Tudo aqui é aditivo: não toca no pipeline de documentários.
  */
 
-export const NODE_KINDS = ["AVATAR", "PRODUCT", "PROMPT", "VOICE", "RENDER"] as const;
+export const NODE_KINDS = ["AVATAR", "PRODUCT", "SCENE", "PROMPT", "VOICE", "RENDER"] as const;
 export type NodeKind = (typeof NODE_KINDS)[number];
 
 export const AvatarData = z.object({
@@ -33,6 +33,14 @@ export const ProductData = z.object({
   reflection: z.string().default("HDRI Studio Velvet"),
 });
 
+export const SceneData = z.object({
+  kind: z.literal("SCENE"),
+  name: z.string().default("Estúdio Clean"),
+  description: z.string().default("Fundo neutro, luz suave difusa, superfície reflexiva discreta."),
+  mood: z.string().default("Bright & Premium"),
+  timeOfDay: z.string().default("Luz de estúdio (indoor)"),
+});
+
 export const PromptData = z.object({
   kind: z.literal("PROMPT"),
   format: z.string().default("9:16 UGC Commercial"),
@@ -42,6 +50,9 @@ export const PromptData = z.object({
   engine: z.string().default("Veo / Wan 2.1"),
   motionStrength: z.number().min(0).max(1).default(0.78),
   steps: z.number().default(35),
+  /** relPath (storage/…) do último keyframe gerado de fato via prévia sob demanda (botão
+   * "Gerar Keyframe" no node) — cache visual, não interfere na geração da execução completa. */
+  keyframeUrl: z.string().optional(),
 });
 
 export const VoiceData = z.object({
@@ -71,7 +82,7 @@ export const RenderData = z.object({
   renderedAt: z.string().optional(),
 });
 
-export const WorkflowNodeData = z.discriminatedUnion("kind", [AvatarData, ProductData, PromptData, VoiceData, RenderData]);
+export const WorkflowNodeData = z.discriminatedUnion("kind", [AvatarData, ProductData, SceneData, PromptData, VoiceData, RenderData]);
 export type WorkflowNodeData = z.infer<typeof WorkflowNodeData>;
 
 export const WorkflowNode = z.object({
@@ -100,6 +111,7 @@ export type WorkflowEdge = z.infer<typeof WorkflowEdge>;
 export const NODE_META: Record<NodeKind, { label: string; icon: string; tone: "cyan" | "violet" | "amber" | "emerald"; description: string }> = {
   AVATAR: { label: "Avatar / IA Influencer", icon: "face_6", tone: "violet", description: "Apresentador digital consistente, olhar e expressão" },
   PRODUCT: { label: "Produto & Packshot 3D", icon: "shelves", tone: "cyan", description: "Objeto/produto com fidelidade e iluminação" },
+  SCENE: { label: "Cenário & Ambientação", icon: "landscape", tone: "violet", description: "Local, iluminação e clima da cena — contexto pro Prompt" },
   PROMPT: { label: "Prompt & Qualidade Visual", icon: "psychology", tone: "violet", description: "Prompt positivo/negativo, motor e parâmetros" },
   VOICE: { label: "Voz & Sincronização Labial", icon: "graphic_eq", tone: "amber", description: "Locução, voice ID e lip-sync" },
   RENDER: { label: "Renderizador Vertical", icon: "video_camera_front", tone: "emerald", description: "Composição final 9:16 (alvo do fluxo)" },
@@ -110,6 +122,7 @@ export function defaultNodeData(kind: NodeKind): WorkflowNodeData {
   switch (kind) {
     case "AVATAR": return AvatarData.parse({ kind });
     case "PRODUCT": return ProductData.parse({ kind });
+    case "SCENE": return SceneData.parse({ kind });
     case "PROMPT": return PromptData.parse({ kind });
     case "VOICE": return VoiceData.parse({ kind });
     case "RENDER": return RenderData.parse({ kind });
@@ -120,6 +133,7 @@ export function defaultNodeData(kind: NodeKind): WorkflowNodeData {
 export const ALLOWED_EDGES: Record<NodeKind, NodeKind[]> = {
   AVATAR: ["PROMPT", "VOICE", "RENDER"],
   PRODUCT: ["PROMPT", "RENDER"],
+  SCENE: ["PROMPT", "RENDER"],
   PROMPT: ["RENDER", "VOICE"],
   VOICE: ["RENDER"],
   RENDER: [],

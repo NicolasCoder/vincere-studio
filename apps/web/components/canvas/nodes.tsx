@@ -89,15 +89,64 @@ function ProductNode({ id, data, selected }: NodeProps<CanvasNode>) {
   );
 }
 
+function SceneNode({ id, data, selected }: NodeProps<CanvasNode>) {
+  const d = data as Extract<WorkflowNodeData, { kind: "SCENE" }> & { index?: number };
+  const set = useUpdate(id);
+  return (
+    <NodeShell kind="SCENE" index={d.index ?? 3} selected={selected}>
+      <input className="nodrag w-full bg-transparent font-display text-base font-semibold outline-none" value={d.name} onChange={(e) => set({ name: e.target.value })} />
+      <Field label="Descrição do cenário (contexto pro Prompt)" value={d.description} onChange={(v) => set({ description: v })} multiline mono={false} />
+      <div className="grid grid-cols-2 gap-2">
+        <Field label="Clima / Mood" value={d.mood} onChange={(v) => set({ mood: v })} />
+        <Field label="Iluminação / Hora" value={d.timeOfDay} onChange={(v) => set({ timeOfDay: v })} />
+      </div>
+    </NodeShell>
+  );
+}
+
+/** Prévia de keyframe sob demanda (botão "Gerar Keyframe") — chama a geração de imagem real
+ * (Gemini/Nano Banana) só pra esse nó, usando o Avatar/Produto/Cenário já conectados como
+ * contexto, sem precisar rodar o fluxo inteiro. Espelha o padrão de prévia do nó de Voz. */
+function usePromptKeyframe(nodeId: string, data: Extract<WorkflowNodeData, { kind: "PROMPT" }>, set: (patch: Record<string, unknown>) => void) {
+  const { workflowId } = useContext(WorkflowIdContext);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const generate = async () => {
+    setError(null);
+    setLoading(true);
+    try {
+      const res = await fetch(`/api/workflows/${workflowId}/keyframe-preview`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ nodeId, positive: data.positive, negative: data.negative, format: data.format }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || "falha ao gerar keyframe");
+      set({ keyframeUrl: json.imageUrl });
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setLoading(false);
+    }
+  };
+  return { generate, loading, error };
+}
+
 function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "PROMPT" }> & { index?: number };
   const set = useUpdate(id);
+  const { generate, loading, error } = usePromptKeyframe(id, d, set);
   return (
-    <NodeShell kind="PROMPT" index={d.index ?? 3} selected={selected} width={460}>
+    <NodeShell kind="PROMPT" index={d.index ?? 4} selected={selected} width={460}>
       <div className="flex gap-2">
         <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary-bright">{d.format}</span>
         <span className="rounded-sm border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] text-fg-secondary">{d.fps} FPS</span>
       </div>
+      {d.keyframeUrl && (
+        <div className="relative overflow-hidden rounded border border-line bg-void/60">
+          <img src={`/api/media/${d.keyframeUrl}`} alt="Keyframe" className="max-h-48 w-full object-contain" />
+        </div>
+      )}
       <Field label="Prompt Positivo (Comercial 9:16)" value={d.positive} onChange={(v) => set({ positive: v })} multiline mono={false} suffix={<span className="font-mono text-[10px] text-primary-bright">{d.positive.length} chars</span>} />
       <Field label="Prompt Negativo" value={d.negative} onChange={(v) => set({ negative: v })} mono={false} />
       <div className="grid grid-cols-2 gap-2">
@@ -105,6 +154,18 @@ function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
         <Field label="Motion Strength" value={d.motionStrength} onChange={(v) => set({ motionStrength: Number(v) || 0 })} />
       </div>
       <Field label="Sampling Steps" value={`${d.steps} Steps · Euler A`} />
+      <div className="nodrag flex items-center gap-2">
+        <button
+          type="button"
+          onClick={generate}
+          disabled={loading || !d.positive.trim()}
+          className="flex items-center gap-1 rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary-bright disabled:opacity-40"
+        >
+          <Icon name={loading ? "sync" : "auto_awesome"} className={loading ? "animate-spin text-[14px]" : "text-[14px]"} />
+          {loading ? "Gerando…" : d.keyframeUrl ? "Regenerar Keyframe" : "Gerar Keyframe (IA real)"}
+        </button>
+      </div>
+      {error && <div className="font-mono text-[10px] text-error">{error}</div>}
     </NodeShell>
   );
 }
@@ -143,7 +204,7 @@ function VoiceNode({ id, data, selected }: NodeProps<CanvasNode>) {
   };
 
   return (
-    <NodeShell kind="VOICE" index={d.index ?? 4} selected={selected}>
+    <NodeShell kind="VOICE" index={d.index ?? 5} selected={selected}>
       <div className="rounded border border-line bg-void/60 p-3">
         <div className="flex items-center justify-between font-mono text-[10px]">
           <span className="text-fg-secondary">EDGE TTS · PRÉVIA REAL</span>
@@ -217,6 +278,7 @@ function RenderNode({ data, selected }: NodeProps<CanvasNode>) {
 export const nodeTypes: NodeTypes = {
   AVATAR: AvatarNode,
   PRODUCT: ProductNode,
+  SCENE: SceneNode,
   PROMPT: PromptNode,
   VOICE: VoiceNode,
   RENDER: RenderNode,
