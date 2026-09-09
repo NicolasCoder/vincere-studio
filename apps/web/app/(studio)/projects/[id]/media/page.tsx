@@ -116,7 +116,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                   {b.scenes.length === 0 ? (
                     <div className="mt-2 rounded border border-dashed border-line p-3 text-center text-xs text-muted">Clique em "Planejar cenas & prompts" para dividir o ato em cenas no estilo {style.label}.</div>
                   ) : (
-                    <div className="mt-2 grid grid-cols-2 gap-2">
+                    <div className="mt-2 grid grid-cols-1 gap-2 sm:grid-cols-2">
                       {b.scenes.map((s) => (
                         <div key={s.id} className="flex gap-3 rounded border border-line bg-void/40 p-2">
                           <div className="relative h-16 w-24 shrink-0 overflow-hidden rounded border border-line bg-surface-low">
@@ -189,7 +189,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
 
             <Card className="p-4">
               <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Modo Flow</Badge></div>
-              <div className="mt-3 grid grid-cols-2 gap-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
               {scenes.length > 0 && <Progress value={scenes.length ? (ready / scenes.length) * 100 : 0} className="mt-3" />}
               <div className="mt-3 space-y-2">
                 {scenes.length > 0 && <a href={`/api/media/projects/${project.id}/prompts/flow-pack.md?download=1`}><Button icon="download" size="sm" className="w-full">Baixar pacote de prompts (Flow)</Button></a>}

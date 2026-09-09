@@ -46,7 +46,7 @@ export default async function ProjectsPage() {
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Select label="Tom Narrativo" icon="theater_comedy" name="tone" options={["Misterioso & Investigativo", "Épico & Cinematográfico", "Sombrio & Perturbador", "Científico & Curioso", "Frenético & Imersivo"]} />
               <Select label="Duração Estimada" icon="timer" name="targetDuration" options={[["900", "Long-form (12 – 15 min)"], ["1200", "Long-form (18 – 20 min)"], ["1500", "Long-form (25 min)"], ["60", "Short (60s)"], ["90", "Short (90s)"]]} />
               <Select label="Público-Alvo & Canal" icon="groups" name="audience" options={["Audiência Curiosa & Dark Channel", "Ciência & Tecnologia", "História & Arqueologia", "True Crime", "Finanças & Geopolítica"]} />
@@ -76,8 +76,8 @@ export default async function ProjectsPage() {
               ))}
             </div>
 
-            <div className="flex items-center gap-4 pt-2">
-              <Button type="submit" variant="primary" size="lg" icon="bolt" className="min-w-72">
+            <div className="flex flex-wrap items-center gap-4 pt-2">
+              <Button type="submit" variant="primary" size="lg" icon="bolt" className="w-full min-w-0 sm:w-auto sm:min-w-72">
                 Criar Projeto e Gerar Ideias
                 <span className="ml-2 rounded-sm bg-void/30 px-1.5 font-mono text-[10px] font-normal">Sprint 1: IA</span>
               </Button>
@@ -89,7 +89,7 @@ export default async function ProjectsPage() {
 
         <section>
           <h2 className="mb-3 font-display text-lg font-semibold">Quadro de Produção ({projects.length})</h2>
-          <div className="grid grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 gap-3 overflow-x-auto sm:grid-cols-2 lg:grid-cols-5">
             {STAGES.map((stageKey) => {
               const meta = STAGE_META[stageKey];
               const col = projects.filter((p) => p.stage === stageKey);

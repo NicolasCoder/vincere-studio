@@ -25,7 +25,7 @@ export default async function SkillsPage() {
 
         <Card className="p-5">
           <h3 className="font-display font-semibold"><Icon name="add_task" className="mr-1 align-middle text-primary-bright" />Salvar nova skill</h3>
-          <form action={addSkill} className="mt-3 grid grid-cols-2 gap-3">
+          <form action={addSkill} className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
             <div>
               <label className="label-mono mb-1 block text-muted">Título *</label>
               <input name="title" required placeholder="Gancho de mistério nuclear" className="field w-full px-3 py-2 text-sm" />
@@ -60,7 +60,7 @@ export default async function SkillsPage() {
             <p className="mt-3">Nenhuma skill salva ainda.</p>
           </Card>
         ) : (
-          <div className="grid grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             {skills.map((s) => (
               <Card key={s.id} className="p-4">
                 <div className="flex items-start justify-between gap-2">

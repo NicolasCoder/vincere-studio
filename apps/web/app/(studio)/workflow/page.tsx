@@ -20,13 +20,13 @@ export default async function WorkflowListPage() {
           title={<span className="flex items-center gap-3">Workflow Studio <Badge tone="cyan">NEW</Badge></span>}
           subtitle="Canvas de nós para criação manual e encadeada de comerciais e vídeos verticais (9:16). Arraste nós, conecte parâmetros e execute o fluxo."
           right={
-            <form action={createWorkflow} className="flex items-center gap-2">
-              <div className="field flex h-10 items-center px-3"><input name="name" placeholder="Nome do fluxo (ex.: Campanha Aura Serum)" className="w-72 bg-transparent text-sm outline-none placeholder:text-muted" /></div>
+            <form action={createWorkflow} className="flex flex-col gap-2 sm:flex-row sm:items-center">
+              <div className="field flex h-10 items-center px-3"><input name="name" placeholder="Nome do fluxo (ex.: Campanha Aura Serum)" className="w-full bg-transparent text-sm outline-none placeholder:text-muted sm:w-72" /></div>
               <Button type="submit" variant="primary" icon="add">Novo Fluxo</Button>
             </form>
           }
         />
-        <div className="grid grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {workflows.map((w) => {
             const g = parseJson<WorkflowGraph>(w.graph, { nodes: [], edges: [] });
             return (
@@ -45,7 +45,7 @@ export default async function WorkflowListPage() {
         </div>
         <Card className="p-5">
           <h3 className="font-display font-semibold">Biblioteca de nós</h3>
-          <div className="mt-3 grid grid-cols-5 gap-3">
+          <div className="mt-3 grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-5">
             {(Object.keys(NODE_META) as (keyof typeof NODE_META)[]).map((k) => <div key={k} className="rounded border border-line bg-void/40 p-3"><div className="flex items-center gap-2 font-display text-sm font-semibold"><Icon name={NODE_META[k].icon} className="text-primary-bright" />{NODE_META[k].label}</div><p className="mt-1 text-xs text-fg-secondary">{NODE_META[k].description}</p></div>)}
           </div>
         </Card>

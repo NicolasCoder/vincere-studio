@@ -20,7 +20,7 @@ const nav = [
 export function Sidebar({ docsCount, quotaUsed, quotaTotal }: { docsCount: number; quotaUsed: number; quotaTotal: number }) {
   const path = usePathname();
   return (
-    <aside className="fixed inset-y-0 left-0 z-20 flex w-sidebar flex-col border-r border-line bg-surface-low/95">
+    <aside className="fixed inset-y-0 left-0 z-30 flex w-sidebar -translate-x-full flex-col border-r border-line bg-surface-low transition-transform duration-200 peer-checked/nav:translate-x-0 lg:translate-x-0 lg:bg-surface-low/95">
       <Link href="/dashboard" className="flex items-center gap-3 px-6 py-5">
         <span className="grid size-9 place-items-center rounded border border-primary/40 bg-primary/10 text-primary-bright shadow-glow-cyan">
           <Icon name="play_circle" className="text-[22px]" />
@@ -31,6 +31,9 @@ export function Sidebar({ docsCount, quotaUsed, quotaTotal }: { docsCount: numbe
           </div>
           <div className="label-mono text-muted">Studio OS</div>
         </div>
+        <label htmlFor="mobile-nav-toggle" className="ml-auto grid size-8 place-items-center rounded text-fg-secondary hover:bg-line/40 hover:text-fg lg:hidden">
+          <Icon name="close" className="text-[18px]" />
+        </label>
       </Link>
 
       <nav className="mt-2 flex flex-col gap-1 px-3">

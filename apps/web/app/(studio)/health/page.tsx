@@ -28,14 +28,14 @@ export default async function HealthPage() {
           }
         />
 
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Último pulso do worker" value={fmtAge(health.heartbeatAgeMs)} tone={health.workerStatus === "offline" ? "error" : "fg"} />
           <Stat label="Na fila" value={health.queued} sub="aguardando" />
           <Stat label="Em execução" value={health.running} tone="cyan" />
           <Stat label="Falharam" value={health.failed} tone={health.failed > 0 ? "error" : "fg"} />
         </div>
 
-        <section className="grid grid-cols-2 gap-4">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-2">
           <Card className="p-5">
             <div className="flex items-center gap-2">
               <Icon name="report" className={health.stuckJobs.length ? "text-error" : "text-muted"} />

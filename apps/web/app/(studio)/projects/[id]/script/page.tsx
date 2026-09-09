@@ -112,7 +112,7 @@ export default async function ScriptPage({ params, searchParams }: { params: Pro
                     <BlockEditor narration={b.narration} title={b.title} action={saveBlock.bind(null, project.id, b.id)} disabled={busy || !isLatest} />
                   </div>
                   {(b.brollCue || b.soundCue) && (
-                    <div className="mt-3 grid grid-cols-2 gap-3">
+                    <div className="mt-3 grid grid-cols-1 gap-3 sm:grid-cols-2">
                       {b.brollCue && <Cue icon="videocam" label="Visual / B-Roll Cue" text={b.brollCue} />}
                       {b.soundCue && <Cue icon="music_note" label="Sound Design Cue" text={b.soundCue} />}
                     </div>
@@ -154,7 +154,7 @@ export default async function ScriptPage({ params, searchParams }: { params: Pro
             </Card>
             <Card className="p-4">
               <h3 className="font-display font-semibold">Métricas do Roteiro</h3>
-              <div className="mt-3 grid grid-cols-2 gap-2">
+              <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2">
                 <Stat label="Ritmo (Pacing)" value={metrics.pacing ?? "—"} sub={metrics.avgSentence ? `${metrics.avgSentence} palavras/frase` : "—"} />
                 <Stat label="Cortes B-Roll" value={`${format.cutPace.min}–${format.cutPace.max}s`} sub="Taxa ideal de troca" tone="fg" />
                 <Stat label="Perguntas" value={metrics.questions ?? "—"} sub="retóricas no texto" tone="violet" />

@@ -6,7 +6,7 @@ import { Icon, cn } from "@docupulse/ui";
 export function FormatSelector({ formats, defaultValue = "LONG_16_9" }: { formats: FormatSpec[]; defaultValue?: VideoFormat }) {
   const [value, setValue] = useState<VideoFormat>(defaultValue);
   return (
-    <div className="grid grid-cols-2 gap-3">
+    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
       <input type="hidden" name="format" value={value} />
       {formats.map((f) => {
         const active = f.id === value;

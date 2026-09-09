@@ -38,19 +38,19 @@ export default async function PublishedPage({ params }: { params: Promise<{ id: 
           </div>
         </div>
 
-        <div className="mt-6 grid grid-cols-[1fr_22rem] gap-6">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-4">
             <Card className="overflow-hidden" accent="dual">
               <div className="relative grid aspect-video place-items-center bg-gradient-to-br from-void via-surface-low to-primary/20">
                 <div className="text-center"><div className="font-display text-3xl font-bold">{pub?.title ?? project.title}</div><div className="mt-2 font-mono text-xs text-fg-secondary">Thumbnail gerada com IA aparece aqui (Sprint 5)</div><div className="mt-4 flex justify-center gap-2">{pub?.url && <a href={pub.url} target="_blank" rel="noreferrer"><Button variant="primary" icon="play_arrow">Assistir no YouTube</Button></a>}<Button icon="content_copy">Copiar Link</Button></div></div>
               </div>
-              <div className="grid grid-cols-3 divide-x divide-line border-t border-line text-xs">
+              <div className="grid grid-cols-1 divide-y divide-line border-t border-line text-xs sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div className="p-3"><div className="label-mono text-muted">URL oficial</div><div className="mt-1 truncate font-mono text-primary-bright">{pub?.url ?? "—"}</div></div>
                 <div className="p-3"><div className="label-mono text-muted">Video ID</div><div className="mt-1 font-mono">{pub?.videoId ?? "—"}</div></div>
                 <div className="p-3"><div className="label-mono text-muted">Publicado em</div><div className="mt-1 font-mono">{pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
               </div>
             </Card>
-            <div className="grid grid-cols-3 gap-4">
+            <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Stat label="Views" value={(stats.views ?? 0).toLocaleString("pt-BR")} sub="YouTube Analytics" />
               <Stat label="CTR" value={`${stats.ctr ?? 0}%`} sub="thumbnail ativa" tone="violet" />
               <Stat label="Duração média" value={fmtDuration(stats.avgViewDuration)} sub="retenção real" tone="fg" />

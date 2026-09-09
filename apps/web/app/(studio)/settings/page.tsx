@@ -59,7 +59,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
         </Card>
-        <div className="grid grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <Card className="p-5">
             <h3 className="font-display text-lg font-semibold">Provedores (chaves no .env)</h3>
             <p className="mt-1 text-xs text-fg-secondary">As chaves ficam no arquivo <code>.env</code> na raiz. Esta tela mostra se cada uma está presente.</p>

@@ -24,15 +24,15 @@ export default async function Dashboard() {
             </Link>
           }
         />
-        <div className="grid grid-cols-4 gap-4">
+        <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Projetos" value={projects.length} sub={`${published.length} publicados`} />
           <Stat label="Custo acumulado" value={`US$ ${usage.costUsd.toFixed(2)}`} sub={`${usage.entries} chamadas medidas`} tone="violet" />
           <Stat label="Views (YouTube)" value={views.toLocaleString("pt-BR")} sub="agregado dos publicados" />
           <Stat label="Fila do worker" value={jobs.filter((j) => j.status === "QUEUED" || j.status === "RUNNING").length} sub="jobs ativos" tone="fg" />
         </div>
 
-        <section className="grid grid-cols-3 gap-4">
-          <div className="col-span-2 space-y-3">
+        <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
+          <div className="space-y-3 lg:col-span-2">
             <h2 className="font-display text-lg font-semibold">Projetos recentes</h2>
             {projects.map((p) => {
               const f = FORMATS[p.format as VideoFormat];

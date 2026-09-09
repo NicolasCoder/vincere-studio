@@ -72,7 +72,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
           {project.ideas.length === 0 ? (
             !job && <Card className="mt-4 p-10 text-center text-sm text-muted">Nenhuma ideia ainda. Clique em "Gerar Ideias Magnéticas com IA".</Card>
           ) : (
-            <div className="mt-4 grid grid-cols-3 gap-4">
+            <div className="mt-4 grid grid-cols-1 gap-4 sm:grid-cols-3">
               {ideas.map((idea) => {
                 const lines = parseJson<string[]>(idea.hookLines, []);
                 return (
@@ -103,7 +103,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
                         {lines.map((l, i) => <li key={i}><span className="text-primary-bright">0{i + 1}:</span> <em>“{l}”</em></li>)}
                       </ol>
                     </div>
-                    <div className="mt-3 grid grid-cols-2 gap-3 text-xs">
+                    <div className="mt-3 grid grid-cols-1 gap-3 text-xs sm:grid-cols-2">
                       <div><div className="label-mono text-muted">Retenção Estimada</div><div className="mt-0.5"><span className="font-display text-base font-semibold text-primary-bright">{idea.retention30s}%</span> aos 30s</div></div>
                       <div><div className="label-mono text-muted">Ritmo de Edição</div><div className="mt-0.5 font-medium">{idea.editingPace}</div></div>
                     </div>

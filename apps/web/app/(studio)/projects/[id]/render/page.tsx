@@ -90,7 +90,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
 
             <Card className="p-5">
               <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="memory" className="mr-1 align-middle text-primary-bright" />Etapas do Render</h3><span className="font-mono text-xs text-fg-secondary">Local · FFmpeg · {current?.finishedAt ? "Concluído" : busy ? "Em execução" : "Aguardando"}</span></div>
-              <div className="mt-4 grid grid-cols-2 gap-3">
+              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
                 {STAGES.map(([n, d, at], i) => {
                   const done = progress >= at;
                   const active = !done && progress > (STAGES[i - 1]?.[2] ?? 0) - 1 && busy;
