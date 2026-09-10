@@ -198,6 +198,60 @@ export function findPhrase(words: { text: string }[], phrase: string): number {
   return -1;
 }
 
+export interface PlanSegment {
+  startMs: number;
+  endMs: number;
+  /** Inserções que caem neste segmento, com tempo já relativo ao início dele. */
+  insertions: EditInsertion[];
+}
+
+/** Respiro antes e depois da inserção, para a entrada e a saída da animação caberem. */
+export const SEGMENT_PAD_MS = 500;
+
+/**
+ * Divide o master nos trechos que precisam passar pelo Remotion.
+ *
+ * Renderizar o vídeo inteiro custa ~11x o tempo real nesta máquina; num vídeo de 11 minutos com
+ * 25 inserções, só ~19% dos frames têm camada visual. Os demais são reencodados direto pelo
+ * ffmpeg, que é ~3x tempo real com QuickSync — ordens de grandeza mais barato.
+ *
+ * Os segmentos saem sem sobreposição e em ordem; inserções vizinhas viram um segmento só, para
+ * não cortar no meio de uma animação.
+ */
+export function planSegments(insertions: EditInsertion[], totalMs: number, padMs = SEGMENT_PAD_MS): PlanSegment[] {
+  if (!insertions.length) return [];
+  const bounds = insertions
+    .map((i) => ({ start: Math.max(0, i.startMs - padMs), end: Math.min(totalMs, i.endMs + padMs) }))
+    .sort((a, b) => a.start - b.start);
+
+  const merged: { start: number; end: number }[] = [];
+  for (const b of bounds) {
+    const last = merged[merged.length - 1];
+    if (last && b.start <= last.end) last.end = Math.max(last.end, b.end);
+    else merged.push({ ...b });
+  }
+
+  return merged.map((m) => ({
+    startMs: m.start,
+    endMs: m.end,
+    insertions: insertions
+      .filter((i) => i.endMs > m.start && i.startMs < m.end)
+      .map((i) => ({ ...i, startMs: i.startMs - m.start, endMs: Math.min(i.endMs, m.end) - m.start })),
+  }));
+}
+
+/** Trechos entre os segmentos — o que é só reencodado, sem passar pelo Remotion. */
+export function passthroughRanges(segments: PlanSegment[], totalMs: number): { startMs: number; endMs: number }[] {
+  const out: { startMs: number; endMs: number }[] = [];
+  let cursor = 0;
+  for (const s of segments) {
+    if (s.startMs > cursor) out.push({ startMs: cursor, endMs: s.startMs });
+    cursor = s.endMs;
+  }
+  if (cursor < totalMs) out.push({ startMs: cursor, endMs: totalMs });
+  return out;
+}
+
 /**
  * Remove sobreposição temporal: inserções em paralelo brigariam pelo mesmo espaço de tela.
  * Mantém a primeira e encurta/descarta a seguinte. Assume a lista já ordenada por startMs.
