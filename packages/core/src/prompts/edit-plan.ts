@@ -2,7 +2,10 @@ import { z } from "zod";
 import { EDIT_LAYOUTS, LOWER_THIRD_STYLES } from "../edit-plan";
 
 // v2: passou a pedir evidencePrompt nos layouts de evidência — mudança real no formato da resposta.
-export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v2";
+// v3: regra do evidencePrompt endurecida. Na v2, 4 de 10 prompts se contradiziam — pediam
+// "papéis com texto datilografado e carimbos" e terminavam com "no text". Mandar acrescentar
+// "no text" no fim não impede o modelo de escolher um assunto que É feito de escrita.
+export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v3";
 
 export const InsertionSchema = z.object({
   trigger: z
@@ -22,7 +25,7 @@ export const InsertionSchema = z.object({
     .string()
     .nullable()
     .describe(
-      "SÓ quando layout = insert-arquivo ou split-evidencia. Prompt EM INGLÊS descrevendo a imagem da evidência a ser gerada: assunto concreto, ambiente, época, enquadramento, luz. Termine sempre com 'no text, no letters, no words, no people'. Nos demais layouts, null.",
+      "SÓ quando layout = insert-arquivo ou split-evidencia. Prompt EM INGLÊS descrevendo a imagem da evidência: assunto concreto, ambiente, época, enquadramento, luz. O assunto não pode ser feito de escrita (nada de texto datilografado, carimbo, manchete, tela com números). Termine com 'no text, no letters, no words, no people'. Nos demais layouts, null.",
     ),
 });
 export const EditPlanResponseSchema = z.object({ insertions: z.array(InsertionSchema) });
@@ -82,9 +85,11 @@ export function editPlanPrompt(opts: {
     "3. `primary` é texto de tela: no máximo ~6 palavras. Não repita a frase que está sendo narrada — complemente.",
     "4. Não invente fato, número, nome ou data que não esteja na narração.",
     "5. Só proponha `insert-arquivo` ou `split-evidencia` quando a narração descrever algo visualmente concreto e específico. Nesses dois casos, preencha `evidencePrompt` — a imagem será gerada a partir dele.",
-    "6. O `evidencePrompt` descreve um assunto FOTOGRÁFICO, não um documento com texto legível. Todo texto na tela é desenhado depois pelo editor, e texto gerado por IA sai ilegível. Se a fala cita um documento, descreva o objeto e o contexto (papel envelhecido sobre mesa, pasta aberta sob luz lateral), nunca o conteúdo escrito dele.",
-    "7. Não descreva pessoas reais identificáveis nem invente registro oficial como se fosse autêntico.",
-    opts.isLastAct ? "8. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
+    "6. No `evidencePrompt`, o ASSUNTO em si não pode ser feito de escrita. Não descreva documento com texto datilografado, carimbo, manchete, tarja cobrindo linhas, tela com números ou coordenadas, nem fonte de máquina de escrever — mesmo que você acrescente 'no text' no fim, porque a imagem sai com rabisco ilegível e denuncia a montagem.",
+    "7. Quando a fala citar um documento, fotografe o OBJETO, não a informação: pasta fechada sobre a mesa, pilha de papéis vista pela borda, envelope lacrado, papel virado para baixo, gaveta de arquivo aberta. Se precisar da folha à mostra, descreva-a em branco ou fora de foco a ponto de nada ser resolvível.",
+    "8. Não invente registro oficial como se fosse autêntico (nada de 'documento ultrassecreto', 'relatório do FBI') nem descreva pessoa real identificável. A imagem sugere o contexto; ela não é prova.",
+    "9. Termine sempre o `evidencePrompt` com: no text, no letters, no words, no people.",
+    opts.isLastAct ? "10. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
     "",
     "Retorne apenas o JSON.",
     "--- NARRAÇÃO ---",
