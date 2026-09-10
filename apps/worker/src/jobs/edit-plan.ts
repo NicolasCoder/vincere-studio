@@ -177,6 +177,12 @@ export async function generateEditPlan(ctx: JobContext) {
         primary: raw.primary,
         secondary: raw.secondary ?? undefined,
         note: raw.note,
+        // Só faz sentido nos layouts que mostram evidência; nos demais o modelo às vezes preenche
+        // por hábito, e guardar isso confundiria a revisão.
+        evidencePrompt:
+          raw.layout === "insert-arquivo" || raw.layout === "split-evidencia"
+            ? (raw.evidencePrompt?.trim() || undefined)
+            : undefined,
         resolved: ok,
       });
     });

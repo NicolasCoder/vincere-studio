@@ -7,7 +7,7 @@ import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
 import { getUsageSummary, fmtMs } from "@/lib/data";
-import { generateEditPlan } from "./actions";
+import { generateEditPlan, generateEvidences } from "./actions";
 
 const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
   "lower-third": "cyan",
@@ -52,6 +52,7 @@ export default async function EditPlanPage({
   const ready = blocks.length > 0 && captioned === blocks.length;
   const data: EditPlanData | null = plan ? (JSON.parse(plan.data) as EditPlanData) : null;
   const overLight = (data?.insertions ?? []).filter(needsOpaquePlate).length;
+  const comEvidencia = (data?.insertions ?? []).filter((i) => i.evidencePrompt).length;
   const byAct = new Map<number, EditPlanData["insertions"]>();
   for (const ins of data?.insertions ?? []) {
     if (!byAct.has(ins.act)) byAct.set(ins.act, []);
@@ -113,6 +114,33 @@ export default async function EditPlanPage({
             <strong>{plan.unresolved}</strong> inserção(ões) sem tempo confirmado: a frase-gatilho proposta pela IA não
             foi encontrada palavra por palavra no áudio alinhado, então o tempo dessas caiu num chute proporcional.
             Elas aparecem marcadas abaixo e não devem ser renderizadas sem revisão.
+          </Card>
+        )}
+
+        {data && comEvidencia > 0 && (
+          <Card className="p-5">
+            <h3 className="font-display font-semibold">
+              <Icon name="image_search" className="mr-1 align-middle text-primary-bright" />
+              Evidências propostas
+            </h3>
+            <p className="mt-1 text-[11px] text-fg-secondary">
+              <strong>{comEvidencia}</strong> inserção(ões) de arquivo pedem uma imagem de evidência que ainda não
+              existe. O plano escreveu o prompt de cada uma a partir da narração — gerar é decisão sua, porque custa
+              crédito no motor pago e tempo no grátis.
+            </p>
+            <form action={generateEvidences.bind(null, project.id)} className="mt-3 flex flex-wrap items-center gap-2">
+              <select name="engine" defaultValue="POLLINATIONS" className="field px-3 py-2 text-sm">
+                <option value="POLLINATIONS" className="bg-surface-low">
+                  Pollinations — grátis
+                </option>
+                <option value="GEMINI" className="bg-surface-low">
+                  Gemini / Nano Banana — pago
+                </option>
+              </select>
+              <Button type="submit" icon="auto_awesome" variant="primary">
+                Gerar {comEvidencia} evidência(s)
+              </Button>
+            </form>
           </Card>
         )}
 
@@ -182,6 +210,11 @@ export default async function EditPlanPage({
                       <span className="text-fg-secondary">gatilho:</span> “{ins.trigger}”
                     </p>
                     {ins.note && <p className="mt-1 text-[11px] italic text-muted">{ins.note}</p>}
+                    {ins.evidencePrompt && (
+                      <p className="mt-2 rounded border border-line bg-void/40 p-2 text-[10px] text-fg-secondary">
+                        <span className="text-primary-bright">evidência a gerar:</span> {ins.evidencePrompt}
+                      </p>
+                    )}
                   </div>
                 ))}
               </div>

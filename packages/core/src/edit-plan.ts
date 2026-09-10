@@ -60,6 +60,14 @@ export interface EditInsertion {
   /** Derivado de backdropLuma: o que está atrás da inserção é claro ou escuro. */
   backdrop?: Backdrop;
   /**
+   * Só em insert-arquivo e split-evidencia: prompt (em inglês) da imagem de evidência que o
+   * layout precisa. O plano propõe a evidência, mas gerar é decisão à parte — quem dispara é o
+   * botão na revisão, para não gastar sem escolha.
+   */
+  evidencePrompt?: string;
+  /** Caminho relativo da evidência já gerada (GeneratedImage.filePath), quando existir. */
+  evidencePath?: string;
+  /**
    * false quando o trigger não casou com nenhuma palavra do áudio alinhado e o tempo
    * caiu num fallback. Inserção não resolvida NÃO deve ser renderizada sem revisão.
    */

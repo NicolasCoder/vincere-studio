@@ -1,7 +1,8 @@
 import { z } from "zod";
 import { EDIT_LAYOUTS, LOWER_THIRD_STYLES } from "../edit-plan";
 
-export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v1";
+// v2: passou a pedir evidencePrompt nos layouts de evidência — mudança real no formato da resposta.
+export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v2";
 
 export const InsertionSchema = z.object({
   trigger: z
@@ -17,6 +18,12 @@ export const InsertionSchema = z.object({
   primary: z.string().describe("Texto principal na tela. Curto — cabe em uma linha. Sem ponto final."),
   secondary: z.string().nullable().describe("Linha de apoio, quando fizer sentido. Curta."),
   note: z.string().describe("Uma frase: por que esta inserção ajuda o espectador neste ponto."),
+  evidencePrompt: z
+    .string()
+    .nullable()
+    .describe(
+      "SÓ quando layout = insert-arquivo ou split-evidencia. Prompt EM INGLÊS descrevendo a imagem da evidência a ser gerada: assunto concreto, ambiente, época, enquadramento, luz. Termine sempre com 'no text, no letters, no words, no people'. Nos demais layouts, null.",
+    ),
 });
 export const EditPlanResponseSchema = z.object({ insertions: z.array(InsertionSchema) });
 
@@ -74,8 +81,10 @@ export function editPlanPrompt(opts: {
     "2. Uma inserção por ideia. Não repita a mesma informação em dois momentos.",
     "3. `primary` é texto de tela: no máximo ~6 palavras. Não repita a frase que está sendo narrada — complemente.",
     "4. Não invente fato, número, nome ou data que não esteja na narração.",
-    "5. Só proponha `insert-arquivo` ou `split-evidencia` quando a narração descrever algo visualmente concreto e específico.",
-    opts.isLastAct ? "6. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
+    "5. Só proponha `insert-arquivo` ou `split-evidencia` quando a narração descrever algo visualmente concreto e específico. Nesses dois casos, preencha `evidencePrompt` — a imagem será gerada a partir dele.",
+    "6. O `evidencePrompt` descreve um assunto FOTOGRÁFICO, não um documento com texto legível. Todo texto na tela é desenhado depois pelo editor, e texto gerado por IA sai ilegível. Se a fala cita um documento, descreva o objeto e o contexto (papel envelhecido sobre mesa, pasta aberta sob luz lateral), nunca o conteúdo escrito dele.",
+    "7. Não descreva pessoas reais identificáveis nem invente registro oficial como se fosse autêntico.",
+    opts.isLastAct ? "8. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
     "",
     "Retorne apenas o JSON.",
     "--- NARRAÇÃO ---",

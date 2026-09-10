@@ -5,7 +5,7 @@ import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary } from "@/lib/data";
 
-type Kind = "scene" | "thumbnail" | "render";
+type Kind = "scene" | "thumbnail" | "render" | "generated";
 
 interface Asset {
   id: string;
@@ -19,8 +19,9 @@ interface Asset {
   niche: string;
 }
 
-const KIND_LABEL: Record<Kind, string> = { scene: "Cena", thumbnail: "Miniatura", render: "Render" };
-const KIND_ICON: Record<Kind, string> = { scene: "image", thumbnail: "photo_size_select_actual", render: "movie" };
+const KIND_LABEL: Record<Kind, string> = { scene: "Cena", thumbnail: "Miniatura", render: "Render", generated: "Gerada" };
+const KIND_ICON: Record<Kind, string> = { scene: "image", thumbnail: "photo_size_select_actual", render: "movie", generated: "auto_awesome" };
+const KINDS: Kind[] = ["scene", "generated", "thumbnail", "render"];
 
 function buildHref(params: { q?: string; type?: string; niche?: string }) {
   const sp = new URLSearchParams();
@@ -34,7 +35,7 @@ function buildHref(params: { q?: string; type?: string; niche?: string }) {
 export default async function AssetsPage({ searchParams }: { searchParams: Promise<{ q?: string; type?: string; niche?: string }> }) {
   const { q, type, niche } = await searchParams;
 
-  const [usage, scenes, thumbnails, renders] = await Promise.all([
+  const [usage, scenes, thumbnails, renders, generated] = await Promise.all([
     getUsageSummary(),
     prisma.scene.findMany({
       where: { filePath: { not: null } },
@@ -61,6 +62,11 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
       where: { outputPath: { not: null } },
       select: { id: true, outputPath: true, profile: true, project: { select: { id: true, title: true, niche: true } } },
       orderBy: { finishedAt: "desc" },
+    }),
+    prisma.generatedImage.findMany({
+      select: { id: true, filePath: true, prompt: true, engine: true, project: { select: { id: true, title: true, niche: true } } },
+      orderBy: { createdAt: "desc" },
+      take: 400,
     }),
   ]);
 
@@ -102,10 +108,22 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
         projectTitle: r.project!.title,
         niche: r.project!.niche,
       })),
+    ...generated.map((g) => ({
+      id: `gen-${g.id}`,
+      kind: "generated" as const,
+      mediaType: "image" as const,
+      src: `/api/media/${g.filePath}`,
+      poster: null,
+      // O prompt é o que identifica uma imagem gerada — sem ele viram todas iguais na busca.
+      label: [g.engine === "GEMINI" ? "Gemini" : "Pollinations", g.prompt].filter(Boolean).join(" · "),
+      projectId: g.project.id,
+      projectTitle: g.project.title,
+      niche: g.project.niche,
+    })),
   ];
 
   const niches = Array.from(new Set(assets.map((a) => a.niche))).sort();
-  const activeType = (type === "scene" || type === "thumbnail" || type === "render" ? type : "all") as Kind | "all";
+  const activeType = ((KINDS as string[]).includes(type ?? "") ? type : "all") as Kind | "all";
   const qLower = q?.trim().toLowerCase();
 
   const filtered = assets.filter((a) => {
@@ -115,7 +133,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
     return true;
   });
 
-  const counts: Record<Kind, number> = { scene: 0, thumbnail: 0, render: 0 };
+  const counts: Record<Kind, number> = { scene: 0, thumbnail: 0, render: 0, generated: 0 };
   for (const a of assets) counts[a.kind]++;
 
   return (
@@ -125,7 +143,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
         <PageHeader
           icon="video_library"
           title="Media Assets"
-          subtitle="Tudo que já foi gerado ou baixado (cenas, miniaturas, renders) numa biblioteca só, pra achar e reaproveitar entre projetos sem gerar de novo do zero."
+          subtitle="Tudo que já foi gerado ou baixado (cenas, imagens geradas, miniaturas, renders) numa biblioteca só, pra achar e reaproveitar entre projetos sem gerar de novo do zero."
         />
 
         <Card className="p-4">
@@ -161,7 +179,7 @@ export default async function AssetsPage({ searchParams }: { searchParams: Promi
             >
               Todos · {assets.length}
             </Link>
-            {(["scene", "thumbnail", "render"] as Kind[]).map((k) => (
+            {KINDS.map((k) => (
               <Link
                 key={k}
                 href={buildHref({ q, niche, type: k })}
