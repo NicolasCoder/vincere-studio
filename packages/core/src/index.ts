@@ -7,3 +7,5 @@ export * from "./prompts/script";
 export * from "./retention";
 export * from "./visual-styles";
 export * from "./prompts/scenes";
+export * from "./edit-plan";
+export * from "./prompts/edit-plan";

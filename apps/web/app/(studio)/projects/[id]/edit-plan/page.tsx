@@ -1,0 +1,194 @@
+import Link from "next/link";
+import { notFound } from "next/navigation";
+import { prisma } from "@docupulse/db";
+import { LAYOUT_META, needsOpaquePlate, type EditLayout, type EditPlanData } from "@docupulse/core";
+import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
+import { Topbar } from "@/components/Topbar";
+import { PageHeader } from "@/components/PageHeader";
+import { JobWatcher } from "@/components/JobWatcher";
+import { getUsageSummary, fmtMs } from "@/lib/data";
+import { generateEditPlan } from "./actions";
+
+const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
+  "lower-third": "cyan",
+  "overlay-dado": "violet",
+  "insert-arquivo": "success",
+  "split-evidencia": "warning",
+  "graphic-fullscreen": "neutral",
+};
+
+export default async function EditPlanPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ job?: string }>;
+}) {
+  const { id } = await params;
+  const { job } = await searchParams;
+  const [usage, project, plan] = await Promise.all([
+    getUsageSummary(),
+    prisma.project.findUnique({
+      where: { id },
+      include: {
+        scripts: {
+          orderBy: { version: "desc" },
+          take: 1,
+          include: {
+            blocks: {
+              orderBy: [{ act: "asc" }, { order: "asc" }],
+              include: { voiceTracks: { take: 1, include: { captions: { select: { id: true } } } } },
+            },
+          },
+        },
+      },
+    }),
+    prisma.editPlan.findFirst({ where: { projectId: id }, orderBy: { version: "desc" } }),
+  ]);
+  if (!project) notFound();
+
+  const blocks = project.scripts[0]?.blocks ?? [];
+  const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
+  const ready = blocks.length > 0 && captioned === blocks.length;
+  const data: EditPlanData | null = plan ? (JSON.parse(plan.data) as EditPlanData) : null;
+  const overLight = (data?.insertions ?? []).filter(needsOpaquePlate).length;
+  const byAct = new Map<number, EditPlanData["insertions"]>();
+  for (const ins of data?.insertions ?? []) {
+    if (!byAct.has(ins.act)) byAct.set(ins.act, []);
+    byAct.get(ins.act)!.push(ins);
+  }
+
+  return (
+    <>
+      <Topbar crumbs={["Projetos", project.title, "Plano de Edição"]} costUsd={usage.costUsd} />
+      {job && <JobWatcher jobId={job} label="Gerando plano de edição" />}
+      <main className="space-y-6 p-6">
+        <PageHeader
+          icon="auto_awesome_mosaic"
+          title="Plano de Edição (camada visual DVP)"
+          subtitle="O que entra POR CIMA do master já renderizado — lower thirds, destaques de dado, intertítulos. Nada é renderizado aqui: este é o plano para você revisar."
+        />
+
+        <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
+          <div className="flex flex-wrap gap-2">
+            <Chip icon="subtitles" active={ready}>
+              {captioned}/{blocks.length} atos com legendas alinhadas
+            </Chip>
+            {data && <Chip icon="layers">{data.insertions.length} inserções</Chip>}
+            {data && <Chip icon="timer">{fmtMs(data.totalMs)} de master</Chip>}
+            {data && overLight > 0 && (
+              <Chip icon="contrast" active>
+                {overLight} sobre fundo claro
+              </Chip>
+            )}
+            {plan && <Chip icon="history">v{plan.version}</Chip>}
+          </div>
+          <form action={generateEditPlan.bind(null, project.id)}>
+            <Button
+              type="submit"
+              variant="primary"
+              icon="auto_awesome"
+              disabled={!ready}
+              title={ready ? "" : "Alinhe as legendas de todos os atos no Passo 3"}
+            >
+              {plan ? "Gerar novo plano" : "Gerar plano com IA"}
+            </Button>
+          </form>
+        </Card>
+
+        {!ready && (
+          <Card className="p-5 text-sm text-warning">
+            <Icon name="warning" className="mr-1 align-middle" />
+            O plano depende do tempo real de cada palavra. Rode o alinhamento de legendas no{" "}
+            <Link href={`/projects/${id}/media`} className="underline">
+              Passo 3 (Mídia)
+            </Link>{" "}
+            antes de gerar.
+          </Card>
+        )}
+
+        {plan && data && plan.unresolved > 0 && (
+          <Card className="p-5 text-sm text-warning">
+            <Icon name="error_outline" className="mr-1 align-middle" />
+            <strong>{plan.unresolved}</strong> inserção(ões) sem tempo confirmado: a frase-gatilho proposta pela IA não
+            foi encontrada palavra por palavra no áudio alinhado, então o tempo dessas caiu num chute proporcional.
+            Elas aparecem marcadas abaixo e não devem ser renderizadas sem revisão.
+          </Card>
+        )}
+
+        {data && overLight > 0 && (
+          <Card className="p-5 text-sm text-warning">
+            <Icon name="contrast" className="mr-1 align-middle" />
+            <strong>{overLight}</strong> inserção(ões) caem sobre um trecho claro do master (luma medida
+            acima de 110 no frame real). Nelas, o estilo transparente (Emocional) some — precisam de
+            placa opaca (Autoridade, sobre metal escovado) ou texto escuro.
+          </Card>
+        )}
+
+        {data && (
+          <Card className="p-5">
+            <h3 className="font-display font-semibold">
+              <Icon name="crop_free" className="mr-1 align-middle text-primary-bright" />
+              Zona segura
+            </h3>
+            <p className="mt-1 text-[11px] text-fg-secondary">
+              As legendas do master são queimadas no vídeo — não dá para movê-las. Faixa proibida para qualquer
+              inserção: <strong className="font-mono">{data.safeZone.fromPct}%–{data.safeZone.toPct}%</strong> da altura
+              do quadro. {data.safeZone.note}
+            </p>
+          </Card>
+        )}
+
+        {!data ? (
+          <Card className="grid place-items-center p-16 text-center text-sm text-muted">
+            <Icon name="auto_awesome_mosaic" className="text-[40px]" />
+            <p className="mt-3">Nenhum plano gerado ainda.</p>
+          </Card>
+        ) : (
+          [...byAct.entries()].map(([act, list]) => (
+            <Card key={act} className="p-5">
+              <h3 className="font-display font-semibold">
+                Ato {act}
+                <span className="ml-2 font-mono text-[11px] font-normal text-muted">{list.length} inserção(ões)</span>
+              </h3>
+              <div className="mt-3 grid grid-cols-1 gap-3">
+                {list.map((ins) => (
+                  <div
+                    key={ins.id}
+                    className={`rounded border p-3 ${ins.resolved ? "border-line bg-void/40" : "border-warning/40 bg-warning/5"}`}
+                  >
+                    <div className="flex flex-wrap items-center gap-2">
+                      <Badge tone={LAYOUT_TONE[ins.layout]}>{LAYOUT_META[ins.layout].label}</Badge>
+                      {ins.lowerThirdStyle && <Badge tone="neutral">{ins.lowerThirdStyle}</Badge>}
+                      <span className="font-mono text-[11px] text-muted">
+                        {fmtMs(ins.startMs)} – {fmtMs(ins.endMs)}
+                      </span>
+                      {!ins.resolved && (
+                        <Badge tone="warning">
+                          <Icon name="error_outline" className="mr-1 align-middle text-[13px]" />
+                          tempo não confirmado
+                        </Badge>
+                      )}
+                      {ins.backdrop && (
+                        <Badge tone={ins.backdrop === "light" ? "warning" : "neutral"}>
+                          <Icon name="contrast" className="mr-1 align-middle text-[13px]" />
+                          fundo {ins.backdrop === "light" ? "claro" : "escuro"} · luma {ins.backdropLuma}
+                        </Badge>
+                      )}
+                    </div>
+                    <div className="mt-1.5 font-display text-sm font-semibold">{ins.primary}</div>
+                    {ins.secondary && <div className="text-[12px] text-fg-secondary">{ins.secondary}</div>}
+                    <p className="mt-2 text-[11px] text-muted">
+                      <span className="text-fg-secondary">gatilho:</span> “{ins.trigger}”
+                    </p>
+                    {ins.note && <p className="mt-1 text-[11px] italic text-muted">{ins.note}</p>}
+                  </div>
+                ))}
+              </div>
+            </Card>
+          ))
+        )}
+      </main>
+    </>
+  );
+}

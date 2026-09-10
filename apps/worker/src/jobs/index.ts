@@ -12,6 +12,7 @@ import { previewVoice } from "./preview-voice";
 import { renderVideo } from "./render-video";
 import { generateThumbnail } from "./generate-thumbnail";
 import { publishYoutube } from "./publish-youtube";
+import { generateEditPlan } from "./edit-plan";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -38,4 +39,5 @@ export const handlers: Record<JobType, JobHandler> = {
   GENERATE_SCENE_PROMPTS: generateScenePrompts,
   IMPORT_INBOX: importInbox,
   PREVIEW_VOICE: previewVoice,
+  GENERATE_EDIT_PLAN: generateEditPlan,
 };

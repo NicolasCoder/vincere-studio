@@ -9,3 +9,22 @@ storage/*
 !storage/.gitkeep
 .DS_Store
 _incoming/
+
+# Scripts e logs de diagnóstico local (convenção: prefixo _)
+_*
+
+# Entregas e previews gerados — grandes e reproduzíveis
+Claude outputs/
+
+# Skills instaladas: reinstaláveis a partir do skills-lock.json
+.agents/
+.claude/
+
+# Editor-IA (camada visual): código versiona, material e saída não.
+# O master entra em Projetos/, o vídeo pronto sai em Edições/, e o public/masters
+# guarda cópias de trecho do master — tudo grande e regerável.
+Edição/Projetos/
+Edição/Edições/
+editor-ia/public/masters/
+# Cópia derivada de Edição/Assets/props — recriar com `npm run sync-assets`
+editor-ia/public/props/

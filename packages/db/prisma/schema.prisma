@@ -262,6 +262,25 @@ model ScriptSkill {
   createdAt DateTime @default(now())
 }
 
+/// Plano de edição: camada visual (lower thirds, destaques, intertítulos) que entra POR CIMA
+/// do master já renderizado. Gerado pelo job GENERATE_EDIT_PLAN a partir do roteiro + legendas
+/// alinhadas. Uma versão por geração; a mais recente é a que vale. Ver Edição/EDITOR_IA.md.
+model EditPlan {
+  id            String   @id @default(cuid())
+  projectId     String
+  scriptId      String
+  version       Int      @default(1)
+  promptVersion String?
+  model         String?
+  /// JSON EditPlanData (@docupulse/core)
+  data          String   @default("{}")
+  insertions    Int      @default(0)
+  unresolved    Int      @default(0)
+  createdAt     DateTime @default(now())
+
+  @@index([projectId, version])
+}
+
 /// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @docupulse/core WorkflowGraph).
 model Workflow {
   id        String   @id @default(cuid())

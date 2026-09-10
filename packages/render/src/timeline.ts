@@ -57,6 +57,12 @@ export interface Timeline {
   musicFile?: string | null;
 }
 
+/**
+ * Silêncio entre atos no master. Quem calcula timecode absoluto (legendas, plano de edição)
+ * precisa usar exatamente este valor — divergir aqui desalinha tudo a partir do ato 2.
+ */
+export const ACT_GAP_MS = 350;
+
 /** Reescala as durações das cenas para somarem exatamente a duração da voz do ato. */
 export function fitScenesToVoice(scenes: TimelineScene[], voiceMs: number, minSceneMs = 1500): TimelineScene[] {
   if (!scenes.length) return [{ id: "card", file: null, mediaType: "image", durationMs: voiceMs, motion: "static", title: "" }];

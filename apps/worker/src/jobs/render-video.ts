@@ -4,7 +4,7 @@ import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, getVisualStyle, type VideoFormat } from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
-import { borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
+import { ACT_GAP_MS, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
 // Quantos renders finais (mp4) manter por projeto — os mais antigos são apagados
@@ -101,7 +101,7 @@ export async function renderVideo(ctx: JobContext) {
     await ctx.log(`Trilha procedural: ${path.basename(musicFile)}`);
   }
 
-  const timeline: Timeline = { acts, gapMs: 350, musicFile };
+  const timeline: Timeline = { acts, gapMs: ACT_GAP_MS, musicFile };
   const missing = acts.reduce((s, a) => s + a.scenes.filter((x) => !x.file).length, 0);
   const borrowed = acts.reduce((s, a) => s + a.scenes.filter((x) => x.borrowed).length, 0);
   await appendLog(`Timeline: ${acts.length} atos · ${acts.reduce((s, a) => s + a.scenes.length, 0)} cenas (${borrowed} herdadas da vizinha, ${missing} cartão) · perfil ${profile.label} · trilha ${musicFile ? path.basename(musicFile) : "nenhuma"}`);

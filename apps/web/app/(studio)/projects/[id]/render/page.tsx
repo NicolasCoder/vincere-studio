@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { prisma } from "@docupulse/db";
 import { FORMATS, type VideoFormat } from "@docupulse/core";
 import { PROFILES, profileFor } from "@docupulse/render";
@@ -142,6 +143,11 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
             <Card className="p-4">
               <h3 className="font-display font-semibold"><Icon name="music_note" className="mr-1 align-middle text-primary-bright" />Trilha sonora</h3>
               <p className="mt-2 text-xs text-fg-secondary">Coloque um arquivo em <code className="font-mono text-[10px]">storage/music/default.mp3</code> (ou <code className="font-mono text-[10px]">storage/music/{project.id}.mp3</code>) e o render mistura com ducking automático sob a voz. Fontes livres: Pixabay Music, YouTube Audio Library.</p>
+            </Card>
+            <Card className="p-4">
+              <h3 className="font-display font-semibold"><Icon name="auto_awesome_mosaic" className="mr-1 align-middle text-primary-bright" />Camada visual (DVP)</h3>
+              <p className="mt-2 text-xs text-fg-secondary">Plano do que entra por cima do master já renderizado: lower thirds, destaques de dado e intertítulos, posicionados pelo tempo real de cada palavra.</p>
+              <Link href={`/projects/${project.id}/edit-plan`} className="mt-3 block"><Button icon="auto_awesome_mosaic" variant="ghost" className="w-full">Ver plano de edição</Button></Link>
             </Card>
             <Card className="p-4">
               <h3 className="font-display font-semibold"><Icon name="verified_user" className="mr-1 align-middle text-primary-bright" />Verificação Pré-Voo</h3>
