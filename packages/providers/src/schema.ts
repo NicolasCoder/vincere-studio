@@ -3,7 +3,7 @@ import { z } from "zod";
 /**
  * Converte um schema Zod no subconjunto OpenAPI que a API do Gemini aceita em
  * `responseSchema`. Cobre objetos, arrays, strings, números, booleanos, enums,
- * opcionais e defaults — o suficiente para os payloads do DocuPulse.
+ * opcionais e defaults — o suficiente para os payloads do Vincere Studio.
  */
 export function toGeminiSchema(schema: z.ZodTypeAny): Record<string, unknown> {
   const def = schema._def;

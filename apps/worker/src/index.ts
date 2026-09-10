@@ -78,7 +78,7 @@ async function main() {
 
   // Jobs que ficaram RUNNING de uma execução anterior voltam para a fila.
   const reset = await prisma.job.updateMany({ where: { status: "RUNNING" }, data: { status: "QUEUED" } });
-  console.log(`DocuPulse worker online · concorrência ${CONCURRENCY} (+ RENDER_VIDEO exclusivo) · poll ${POLL_MS}ms · ${reset.count} job(s) recuperado(s)`);
+  console.log(`Vincere worker online · concorrência ${CONCURRENCY} (+ RENDER_VIDEO exclusivo) · poll ${POLL_MS}ms · ${reset.count} job(s) recuperado(s)`);
   await heartbeat().catch((e) => console.warn("heartbeat falhou:", (e as Error).message));
   let lastHeartbeat = Date.now();
   for (;;) {

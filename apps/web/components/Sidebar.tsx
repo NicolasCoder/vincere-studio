@@ -1,4 +1,5 @@
 "use client";
+import Image from "next/image";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { Icon, cn } from "@docupulse/ui";
@@ -32,14 +33,10 @@ export function Sidebar({
   return (
     <aside className="fixed inset-y-0 left-0 z-30 flex w-sidebar -translate-x-full flex-col border-r border-line bg-surface-low transition-transform duration-200 peer-checked/nav:translate-x-0 lg:translate-x-0 lg:bg-surface-low/95">
       <Link href="/dashboard" className="flex items-center gap-3 px-6 py-5">
-        <span className="grid size-9 place-items-center rounded border border-primary/40 bg-primary/10 text-primary-bright shadow-glow-cyan">
-          <Icon name="play_circle" className="text-[22px]" />
-        </span>
+        <Image src="/vincere-mark.png" alt="" width={36} height={36} className="size-9 shrink-0 object-contain" priority />
         <div>
-          <div className="font-display text-base font-bold leading-tight">
-            DocuPulse<span className="text-primary-bright">.AI</span>
-          </div>
-          <div className="label-mono text-muted">Studio OS</div>
+          <div className="font-display text-base font-bold leading-tight">Vincere</div>
+          <div className="label-mono text-muted">Studio</div>
         </div>
         <label htmlFor="mobile-nav-toggle" className="ml-auto grid size-8 place-items-center rounded text-fg-secondary hover:bg-line/40 hover:text-fg lg:hidden">
           <Icon name="close" className="text-[18px]" />

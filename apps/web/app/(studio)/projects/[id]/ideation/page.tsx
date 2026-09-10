@@ -124,7 +124,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
           <Icon name="info" className="text-primary-bright" />
           <div className="flex-1 text-sm">
             <div className="font-semibold">Próximo Passo no Pipeline: Geração Estruturada de Roteiro</div>
-            <div className="text-xs text-fg-secondary">Ao confirmar uma ideia, o DocuPulse dividirá sua narrativa em {format.structure.acts} atos cinematográficos com marcações de B-Roll e trilha sonora adaptativa.</div>
+            <div className="text-xs text-fg-secondary">Ao confirmar uma ideia, o Vincere Studio dividirá sua narrativa em {format.structure.acts} atos cinematográficos com marcações de B-Roll e trilha sonora adaptativa.</div>
           </div>
           <Badge tone="cyan" pill dot>Modo Studio Ativo</Badge>
         </Card>

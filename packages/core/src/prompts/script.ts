@@ -63,7 +63,7 @@ export interface ScriptContext {
 
 export function scriptSystemPrompt() {
   return [
-    "Você é o roteirista-chefe do DocuPulse.AI, especialista em documentários narrados para YouTube com altíssima retenção.",
+    "Você é o roteirista-chefe do Vincere Studio, especialista em documentários narrados para YouTube com altíssima retenção.",
     "Regras de ouro: abrir com uma pergunta ou imagem impossível de ignorar; nunca revelar tudo de uma vez; cada ato termina com um cliffhanger;",
     "frases curtas alternadas com uma longa; números, datas e lugares concretos; sem clichês de IA ('mergulhe', 'desvende', 'jornada');",
     "sem citações inventadas de pessoas reais: quando citar, use 'segundo relatórios' ou 'documentos da época'.",

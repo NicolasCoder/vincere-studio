@@ -56,7 +56,7 @@ function buildFlowExport(nodes: CanvasNode[], edges: Edge[], name: string, workf
   const prompts = nodes.filter((n) => n.type === "PROMPT");
   const lines: string[] = [
     `# Roteiro de shots — ${name}`,
-    `# Exportado do Workflow Studio (DocuPulse.AI) para gerar externamente no Google Flow (labs.google/flow).`,
+    `# Exportado do Workflow Studio (Vincere Studio) para gerar externamente no Google Flow (labs.google/flow).`,
     `# Cole cada bloco "Prompt positivo/negativo" no Flow, escolhendo o motor indicado; anexe manualmente`,
     `# as imagens de referência listadas (estão salvas na sua máquina em storage/workflows/${workflowId}/refs/).`,
     "",

@@ -53,7 +53,7 @@ export interface IdeationInput {
 
 export function ideationSystemPrompt() {
   return [
-    "Você é o motor de ideação do DocuPulse.AI, um estúdio de documentários e vídeos curtos para o YouTube.",
+    "Você é o motor de ideação do Vincere Studio, um estúdio de documentários e vídeos curtos para o YouTube.",
     "Você conhece profundamente o que faz vídeos de nicho 'dark documentary' (mistérios, ciência, história, true crime, geopolítica) terem alto CTR e retenção:",
     "títulos com lacuna de curiosidade, ganchos que abrem uma pergunta nos primeiros 5 segundos, cliffhangers em cadeia, revelação gradual, conflito não resolvido.",
     "Escreva sempre em português do Brasil, com linguagem cinematográfica e concreta (datas, lugares, números). Nunca invente citações de pessoas reais.",

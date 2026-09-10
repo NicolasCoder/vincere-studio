@@ -6,8 +6,9 @@ const display = Space_Grotesk({ subsets: ["latin"], weight: ["400", "500", "600"
 const mono = JetBrains_Mono({ subsets: ["latin"], weight: ["400", "500", "600"], variable: "--font-mono" });
 
 export const metadata: Metadata = {
-  title: "DocuPulse.AI — Studio OS",
+  title: "Vincere Studio",
   description: "Automação de documentários e vídeos curtos com IA",
+  icons: { icon: "/icon.png" },
 };
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {

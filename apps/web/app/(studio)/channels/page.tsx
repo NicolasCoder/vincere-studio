@@ -105,7 +105,7 @@ export default async function ChannelsPage() {
                             {v.publishedAt && <span className="text-[11px] text-fg-secondary">{new Date(v.publishedAt).toLocaleDateString("pt-BR")}</span>}
                             {pub ? (
                               <Link href={`/projects/${pub.projectId}/published`}>
-                                <Badge tone="cyan">Feito no DocuPulse</Badge>
+                                <Badge tone="cyan">Feito no Vincere</Badge>
                               </Link>
                             ) : (
                               <Badge tone="neutral">Externo</Badge>
