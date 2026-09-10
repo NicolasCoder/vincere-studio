@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile, copyFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, planSegments, passthroughRanges, type EditPlanData, type VideoFormat } from "@docupulse/core";
 import { profileFor } from "@docupulse/render";
-import { FFMPEG, absPath, projectDir, relPath, run, storageRoot } from "@docupulse/providers";
+import { FFMPEG, absPath, probeDurationMs, projectDir, relPath, run, storageRoot } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /** Raiz do projeto Remotion. storage/ e editor-ia/ são irmãos na raiz do repo. */
@@ -135,15 +135,24 @@ export async function applyVisualLayer(ctx: JobContext) {
       const propsFile = path.join(work, `props-${i}.json`);
       await writeFile(propsFile, JSON.stringify(props), "utf8");
 
-      const out = path.join(work, `seg-${String(i).padStart(3, "0")}.mp4`);
+      const bruto = path.join(work, `seg-${String(i).padStart(3, "0")}-bruto.mp4`);
       await run(process.execPath, [
-        remotionCli(), "render", "Segmento", out,
+        remotionCli(), "render", "Segmento", bruto,
         `--props=${propsFile}`,
         "--codec", "h264",
-        "--crf", "18",
-        "--pixel-format", "yuv420p",
+        // Uma qualidade acima do alvo: este arquivo ainda passa pela normalização abaixo, e
+        // codificar duas vezes no mesmo CRF acumularia perda à toa.
+        "--crf", "15",
         "--log", "error",
       ], { cwd: editorDir() });
+
+      // Normaliza para os mesmos parâmetros dos trechos sem camada. Sem isto o concat por cópia
+      // sai quebrado: o Remotion entrega time_base 1/90000 e pix_fmt yuvj420p (faixa de cor
+      // cheia), contra 1/15360 e yuv420p do ffmpeg. A diferença de base de tempo embaralha os
+      // timestamps — na primeira execução o vídeo saiu com 64 min em vez de 11 — e a de faixa de
+      // cor daria salto de brilho nas emendas.
+      const out = path.join(work, `seg-${String(i).padStart(3, "0")}.mp4`);
+      await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", bruto, ...encArgs, out]);
       partes.push({ ordem: s.startMs, file: out });
     }
 
@@ -157,6 +166,19 @@ export async function applyVisualLayer(ctx: JobContext) {
     const outDir = await projectDir(projectId, "visual");
     const final = path.join(outDir, `dvp-${Date.now()}.mp4`);
     await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-f", "concat", "-safe", "0", "-i", lista, "-c", "copy", "-movflags", "+faststart", final]);
+
+    // Confere a duração contra o master antes de dar por concluído. A costura por cópia falha em
+    // silêncio quando as partes divergem em base de tempo: o arquivo é gerado, abre normalmente, e
+    // só a duração denuncia. Melhor o job falhar aqui do que entregar um vídeo quebrado.
+    const finalMs = await probeDurationMs(final);
+    const desvioMs = Math.abs(finalMs - data.totalMs);
+    if (desvioMs > 2000) {
+      throw new Error(
+        `Costura inconsistente: saída com ${(finalMs / 1000).toFixed(1)}s contra ${(data.totalMs / 1000).toFixed(1)}s do master ` +
+          `(desvio de ${(desvioMs / 1000).toFixed(1)}s). Provável divergência de parâmetros entre as partes.`,
+      );
+    }
+    await ctx.log(`Duração conferida: ${(finalMs / 1000).toFixed(1)}s (master ${(data.totalMs / 1000).toFixed(1)}s)`);
 
     await ctx.progress({ percent: 100, message: "Concluído" });
     await ctx.log(`Camada visual aplicada: ${relPath(final)}`);
