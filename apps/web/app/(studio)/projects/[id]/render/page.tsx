@@ -56,7 +56,10 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               {Object.values(PROFILES).map((p) => <option key={p.id} value={p.id} className="bg-surface-low">{p.label} — {p.description}</option>)}
             </select>
             <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="music" defaultChecked className="accent-primary" /> Trilha ambiente (sua em storage/music ou gerada pelo app)</label>
-            <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="captions" defaultChecked className="accent-primary" /> Queimar legendas ({format.captions.style === "bold-center-animated" ? "karaokê central" : "rodapé discreto"})</label>
+            {/* Longo não queima legenda: os canais de referência não queimam, e o rodapé livre é
+                onde a camada visual DVP posiciona os lower thirds. O CC do YouTube cobre acessibilidade.
+                Short queima, porque é assistido sem som. */}
+            <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="captions" defaultChecked={format.captions.required} className="accent-primary" /> Queimar legendas ({format.captions.style === "bold-center-animated" ? "karaokê central" : "rodapé discreto"}){!format.captions.required && <span className="text-muted"> — desligado no longo</span>}</label>
             <Button type="submit" variant="primary" icon="movie" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>Iniciar Render (FFmpeg)</Button>
             {!canRender && <span className="font-mono text-[10px] text-warning">{voiced}/{blocks.length} atos com locução — complete o Passo 3</span>}
           </form>

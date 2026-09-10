@@ -1,5 +1,5 @@
 import { AbsoluteFill, Easing, Interactive, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { CAPTION_BAND_TOP_PCT, DVP, SIDE_MARGIN_PCT, bodyFont, titleFont } from "./tokens";
+import { DVP, SIDE_MARGIN_PCT, bodyFont, bottomBandTopPct, titleFont } from "./tokens";
 
 export type LowerThirdStyle = "AUTORIDADE" | "EMOCIONAL" | "DATADO";
 
@@ -15,7 +15,9 @@ export const LowerThird: React.FC<{
   style: LowerThirdStyle;
   primary: string;
   secondary?: string;
-}> = ({ style, primary, secondary }) => {
+  /** Quando o master tem legenda queimada, a placa sobe para nao invadir a faixa. */
+  burnedCaptions?: boolean;
+}> = ({ style, primary, secondary, burnedCaptions = false }) => {
   const frame = useCurrentFrame();
   const { fps, height } = useVideoConfig();
 
@@ -29,8 +31,8 @@ export const LowerThird: React.FC<{
         style={{
           position: "absolute",
           left: `${SIDE_MARGIN_PCT}%`,
-          // Ancorado logo acima da faixa das legendas queimadas — nunca invade.
-          bottom: `${100 - CAPTION_BAND_TOP_PCT + 1.5}%`,
+          // Ancorado logo acima da faixa proibida do rodape — nunca invade.
+          bottom: `${100 - bottomBandTopPct(burnedCaptions) + 1.5}%`,
           maxWidth: "62%",
           padding: style === "EMOCIONAL" ? 0 : `${height * 0.018}px ${height * 0.028}px`,
           background:

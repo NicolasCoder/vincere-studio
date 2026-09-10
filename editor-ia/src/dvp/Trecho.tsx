@@ -25,7 +25,7 @@ export type TrechoInsertion = {
  * reordena ou mexe no áudio. Cada inserção é uma <Sequence> por cima, com o tempo vindo do
  * EditPlan, que por sua vez o derivou das legendas alinhadas.
  */
-export const Trecho: React.FC<{ master: string }> = ({ master }) => {
+export const Trecho: React.FC<{ master: string; burnedCaptions?: boolean }> = ({ master, burnedCaptions = false }) => {
   const { fps } = useVideoConfig();
   const toFrames = (ms: number) => Math.round((ms / 1000) * fps);
 
@@ -47,8 +47,11 @@ export const Trecho: React.FC<{ master: string }> = ({ master }) => {
                 style={ins.lowerThirdStyle ?? "DATADO"}
                 primary={ins.primary}
                 secondary={ins.secondary ?? undefined}
+                burnedCaptions={burnedCaptions}
               />
-            ) : null}
+            ) : null /* insert-arquivo e split-evidencia dependem de um asset de evidencia, que
+                        ainda nao vem do plano — cair para null deixa o master limpo em vez de
+                        mostrar uma moldura vazia. */}
           </Sequence>
         );
       })}

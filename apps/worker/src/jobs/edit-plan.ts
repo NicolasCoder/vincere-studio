@@ -2,7 +2,9 @@ import { prisma } from "@docupulse/db";
 import {
   EDIT_PLAN_PROMPT_VERSION,
   EditPlanResponseSchema,
+  FORMATS,
   LAYOUT_META,
+  type VideoFormat,
   backdropFor,
   captionSafeZone,
   editPlanPrompt,
@@ -100,6 +102,10 @@ export async function generateEditPlan(ctx: JobContext) {
   const totalMs = Math.max(0, offset - ACT_GAP_MS);
 
   const profile = profileFor(project.format, null);
+  // No longo a legenda não é queimada (o CC do YouTube cobre acessibilidade), então o rodapé fica
+  // livre para o lower third. Se alguém marcar o checkbox manualmente no render, o plano fica
+  // conservador demais, não errado — a inserção sobe em vez de invadir.
+  const burnedCaptions = FORMATS[project.format as VideoFormat].captions.required;
   const provider = getTextProvider();
   const system = editPlanSystemPrompt();
   const insertions: EditInsertion[] = [];
@@ -194,13 +200,13 @@ export async function generateEditPlan(ctx: JobContext) {
     await ctx.log("Sem render concluído: pulei a checagem de legibilidade (o plano segue válido).");
   } else {
     const master = absPath(render.outputPath);
-    const probes = finalList.filter((i) => insertionRegion(i.layout, profile.width, profile.height));
+    const probes = finalList.filter((i) => insertionRegion(i.layout, profile.width, profile.height, burnedCaptions));
     let measured = 0;
     let risky = 0;
     let promoted = 0;
     for (let i = 0; i < probes.length; i++) {
       const ins = probes[i];
-      const region = insertionRegion(ins.layout, profile.width, profile.height)!;
+      const region = insertionRegion(ins.layout, profile.width, profile.height, burnedCaptions)!;
       await ctx.progress({ percent: 90 + (i / Math.max(1, probes.length)) * 9, message: "Medindo legibilidade" });
       try {
         // Mede no meio da inserção, não na entrada — é onde ela fica mais tempo na tela.
@@ -232,7 +238,7 @@ export async function generateEditPlan(ctx: JobContext) {
     promptVersion: EDIT_PLAN_PROMPT_VERSION,
     totalMs,
     actCount: acts.length,
-    safeZone: captionSafeZone(profile.width, profile.height),
+    safeZone: captionSafeZone(profile.width, profile.height, burnedCaptions),
     insertions: finalList,
   };
 

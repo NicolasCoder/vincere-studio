@@ -83,26 +83,36 @@ export interface EditPlanData {
 }
 
 /**
- * Faixa ocupada pelas legendas queimadas, derivada de packages/render/src/captions.ts.
+ * Faixa proibida para qualquer inserção, derivada de packages/render/src/captions.ts.
  *
- * Longo: legenda ancorada embaixo (MarginV 7% da altura, fonte 4.2%, até 2 linhas).
- * Vertical: legenda com alinhamento 5 (meio do quadro). Renderizadores de ASS divergem
- * sobre honrar MarginV em alinhamento central, então a faixa aqui cobre os dois casos —
- * confirmar contra um frame real antes de encostar na borda.
+ * Com legenda queimada — Longo: ancorada embaixo (MarginV 7% da altura, fonte 4.2%, até 2 linhas).
+ * Vertical: alinhamento 5 (meio do quadro); renderizadores de ASS divergem sobre honrar MarginV
+ * em alinhamento central, então a faixa cobre os dois casos.
+ *
+ * Sem legenda queimada (padrão do formato longo), sobra só a margem de segurança do player do
+ * YouTube, onde entram a barra de progresso e os controles no hover.
  */
-export function captionSafeZone(width: number, height: number): EditPlanSafeZone {
+export function captionSafeZone(width: number, height: number, burnedCaptions: boolean): EditPlanSafeZone {
+  if (!burnedCaptions) {
+    return {
+      kind: "band-bottom",
+      fromPct: 92,
+      toPct: 100,
+      note: "Sem legenda queimada: sobra só a margem do player do YouTube (barra de progresso e controles).",
+    };
+  }
   return height > width
     ? {
         kind: "band-center",
         fromPct: 40,
         toPct: 65,
-        note: "Short: legenda no meio do quadro. Sobram o terço superior e o inferior.",
+        note: "Short com legenda queimada no meio do quadro. Sobram o terço superior e o inferior.",
       }
     : {
         kind: "band-bottom",
         fromPct: 82,
         toPct: 100,
-        note: "Longo: legenda ancorada embaixo, podendo ocupar 2 linhas.",
+        note: "Longo com legenda queimada embaixo, podendo ocupar 2 linhas.",
       };
 }
 
@@ -124,6 +134,7 @@ export function insertionRegion(
   layout: EditLayout,
   width: number,
   height: number,
+  burnedCaptions: boolean,
 ): { x: number; y: number; w: number; h: number } | null {
   const rect = (x: number, y: number, w: number, h: number) => ({
     // ffmpeg exige inteiros pares no crop
@@ -132,7 +143,10 @@ export function insertionRegion(
     w: Math.round((w * width) / 2) * 2,
     h: Math.round((h * height) / 2) * 2,
   });
-  if (layout === "lower-third") return rect(0.06, 0.62, 0.64, 0.18);
+  // Sem legenda queimada o lower third desce para o rodapé, que é onde os canais de referência
+  // colocam; a medição de brilho tem que acompanhar, senão mede um pedaço do quadro que a
+  // inserção nem ocupa.
+  if (layout === "lower-third") return burnedCaptions ? rect(0.06, 0.62, 0.64, 0.18) : rect(0.06, 0.72, 0.64, 0.18);
   if (layout === "overlay-dado") return rect(0.6, 0.08, 0.34, 0.22);
   return null;
 }

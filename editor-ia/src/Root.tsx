@@ -7,9 +7,12 @@ const base: ProvaProps = {
   frame: "frame-escuro-0014.jpg",
   layout: "lower-third",
   lowerThirdStyle: "DATADO",
+  substrato: "papel-dossie",
   primary: "1995 — 2021",
   secondary: "Rodovia 44, trecho deserto",
   onLight: false,
+  // Padrão do formato longo: sem legenda queimada, então o rodapé fica livre.
+  burnedCaptions: false,
   showSafeZone: true,
 };
 
@@ -67,6 +70,37 @@ export const RemotionRoot: React.FC = () => {
           layout: "overlay-dado",
           primary: "Quilômetro 32",
           secondary: "Local da primeira anomalia",
+        }}
+      />
+      {/* Duração maior: a inserção de arquivo tem deriva própria e precisa de tempo para respirar. */}
+      <Composition
+        id="Prova-InsertArquivo"
+        component={Prova}
+        {...video}
+        durationInFrames={5 * 30}
+        defaultProps={{
+          ...base,
+          frame: "frame-escuro-0404.jpg",
+          layout: "insert-arquivo",
+          substrato: "polaroid",
+          primary: "1: RODOVIA 44",
+          secondary: "Quilômetro 32 · outubro de 1995",
+          showSafeZone: false,
+        }}
+      />
+      <Composition
+        id="Prova-InsertArquivo-Jornal"
+        component={Prova}
+        {...video}
+        durationInFrames={5 * 30}
+        defaultProps={{
+          ...base,
+          frame: "frame-claro-0533.jpg",
+          layout: "insert-arquivo",
+          substrato: "papel-dossie",
+          primary: "BOLETIM DE OCORRÊNCIA",
+          secondary: "Arquivo da Patrulha Rodoviária",
+          showSafeZone: false,
         }}
       />
     </>
