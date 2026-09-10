@@ -1,7 +1,8 @@
 import "./index.css";
 import { Composition } from "remotion";
 import { Prova, type ProvaProps } from "./dvp/Prova";
-import { Trecho } from "./dvp/Trecho";
+import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
+import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
 
 const base: ProvaProps = {
   frame: "frame-escuro-0014.jpg",
@@ -22,15 +23,25 @@ const video = { width: 1920, height: 1080, fps: 30, durationInFrames: 90 } as co
 export const RemotionRoot: React.FC = () => {
   return (
     <>
-      {/* Trecho real: 03:05 → 03:50 do master "A Rodovia 44 e os Carros Vazios". */}
+      {/*
+        Segmento: a composição que o worker chama, um segmento por vez, passando os dados por
+        --props. A duração vem dos props porque cada segmento tem um tamanho diferente.
+        Os defaults abaixo servem só para abrir no Studio — em render, tudo vem do job.
+      */}
       <Composition
-        id="Trecho-Rodovia44"
+        id="Segmento"
         component={Trecho}
         width={1920}
         height={1080}
         fps={30}
         durationInFrames={45 * 30}
-        defaultProps={{ master: "masters/trecho-rodovia44.mp4" }}
+        calculateMetadata={calculateTrechoMetadata}
+        defaultProps={{
+          master: "masters/trecho-rodovia44.mp4",
+          insertions: TRECHO_INSERTIONS,
+          burnedCaptions: false,
+          durationInFrames: 45 * 30,
+        }}
       />
 
       <Composition id="Prova-Datado" component={Prova} {...video} defaultProps={base} />

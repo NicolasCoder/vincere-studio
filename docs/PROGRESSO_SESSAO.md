@@ -66,6 +66,10 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
   - Para isso funcionar foi preciso corrigir os 3 erros de typecheck pré-existentes do web, que bloqueavam o build: `Stat` (`packages/ui`) ganhou os tons `error` e `warning`, que a página de Saúde já usava para marcar worker offline e jobs falhados; e `generateSeoMetadata` (published/actions.ts) tinha um `return { usage }` morto que quebrava o tipo de `<form action>` — o consumo já era gravado pelo `recordUsage` logo acima.
 - **Decisões fechadas de identidade (Igor, 09/09)**: não existe manual de marca DVP, então a paleta amostrada a olho das artes vira o padrão (`DVP_PALETTE` em `packages/core/src/edit-plan.ts`) e as fontes ficam **Playfair Display** (títulos) e **Inter** (corpo), ambas Google Fonts com licença aberta.
 
+- **QUALIDADE APROVADA PELO IGOR (10/09)**: assistiu os dois vídeos longos completos ("A Rodovia 44 e os Carros Vazios" e "A Ilha Secreta Onde a Marinha Testou Patógenos") em versão comprimida para celular e **aprovou o padrão**. Isso destrava três coisas que estavam em espera: a publicação dos vídeos prontos, a construção do `AUTO_PRODUCE` (que o próprio Igor condicionou a "quando os vídeos estiverem na qualidade exata que espero"), e as decisões da camada visual, que até aqui eram aposta sobre um padrão não validado.
+  - Método que funcionou e vale repetir: renderizar o vídeo inteiro em 854px, ~280 kbps, ~22 MB, e enviar — dá para assistir no celular fora de casa. A prévia de 45s que vínhamos mandando não era suficiente para julgar ritmo e narração ao longo dos 11 minutos.
+  - Ainda aguardando aval: "O Desastre Nuclear Que A URSS Escondeu" e o short "6 Meses de Sol" (eram quatro projetos em RENDER, não dois como estava registrado antes).
+
 ## Publicação automática no YouTube — como ativar
 
 O app publica direto no seu canal via OAuth do Google (login e permissão acontecem no site do próprio Google — o DocuPulse.AI nunca vê nem guarda sua senha). Falta só criar uma credencial OAuth gratuita no Google Cloud Console. Passo a passo (dá pra fazer até pelo celular):

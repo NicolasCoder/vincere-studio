@@ -14,6 +14,7 @@ import { generateThumbnail } from "./generate-thumbnail";
 import { publishYoutube } from "./publish-youtube";
 import { generateEditPlan } from "./edit-plan";
 import { generateImages } from "./generate-images";
+import { applyVisualLayer } from "./apply-visual-layer";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -42,4 +43,5 @@ export const handlers: Record<JobType, JobHandler> = {
   PREVIEW_VOICE: previewVoice,
   GENERATE_EDIT_PLAN: generateEditPlan,
   GENERATE_IMAGES: generateImages,
+  APPLY_VISUAL_LAYER: applyVisualLayer,
 };
