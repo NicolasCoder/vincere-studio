@@ -188,6 +188,12 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
             </Card>
 
             <Card className="p-4">
+              <h3 className="font-display font-semibold"><Icon name="auto_awesome" className="mr-1 align-middle text-primary-bright" />Banco de Imagens</h3>
+              <p className="mt-2 text-xs text-fg-secondary">Descreva e gere imagens em lote para este projeto — capa, inserção de arquivo ou referência de estilo. O motor grátis funciona sem orçamento.</p>
+              <a href={`/projects/${project.id}/imagens`} className="mt-3 block"><Button icon="auto_awesome" variant="ghost" size="sm" className="w-full">Abrir banco de imagens</Button></a>
+            </Card>
+
+            <Card className="p-4">
               <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Modo Flow</Badge></div>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
               {scenes.length > 0 && <Progress value={scenes.length ? (ready / scenes.length) * 100 : 0} className="mt-3" />}

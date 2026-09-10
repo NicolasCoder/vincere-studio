@@ -13,6 +13,7 @@ import { renderVideo } from "./render-video";
 import { generateThumbnail } from "./generate-thumbnail";
 import { publishYoutube } from "./publish-youtube";
 import { generateEditPlan } from "./edit-plan";
+import { generateImages } from "./generate-images";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -40,4 +41,5 @@ export const handlers: Record<JobType, JobHandler> = {
   IMPORT_INBOX: importInbox,
   PREVIEW_VOICE: previewVoice,
   GENERATE_EDIT_PLAN: generateEditPlan,
+  GENERATE_IMAGES: generateImages,
 };

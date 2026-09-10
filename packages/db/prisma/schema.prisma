@@ -37,6 +37,7 @@ model Project {
   publications Publication[]
   jobs         Job[]
   usage        Usage[]
+  images       GeneratedImage[]
 }
 
 model Idea {
@@ -260,6 +261,26 @@ model ScriptSkill {
   notes     String?
   projectId String?  // projeto de origem (opcional)
   createdAt DateTime @default(now())
+}
+
+/// Imagens geradas sob demanda pelo painel de geração em lote do projeto (Passo "Imagens").
+/// Diferente de Scene, que é presa a um bloco do roteiro: aqui é geração livre por prompt,
+/// para compor banco de imagem do projeto (capa, inserção de arquivo, referência de estilo).
+model GeneratedImage {
+  id        String   @id @default(cuid())
+  projectId String
+  project   Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  prompt    String
+  engine    String // GEMINI | POLLINATIONS
+  model     String?
+  aspect    String   @default("16:9")
+  filePath  String
+  width     Int?
+  height    Int?
+  costUsd   Float    @default(0)
+  createdAt DateTime @default(now())
+
+  @@index([projectId, createdAt])
 }
 
 /// Plano de edição: camada visual (lower thirds, destaques, intertítulos) que entra POR CIMA

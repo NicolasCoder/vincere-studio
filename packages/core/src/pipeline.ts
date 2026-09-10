@@ -46,5 +46,6 @@ export const JOB_TYPES = [
   "IMPORT_INBOX",
   "PREVIEW_VOICE",
   "GENERATE_EDIT_PLAN",
+  "GENERATE_IMAGES",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];
