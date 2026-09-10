@@ -45,6 +45,11 @@ export const InsertArquivo: React.FC<{
   const ease = { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.16, 1, 0.3, 1) } as const;
   const linear = { extrapolateLeft: "clamp", extrapolateRight: "clamp" } as const;
 
+  // A moldura só existe se sobrar substrato à vista. Margem fina demais some e o efeito vira
+  // um retângulo com borda escura. Polaroid e negativo pedem rodapé grosso, como o objeto real.
+  const rodapeGrosso = substrato === "polaroid" || substrato === "negativo";
+  const margem = height * 0.045;
+
   return (
     <AbsoluteFill name="InsertArquivo">
       {/* Escurece o master para a evidencia ganhar o olho, sem apaga-lo. */}
@@ -63,7 +68,8 @@ export const InsertArquivo: React.FC<{
             position: "relative",
             width: "58%",
             aspectRatio: "4 / 3",
-            padding: height * 0.022,
+            padding: margem,
+            paddingBottom: rodapeGrosso ? margem * 2.6 : margem,
             boxShadow: `0 ${height * 0.02}px ${height * 0.06}px #00000099`,
             opacity: interpolate(frame, [0, 0.35 * fps, durationInFrames - 0.35 * fps, durationInFrames], [0, 1, 1, 0], ease),
             // Deriva lenta e propria da insercao, independente do master.
@@ -132,6 +138,26 @@ export const InsertArquivo: React.FC<{
             </Interactive.Div>
           ) : null}
         </Interactive.Div>
+      </AbsoluteFill>
+
+      {/* Vazamento de luz só na entrada: marca a chegada da evidência e some. Se ficasse o tempo
+          todo viraria filtro, e a evidência é que tem que ganhar o olho. */}
+      <AbsoluteFill
+        name="LightLeak"
+        style={{
+          mixBlendMode: "screen",
+          opacity: interpolate(frame, [0, 0.25 * fps, 1.1 * fps], [0, 0.55, 0], ease),
+        }}
+      >
+        <CanvasImage
+          src={staticFile("props/overlays/light-leak-01.jpg")}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "cover",
+            scale: interpolate(frame, [0, 1.1 * fps], [1.15, 1], { ...ease, output: "perceptual-scale" }),
+          }}
+        />
       </AbsoluteFill>
 
       {/* Poeira e riscos de filme, em screen sobre preto — da textura sem sujar a leitura. */}
