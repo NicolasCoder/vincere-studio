@@ -28,3 +28,6 @@ Edição/Edições/
 editor-ia/public/masters/
 # Cópia derivada de Edição/Assets/props — recriar com `npm run sync-assets`
 editor-ia/public/props/
+
+# Frames extraidos de videos de terceiros pela skill watch: referencia local, nao versionar
+Edição/docs/videos/ref-*-frames/
