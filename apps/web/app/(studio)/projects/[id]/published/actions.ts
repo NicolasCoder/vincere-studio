@@ -117,6 +117,7 @@ export async function generateSeoMetadata(projectId: string, _formData?: FormDat
     await prisma.publication.create({ data: { projectId, ...payload } });
   }
 
+  // Sem retorno: isto é usado como `action` de <form>, que exige void. O consumo já foi
+  // registrado no medidor pelo recordUsage acima.
   revalidatePath(`/projects/${projectId}/published`);
-  return { usage };
 }

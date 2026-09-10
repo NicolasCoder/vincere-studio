@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "turbo run dev",
     "build": "turbo run build",
+    "start": "turbo run start",
     "typecheck": "turbo run typecheck",
     "db:generate": "pnpm --filter @docupulse/db generate",
     "db:push": "pnpm --filter @docupulse/db push",

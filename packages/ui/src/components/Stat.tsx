@@ -10,7 +10,7 @@ export function Stat({
   label: string;
   value: string | number;
   sub?: string;
-  tone?: "cyan" | "violet" | "fg";
+  tone?: "cyan" | "violet" | "fg" | "error" | "warning";
   className?: string;
 }) {
   return (
@@ -22,6 +22,8 @@ export function Stat({
           tone === "cyan" && "text-primary-bright",
           tone === "violet" && "text-secondary-soft",
           tone === "fg" && "text-fg",
+          tone === "error" && "text-error",
+          tone === "warning" && "text-warning",
         )}
       >
         {value}

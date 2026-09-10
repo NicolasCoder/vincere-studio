@@ -158,10 +158,22 @@ export async function huntBroll(ctx: JobContext) {
   const dir = await projectDir(projectId, "scenes");
   const used = new Set<string>();
   let found = 0;
-  for (let i = 0; i < targets.length; i++) {
-    const { s, act } = targets[i];
-    if (await ctx.isCancelled()) return { cancelled: true };
-    await ctx.progress({ percent: (i / targets.length) * 95, message: `Cena ${sceneFileStem(act, s.order)}: buscando "${s.keywords}"` });
+  let done = 0;
+  let cancelled = false;
+
+  // Buscar e baixar acervo é quase todo espera de rede, não CPU — então roda em paralelo mesmo em
+  // máquina de poucos núcleos. O render de clipes, esse sim é CPU puro, e continua em série.
+  const concurrency = Math.max(1, Math.min(8, Number(process.env.BROLL_CONCURRENCY ?? 4)));
+  await ctx.log(`Buscando acervo para ${targets.length} cena(s) com ${concurrency} downloads simultâneos`);
+
+  const hunt = async (target: (typeof targets)[number]) => {
+    const { s, act } = target;
+    if (cancelled) return;
+    if (await ctx.isCancelled()) {
+      cancelled = true;
+      return;
+    }
+    await ctx.progress({ percent: (done / targets.length) * 95, message: `Cena ${sceneFileStem(act, s.order)}: buscando "${s.keywords}"` });
     const minDur = Math.ceil((s.endMs - s.startMs) / 1000);
     const terms = relevanceTerms(s.keywords, s.description);
     const baseKeywords = s.keywords ?? s.description ?? "";
@@ -189,14 +201,20 @@ export async function huntBroll(ctx: JobContext) {
         // outro tipo (imagem/vídeo) antes de desistir, em vez de aceitar algo genérico/fora de tema.
         continue;
       }
-      hit = top.r;
+      // Em paralelo, duas cenas podem ter passado pelo mesmo candidato antes de qualquer uma marcar
+      // como usado. A reserva acontece aqui, sem await no meio, então é atômica entre as tarefas.
+      // O filtro de relevância entra de novo: cair para um candidato com score 0 só porque o melhor
+      // já foi levado traria uma imagem fora de tema, que é justo o que a regra acima evita.
+      const pick = scored.find((c) => !used.has(`${c.r.provider}:${c.r.id}`) && !(terms.length > 0 && c.score === 0));
+      if (!pick) continue;
+      used.add(`${pick.r.provider}:${pick.r.id}`);
+      hit = pick.r;
       break;
     }
     if (!hit) {
       await ctx.log(`Cena ${sceneFileStem(act, s.order)}: nenhuma opção relevante para "${s.keywords}" — cena fica pendente (herda mídia da vizinha no render)`);
-      continue;
+      return;
     }
-    used.add(`${hit.provider}:${hit.id}`);
     const ext = hit.type === "video" ? ".mp4" : ".jpg";
     const dest = path.join(dir, `${sceneFileStem(act, s.order)}${ext}`);
     try {
@@ -208,7 +226,22 @@ export async function huntBroll(ctx: JobContext) {
     } catch (err) {
       await ctx.log(`Cena ${sceneFileStem(act, s.order)}: download falhou (${String(err).slice(0, 100)})`);
     }
-  }
+  };
+
+  // Pool de tarefas: `concurrency` consumidores puxando da mesma fila até esvaziar.
+  const queue = [...targets];
+  await Promise.all(
+    Array.from({ length: Math.min(concurrency, queue.length) }, async () => {
+      for (;;) {
+        const next = queue.shift();
+        if (!next || cancelled) return;
+        await hunt(next);
+        done++;
+      }
+    }),
+  );
+  if (cancelled) return { cancelled: true };
+
   await ctx.log(`${found}/${targets.length} cenas preenchidas com acervo`);
   return { found, total: targets.length };
 }

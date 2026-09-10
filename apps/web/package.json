@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "next dev --turbopack --port 3210",
     "build": "next build",
-    "start": "next start",
+    "start": "next start --port 3210",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
