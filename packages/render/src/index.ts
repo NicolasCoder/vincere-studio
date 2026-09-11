@@ -4,3 +4,4 @@ export * from "./captions";
 export * from "./render";
 export * from "./music";
 export * from "./thumbnail";
+export * from "./sample";

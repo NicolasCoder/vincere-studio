@@ -4,7 +4,7 @@ import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, getVisualStyle, type VideoFormat } from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
-import { ACT_GAP_MS, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
+import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
 // Quantos renders finais (mp4) manter por projeto — os mais antigos são apagados
@@ -65,9 +65,19 @@ export async function renderVideo(ctx: JobContext) {
   const missingVoice = script.blocks.filter((b) => !b.voiceTracks.length);
   if (missingVoice.length) throw new Error(`Sintetize a locução dos atos ${missingVoice.map((b) => b.act).join(", ")} antes de renderizar.`);
 
-  const renderJob = await prisma.renderJob.create({ data: { projectId, profile: profile.id, startedAt: new Date(), progress: 0 } });
+  /**
+   * Render de prova: janelas curtas de atos diferentes, pelo mesmo caminho do render final.
+   *
+   * Não cria linha em RenderJob de propósito. O master é definido como "o último RenderJob com
+   * outputPath" — uma prova registrada ali viraria o master do projeto e seria publicada no lugar
+   * do vídeo. Prova também não mexe na etapa do projeto.
+   */
+  const prova = ctx.payload.preview === true;
+
+  const renderJob = prova ? null : await prisma.renderJob.create({ data: { projectId, profile: profile.id, startedAt: new Date(), progress: 0 } });
   const appendLog = async (line: string) => {
     await ctx.log(line);
+    if (!renderJob) return;
     await prisma.$executeRaw`UPDATE "RenderJob" SET log = log || ${line + "\n"} WHERE id = ${renderJob.id}`;
   };
 
@@ -101,15 +111,23 @@ export async function renderVideo(ctx: JobContext) {
     await ctx.log(`Trilha procedural: ${path.basename(musicFile)}`);
   }
 
-  const timeline: Timeline = { acts, gapMs: ACT_GAP_MS, musicFile };
+  let timeline: Timeline = { acts, gapMs: ACT_GAP_MS, musicFile };
   const missing = acts.reduce((s, a) => s + a.scenes.filter((x) => !x.file).length, 0);
   const borrowed = acts.reduce((s, a) => s + a.scenes.filter((x) => x.borrowed).length, 0);
   await appendLog(`Timeline: ${acts.length} atos · ${acts.reduce((s, a) => s + a.scenes.length, 0)} cenas (${borrowed} herdadas da vizinha, ${missing} cartão) · perfil ${profile.label} · trilha ${musicFile ? path.basename(musicFile) : "nenhuma"}`);
 
-  const outDir = await projectDir(projectId, "renders");
+  const outDir = await projectDir(projectId, prova ? "previews" : "renders");
   const workDir = await projectDir(projectId, "renders/work");
-  const outFile = path.join(outDir, `${profile.id.toLowerCase()}-${Date.now()}.mp4`);
+  const outFile = path.join(outDir, `${prova ? "prova" : profile.id.toLowerCase()}-${Date.now()}.mp4`);
   const captions = wantCaptions ? format.captions.style : "none";
+
+  if (prova) {
+    const janelaMs = Number(ctx.payload.janelaMs ?? 7000);
+    const maxAtos = Number(ctx.payload.maxAtos ?? 3);
+    timeline = await amostrarTimeline(timeline, { janelaMs, maxAtos, workDir });
+    const amostraSec = timeline.acts.reduce((s, a) => s + a.voiceDurationMs, 0) / 1000;
+    await appendLog(`Prova: ${timeline.acts.length} janela(s) de ${(janelaMs / 1000).toFixed(0)}s (atos ${timeline.acts.map((a) => a.act).join(", ")}) · ${Math.round(amostraSec)}s no total`);
+  }
 
   const res = await renderTimeline(timeline, {
     profile,
@@ -119,18 +137,26 @@ export async function renderVideo(ctx: JobContext) {
     onLog: appendLog,
     onProgress: async (p) => {
       await ctx.progress(p);
-      await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: Math.round(p.percent) } });
+      if (renderJob) await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: Math.round(p.percent) } });
     },
   });
   const durationMs = await probeDurationMs(outFile);
-  await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: 100, outputPath: relPath(outFile), finishedAt: new Date() } });
-  await prisma.project.update({ where: { id: projectId }, data: { stage: project.stage === "MEDIA" || project.stage === "RENDER" ? "RENDER" : project.stage } });
-  await appendLog(`Render concluído: ${relPath(outFile)} · ${(durationMs / 1000 / 60).toFixed(1)} min · encoder ${res.encoder}`);
+
+  if (renderJob) {
+    await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: 100, outputPath: relPath(outFile), finishedAt: new Date() } });
+    await prisma.project.update({ where: { id: projectId }, data: { stage: project.stage === "MEDIA" || project.stage === "RENDER" ? "RENDER" : project.stage } });
+  }
+  await appendLog(
+    prova
+      ? `Prova pronta: ${relPath(outFile)} · ${(durationMs / 1000).toFixed(0)}s · encoder ${res.encoder}`
+      : `Render concluído: ${relPath(outFile)} · ${(durationMs / 1000 / 60).toFixed(1)} min · encoder ${res.encoder}`,
+  );
 
   // Limpeza automática pós-render: arquivos de trabalho do ffmpeg (sempre) e renders
   // antigos demais (mantendo os mais recentes) — evita acumular gigabytes à toa a cada render.
   await cleanupWorkDir(workDir, appendLog);
+  // Provas também acumulam: cada ajuste gera uma, e são dezenas de MB cada.
   await pruneOldRenders(outDir, outFile, appendLog);
 
-  return { outputPath: relPath(outFile), durationMs, encoder: res.encoder, renderJobId: renderJob.id };
+  return { outputPath: relPath(outFile), durationMs, encoder: res.encoder, renderJobId: renderJob?.id ?? null, preview: prova };
 }

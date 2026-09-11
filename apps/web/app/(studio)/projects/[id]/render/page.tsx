@@ -33,6 +33,14 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const ready = scenes.filter((s) => s.filePath).length;
   const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
   const canRender = voiced === blocks.length && blocks.length > 0;
+  // A prova não vira RenderJob (senão viraria o master do projeto), então vem do resultado do job.
+  const provaJob = await prisma.job.findFirst({
+    where: { projectId: id, type: "RENDER_VIDEO", status: "DONE", result: { contains: '"preview":true' } },
+    orderBy: { finishedAt: "desc" },
+    select: { result: true, finishedAt: true },
+  });
+  const prova = provaJob?.result ? (JSON.parse(provaJob.result) as { outputPath?: string; durationMs?: number }) : null;
+
   const voiceSet = new Set(blocks.filter((b) => b.voiceTracks[0]).map((b) => `${b.voiceTracks[0].provider}/${b.voiceTracks[0].voiceId}`));
   const mixedVoices = voiceSet.size > 1;
 
@@ -60,9 +68,15 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
             {/* Dois botões em vez de um seletor de perfil: 720p tem 44% dos pixels de 1080p, então o
                 render de revisão sai em ~metade do tempo. Para decidir se a qualidade serve, a
                 resolução é irrelevante — só o corte aprovado precisa ir em 1080p. */}
+            {/* Prova antes de qualquer render longo: janelas curtas de atos diferentes, pelo mesmo
+                caminho do render final. Fica em primeiro porque é o que deveria ser clicado primeiro. */}
+            <Button type="submit" name="preview" value="1" variant="primary" icon="science" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>
+              Render de prova · ~20s
+            </Button>
+            <span className="text-[10px] text-muted">Três janelas de 7s, do começo, meio e fim. Mostra legenda, enquadramento e trilha em menos de um minuto.</span>
             {format.ratio === "16:9" ? (
               <>
-                <Button type="submit" name="profile" value="WEB_720" variant="primary" icon="bolt" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>
+                <Button type="submit" name="profile" value="WEB_720" icon="bolt" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>
                   Render de revisão · 720p
                 </Button>
                 <Button type="submit" name="profile" value={defaultProfile.id} variant="ghost" icon="movie" disabled={busy || !canRender} title={canRender ? "" : "Sintetize a locução de todos os atos no Passo 3"}>
@@ -83,6 +97,30 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
 
         <div className="mt-6 grid grid-cols-[1fr_22rem] gap-6">
           <div className="space-y-4">
+            {prova?.outputPath && (
+              <Card className="p-4" accent="violet">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="font-display font-semibold">
+                    <Icon name="science" className="mr-1 align-middle text-primary-bright" />
+                    Render de prova
+                  </h3>
+                  <span className="font-mono text-[11px] text-muted">
+                    {prova.durationMs ? `${Math.round(prova.durationMs / 1000)}s` : ""}
+                    {provaJob?.finishedAt ? ` · ${new Date(provaJob.finishedAt).toLocaleString("pt-BR")}` : ""}
+                  </span>
+                </div>
+                <p className="mt-1 text-xs text-fg-secondary">
+                  Janelas curtas de atos diferentes, pelo mesmo caminho do render final. Se a legenda, o enquadramento ou a
+                  trilha estiverem errados aqui, estarão errados no vídeo inteiro.
+                </p>
+                <video
+                  controls
+                  preload="metadata"
+                  src={`/api/media/${prova.outputPath}`}
+                  className={`mt-3 max-h-[420px] bg-black ${format.ratio === "9:16" ? "h-[420px]" : "w-full"}`}
+                />
+              </Card>
+            )}
             <Card className="overflow-hidden" accent="dual">
               <div className={`relative grid place-items-center bg-gradient-to-br from-void via-surface-low to-secondary/20 ${format.ratio === "9:16" ? "aspect-video" : "aspect-video"}`}>
                 {current?.outputPath ? (
