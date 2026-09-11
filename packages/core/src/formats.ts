@@ -46,7 +46,10 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
         "Resolução & Próximo Mistério",
       ],
     },
-    cutPace: { min: 3, max: 6 },
+    // 4–7s por cena. Era 3–6, e o vídeo de 11 min saía com 61 cenas — imagem trocando antes de o
+    // espectador terminar de ler o que está na tela. Documentário ganha com plano que respira;
+    // corte rápido é linguagem de outro formato. De quebra, menos cena é menos B-roll para baixar.
+    cutPace: { min: 4, max: 7 },
     captions: { required: false, style: "subtle-bottom" },
     broll: { preferVideo: true, imageOrientation: "landscape" },
     publish: { youtubeKind: "video" },
@@ -55,7 +58,7 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
     id: "SHORT_9_16",
     label: "Vídeo Curto (9:16)",
     ratio: "9:16",
-    description: "Shorts, Reels e TikTok (30–90s) · Vertical dinâmico · Cortes rápidos",
+    description: "Shorts, Reels e TikTok (30–90s) · Vertical · Narração conduz, imagem acompanha",
     width: 1080,
     height: 1920,
     fps: 30,
@@ -65,7 +68,11 @@ export const FORMATS: Record<VideoFormat, FormatSpec> = {
       hookSeconds: 3,
       blockLabels: ["Gancho de 3s", "Batida 1", "Batida 2", "Revelação & CTA"],
     },
-    cutPace: { min: 1, max: 2 },
+    // 2–4s por cena. Era 1–2, média de 1,5s: um Short de 81s saía com ~54 cenas, e a imagem
+    // trocava mais rápido que a narração conseguia acompanhar. Esse ritmo é de vídeo de dança,
+    // não de documentário narrado — aqui a fala é que conduz, e ela precisa de plano estável
+    // atrás. A média de 3s corta o número de cenas quase pela metade.
+    cutPace: { min: 2, max: 4 },
     captions: { required: true, style: "bold-center-animated" },
     broll: { preferVideo: false, imageOrientation: "portrait" },
     publish: { youtubeKind: "short" },

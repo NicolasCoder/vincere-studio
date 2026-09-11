@@ -81,6 +81,27 @@ export function buildSrt(faixas: FaixaLegenda[], opts: { maxPalavras?: number; m
   );
 }
 
+/**
+ * Recorta o próximo grupo de palavras, fechando no fim da frase quando ela termina antes do limite.
+ *
+ * Cortar a cada N palavras fixas junta o fim de uma frase com o começo da próxima na mesma linha
+ * — "PRÓPRIOS ANIMAIS. ELES" — e o ponto final no meio da tela lê como erro, não como pontuação.
+ * Fechar na pontuação custa uma linha às vezes mais curta, o que é melhor do que uma linha que
+ * mistura duas ideias.
+ */
+function recortarAteFimDeFrase(
+  words: { text: string; startMs: number; endMs: number }[],
+  inicio: number,
+  max: number,
+): { text: string; startMs: number; endMs: number }[] {
+  const fim = Math.min(inicio + max, words.length);
+  for (let j = inicio; j < fim; j++) {
+    // Só pontuação que encerra period: vírgula e ponto e vírgula seguram a frase.
+    if (/[.!?…:]["')\]]?$/.test(words[j].text)) return words.slice(inicio, j + 1);
+  }
+  return words.slice(inicio, fim);
+}
+
 export function buildAss(t: Timeline, p: RenderProfile, mode: "subtle-bottom" | "bold-center-animated"): string {
   const vertical = p.height > p.width;
   const fontSize = vertical ? Math.round(p.height * 0.045) : Math.round(p.height * 0.042);
@@ -118,8 +139,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
   const perLine = mode === "bold-center-animated" ? 3 : 7;
   for (const a of t.acts) {
     const words = a.words;
-    for (let i = 0; i < words.length; i += perLine) {
-      const chunk = words.slice(i, i + perLine);
+    for (let i = 0; i < words.length; ) {
+      const chunk = recortarAteFimDeFrase(words, i, perLine);
+      i += chunk.length;
       const start = offset + chunk[0].startMs;
       const end = offset + chunk[chunk.length - 1].endMs + 120;
       if (mode === "bold-center-animated") {
