@@ -6,6 +6,7 @@ import { Intertitulo } from "./Intertitulo";
 import { InsertArquivo, SUBSTRATOS, type SubstratoKind } from "./InsertArquivo";
 import { Cronologia, type EventoCronologia } from "./Cronologia";
 import { MesaArquivo, type FotoMesa } from "./MesaArquivo";
+import { SplitEvidencia } from "./SplitEvidencia";
 
 export type TrechoInsertion = {
   id: string;
@@ -103,6 +104,14 @@ export const Trecho: React.FC<TrechoProps> = ({ master, insertions, burnedCaptio
                 primary={ins.primary}
                 secondary={ins.secondary ?? undefined}
                 burnedCaptions={burnedCaptions}
+              />
+            ) : ins.layout === "split-evidencia" && ins.evidencePath ? (
+              <SplitEvidencia
+                evidencia={ins.evidencePath}
+                primary={ins.primary}
+                secondary={ins.secondary}
+                // Alterna o lado por índice: o mesmo enquadramento repetido no vídeo todo cansa.
+                ladoDireito={idx % 2 === 0}
               />
             ) : ins.evidencePath ? (
               <InsertArquivo

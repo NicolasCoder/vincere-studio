@@ -2,6 +2,7 @@ import "./index.css";
 import { Composition } from "remotion";
 import { Cronologia } from "./dvp/Cronologia";
 import { MesaArquivo } from "./dvp/MesaArquivo";
+import { SplitEvidencia } from "./dvp/SplitEvidencia";
 import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
@@ -92,6 +93,36 @@ export const RemotionRoot: React.FC = () => {
             { src: "tmp-mesa/e2.jpg", legenda: "pastas do inquérito" },
             { src: "tmp-mesa/e3.jpg", legenda: "marcas no teto" },
           ],
+        }}
+      />
+
+      {/* Split lateral em 16:9; a mesma composição em 9:16 vira split horizontal sozinha. */}
+      <Composition
+        id="SplitEvidencia"
+        component={SplitEvidencia}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={6 * 30}
+        defaultProps={{
+          evidencia: "tmp-mesa/e2.jpg",
+          primary: "Pastas seladas por treze anos",
+          secondary: "Delegacia do Condado de Mercer · mai 2008",
+          ladoDireito: true,
+        }}
+      />
+      <Composition
+        id="SplitEvidencia-Vertical"
+        component={SplitEvidencia}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={6 * 30}
+        defaultProps={{
+          evidencia: "tmp-mesa/e2.jpg",
+          primary: "Pastas seladas por treze anos",
+          secondary: "Delegacia do Condado de Mercer",
+          ladoDireito: true,
         }}
       />
 
