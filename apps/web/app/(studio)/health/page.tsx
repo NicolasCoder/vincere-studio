@@ -28,6 +28,26 @@ export default async function HealthPage() {
           }
         />
 
+        {health.workerDesatualizado && (
+          <Card className="border-warning/50 p-4">
+            <div className="flex items-start gap-3">
+              <Icon name="update" className="text-warning" />
+              <div className="text-sm">
+                <div className="font-semibold text-warning">Worker desatualizado</div>
+                <div className="mt-1 text-xs text-fg-secondary">
+                  Há código mais novo no disco do que o worker carregou. Ele executa por <code className="font-mono text-[10px]">tsx</code>,
+                  sem observador, então correção só vale depois de reiniciar — rode{" "}
+                  <code className="font-mono text-[10px]">pnpm start</code> na raiz. Até lá, um erro já corrigido pode reaparecer.
+                </div>
+                <div className="mt-1 font-mono text-[11px] text-muted">
+                  worker subiu {health.subidaAt ? new Date(health.subidaAt).toLocaleString("pt-BR") : "—"} · código de{" "}
+                  {health.codigoAt ? new Date(health.codigoAt).toLocaleString("pt-BR") : "—"}
+                </div>
+              </div>
+            </div>
+          </Card>
+        )}
+
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Último pulso do worker" value={fmtAge(health.heartbeatAgeMs)} tone={health.workerStatus === "offline" ? "error" : "fg"} />
           <Stat label="Na fila" value={health.queued} sub="aguardando" />

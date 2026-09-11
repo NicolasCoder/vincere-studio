@@ -22,6 +22,23 @@ async function heartbeat() {
   });
 }
 
+/**
+ * Registra QUANDO este processo subiu, para a tela de saúde detectar worker desatualizado.
+ *
+ * O worker roda por tsx sem observador: código novo só entra com restart. Quando alguém corrige
+ * um job, commita e esquece de reiniciar, a ferramenta segue executando o código velho e o mesmo
+ * erro reaparece — foi o que aconteceu três vezes num dia. Comparando este instante com a data
+ * do arquivo de código mais recente, a tela consegue dizer "worker desatualizado" em vez de
+ * repetir um erro já corrigido.
+ */
+async function registrarSubida() {
+  await prisma.setting.upsert({
+    where: { key: "worker_started_at" },
+    create: { key: "worker_started_at", value: new Date().toISOString() },
+    update: { value: new Date().toISOString() },
+  });
+}
+
 async function notify(event: string, data: unknown) {
   if (!WEBHOOK_URL) return;
   try {
@@ -80,15 +97,46 @@ async function main() {
   const reset = await prisma.job.updateMany({ where: { status: "RUNNING" }, data: { status: "QUEUED" } });
   console.log(`Vincere worker online · concorrência ${CONCURRENCY} (+ RENDER_VIDEO exclusivo) · poll ${POLL_MS}ms · ${reset.count} job(s) recuperado(s)`);
   await heartbeat().catch((e) => console.warn("heartbeat falhou:", (e as Error).message));
+  await registrarSubida().catch((e) => console.warn("registro de subida falhou:", (e as Error).message));
   let lastHeartbeat = Date.now();
   for (;;) {
-    await fillSlots().catch((e) => console.error("fillSlots error", e));
+    if (!encerrando) await fillSlots().catch((e) => console.error("fillSlots error", e));
+    if (encerrando && inFlight.size === 0) {
+      console.log("Worker encerrado sem job pela metade.");
+      process.exit(0);
+    }
     if (Date.now() - lastHeartbeat > HEARTBEAT_MS) {
       lastHeartbeat = Date.now();
       await heartbeat().catch((e) => console.warn("heartbeat falhou:", (e as Error).message));
     }
     await new Promise((r) => setTimeout(r, POLL_MS));
   }
+}
+
+/**
+ * Desligamento gracioso: para de pegar job novo e espera o que está rodando terminar.
+ *
+ * Sem isto, encerrar o worker no meio de um APPLY_VISUAL_LAYER joga 25 minutos de render fora —
+ * o job volta para a fila como QUEUED e recomeça do zero na próxima subida. E isso acontece
+ * toda vez que o processo é derrubado para carregar código novo, que é o caso mais comum.
+ *
+ * O segundo sinal força a saída: quem aperta duas vezes quer sair agora, e ficar refém de um
+ * render longo seria pior que perder o render.
+ */
+let encerrando = false;
+for (const sinal of ["SIGINT", "SIGTERM"] as const) {
+  process.on(sinal, () => {
+    if (encerrando) {
+      console.log(`${sinal} de novo — saindo agora, ${inFlight.size} job(s) voltam para a fila.`);
+      process.exit(1);
+    }
+    encerrando = true;
+    console.log(
+      inFlight.size
+        ? `${sinal} recebido: terminando ${inFlight.size} job(s) em andamento antes de sair. Repita o sinal para sair agora.`
+        : `${sinal} recebido: nada em andamento, saindo.`,
+    );
+  });
 }
 
 main();

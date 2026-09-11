@@ -1,3 +1,5 @@
+import path from "node:path";
+import { readdir, stat } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { unstable_noStore as noStore } from "next/cache";
 
@@ -40,11 +42,43 @@ export async function getSettings() {
   return Object.fromEntries(rows.map((r) => [r.key, r.value])) as Record<string, string>;
 }
 
+/**
+ * Data do arquivo .ts mais recente entre os que o worker executa.
+ *
+ * Varre só os diretórios de código do worker e dos pacotes que ele importa — não o repositório
+ * inteiro, senão qualquer edição de documentação marcaria o worker como desatualizado.
+ */
+async function maisRecenteNoWorker(): Promise<Date | null> {
+  const raiz = path.resolve(process.cwd(), "..", "..");
+  const alvos = [
+    path.join(raiz, "apps", "worker", "src"),
+    path.join(raiz, "packages", "core", "src"),
+    path.join(raiz, "packages", "providers", "src"),
+    path.join(raiz, "packages", "render", "src"),
+  ];
+
+  let maior = 0;
+  const visitar = async (dir: string) => {
+    const itens = await readdir(dir, { withFileTypes: true }).catch(() => []);
+    for (const it of itens) {
+      const p = path.join(dir, it.name);
+      if (it.isDirectory()) await visitar(p);
+      else if (it.name.endsWith(".ts") || it.name.endsWith(".tsx")) {
+        const s = await stat(p).catch(() => null);
+        if (s && s.mtimeMs > maior) maior = s.mtimeMs;
+      }
+    }
+  };
+  for (const a of alvos) await visitar(a);
+  return maior ? new Date(maior) : null;
+}
+
 /** Painel de saúde do sistema: worker vivo (heartbeat), fila, jobs travados e falhas recentes. */
 export async function getSystemHealth() {
   noStore();
-  const [heartbeatSetting, counts, stuckJobs, recentFailed] = await Promise.all([
+  const [heartbeatSetting, subidaSetting, counts, stuckJobs, recentFailed] = await Promise.all([
     prisma.setting.findUnique({ where: { key: "worker_heartbeat" } }),
+    prisma.setting.findUnique({ where: { key: "worker_started_at" } }),
     prisma.job.groupBy({ by: ["status"], _count: { _all: true } }),
     // RUNNING há mais de 20min sem nenhuma atualização de progresso/log = provável travamento.
     prisma.job.findMany({
@@ -68,10 +102,21 @@ export async function getSystemHealth() {
 
   const byStatus = Object.fromEntries(counts.map((c) => [c.status, c._count._all])) as Record<string, number>;
 
+  // Worker desatualizado: o processo roda por tsx sem observador, então código novo só entra com
+  // restart. Quem corrige um job e esquece de reiniciar continua recebendo o erro já corrigido,
+  // sem nada na tela indicando isso. Comparar a subida do worker com a data do arquivo de código
+  // mais recente transforma esse silêncio num aviso.
+  const subidaAt = subidaSetting ? new Date(subidaSetting.value) : null;
+  const codigoAt = await maisRecenteNoWorker();
+  const workerDesatualizado = !!(subidaAt && codigoAt && codigoAt.getTime() > subidaAt.getTime());
+
   return {
     workerStatus,
     heartbeatAt,
     heartbeatAgeMs,
+    subidaAt,
+    codigoAt,
+    workerDesatualizado,
     queued: byStatus.QUEUED ?? 0,
     running: byStatus.RUNNING ?? 0,
     done: byStatus.DONE ?? 0,
