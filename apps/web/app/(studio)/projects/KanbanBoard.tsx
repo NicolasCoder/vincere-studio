@@ -3,7 +3,7 @@ import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { FORMATS, STAGES, STAGE_META, type Stage, type VideoFormat } from "@docupulse/core";
 import { Badge, Card, Chip, Icon } from "@docupulse/ui";
-import { moveProjectStage } from "./actions";
+import { deleteProject, moveProjectStage } from "./actions";
 
 export interface KanbanProject {
   id: string;
@@ -121,10 +121,25 @@ export function KanbanBoard({ projects }: { projects: KanbanProject[] }) {
                   }}
                   className={`cursor-grab active:cursor-grabbing ${arrastando === p.id ? "opacity-40" : ""}`}
                 >
-                  <Card className="h-full p-3 hover:border-line-glow" accent={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
+                  <Card className="group relative h-full p-3 hover:border-line-glow" accent={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
                     <Chip active tone={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
                       {FORMATS[p.format as VideoFormat].ratio}
                     </Chip>
+                    {/* Apagar fica escondido até o ponteiro chegar na carta: é irreversível e leva
+                        os arquivos junto, então não deve estar no caminho de um clique distraído. */}
+                    <button
+                      type="button"
+                      title="Apagar projeto"
+                      aria-label={`Apagar ${p.title}`}
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        if (!confirm(`Apagar "${p.title}"?\n\nIsto remove o projeto e TODOS os arquivos dele no disco — roteiro, locução, cenas, renders e miniaturas. Não tem como desfazer.`)) return;
+                        startTransition(() => deleteProject(p.id));
+                      }}
+                      className="absolute right-1.5 top-1.5 hidden rounded p-1 text-muted hover:bg-error/15 hover:text-error group-hover:block"
+                    >
+                      <Icon name="delete" className="text-[16px]" />
+                    </button>
                     <div className="mt-2 line-clamp-3 font-display text-sm font-semibold leading-snug">{p.title}</div>
                     <div className="mt-1.5 line-clamp-1 text-[11px] text-fg-secondary">{p.niche}</div>
                   </Card>

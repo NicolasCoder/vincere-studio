@@ -1,8 +1,11 @@
 "use server";
+import path from "node:path";
+import { rm } from "node:fs/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@docupulse/db";
+import { storageRoot } from "@docupulse/providers";
 import { CostModeSchema, FORMATS, STAGES, STAGE_META, nextStage, type Stage, type VideoFormat } from "@docupulse/core";
 
 const NewProject = z.object({
@@ -100,6 +103,33 @@ export async function moveProjectStage(projectId: string, stage: string) {
     },
   });
   revalidatePath("/projects");
+}
+
+/**
+ * Apaga o projeto: banco e disco.
+ *
+ * O cascade do Prisma cuida das linhas, mas NÃO dos arquivos — e é neles que mora o peso. Um
+ * projeto renderizado guarda centenas de MB entre cenas, renders, prévias e miniaturas; apagar só
+ * o registro deixaria o disco ocupado por algo que nem aparece mais na interface, que é a pior
+ * combinação possível.
+ *
+ * Recusa enquanto houver job em andamento: apagar o projeto embaixo de um render deixaria o
+ * worker escrevendo em pasta que não existe mais.
+ */
+export async function deleteProject(projectId: string) {
+  const ativos = await prisma.job.count({ where: { projectId, status: { in: ["QUEUED", "RUNNING"] } } });
+  if (ativos > 0) redirect(`/projects?erro=${encodeURIComponent(`Há ${ativos} job(s) em andamento neste projeto — espere terminar ou cancele antes de apagar.`)}`);
+
+  const projeto = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!projeto) redirect("/projects");
+
+  await prisma.project.delete({ where: { id: projectId } });
+  // Depois do banco, nunca antes: se a remoção do disco falhar, o projeto já saiu da interface e
+  // a pasta órfã é um problema de espaço, não de estado inconsistente.
+  await rm(path.join(storageRoot(), "projects", projectId), { recursive: true, force: true }).catch(() => {});
+
+  revalidatePath("/projects");
+  redirect("/projects?apagado=1");
 }
 
 export async function selectIdea(projectId: string, ideaId: string) {

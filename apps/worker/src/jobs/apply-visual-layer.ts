@@ -65,7 +65,17 @@ export async function applyVisualLayer(ctx: JobContext) {
   await mkdir(pub, { recursive: true });
 
   const partes: { ordem: number; file: string }[] = [];
-  const encArgs = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(profile.fps), "-c:a", "aac", "-b:a", profile.audioBitrate];
+  /**
+   * Parâmetros idênticos em TODAS as partes. O `-ar 48000` e o `-ac 2` não são detalhe de
+   * qualidade: o master deste Short veio com áudio a 96 kHz, as lacunas herdavam isso e os
+   * trechos do Remotion saíam a 48 kHz. No concat por cópia a taxa divergente desalinha a linha
+   * de tempo do áudio, e o arquivo final saiu com o dobro da duração — 96000/48000 = 2, o fator
+   * exato. Fixar a taxa fecha essa porta para qualquer master de origem.
+   */
+  const encArgs = [
+    "-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(profile.fps),
+    "-c:a", "aac", "-b:a", profile.audioBitrate, "-ar", "48000", "-ac", "2",
+  ];
 
   try {
     // 1) Trechos sem inserção: só recorte e reencode, sem passar pelo Remotion.
@@ -167,24 +177,29 @@ export async function applyVisualLayer(ctx: JobContext) {
     await ctx.progress({ percent: 92, message: "Costurando o vídeo final" });
     partes.sort((a, b) => a.ordem - b.ordem);
 
-    // Concat por cópia exige resolução idêntica em todas as partes. Quando não é, o arquivo sai
-    // gerado e abre normalmente — só a duração denuncia, muito depois. Conferir aqui transforma
-    // corrupção silenciosa em erro com nome: foi assim que a composição travada em 1920×1080
-    // quebrou o primeiro Short que passou pela camada.
-    const resolucoes = new Map<string, string[]>();
+    /**
+     * Concat por cópia exige que todas as partes tenham os MESMOS parâmetros — vídeo e áudio.
+     * Quando não têm, o arquivo é gerado, abre normalmente, e só a duração denuncia muito depois.
+     *
+     * Confere áudio junto com vídeo porque foi o áudio que quebrou o primeiro Short: lacunas a
+     * 96 kHz (herdado do master) e trechos do Remotion a 48 kHz produziram exatamente o dobro da
+     * duração. Checar só a resolução teria passado batido.
+     */
+    const assinaturas = new Map<string, string[]>();
     for (const p of partes) {
-      const bruto = await run(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", p.file]);
-      // Extrai os dois primeiros números em vez de comparar o texto cru: o ffprobe às vezes
-      // devolve um campo vazio a mais ("1080,1920,") e uma comparação de string reprovava partes
-      // que tinham exatamente a mesma resolução.
-      const nums = bruto.match(/\d+/g) ?? [];
-      const r = nums.length >= 2 ? `${nums[0]}x${nums[1]}` : "desconhecida";
-      if (!resolucoes.has(r)) resolucoes.set(r, []);
-      resolucoes.get(r)!.push(path.basename(p.file));
+      const bruto = await run(FFPROBE, [
+        "-v", "error",
+        "-show_entries", "stream=codec_type,width,height,sample_rate,channels",
+        "-of", "default=noprint_wrappers=1", p.file,
+      ]);
+      const campo = (k: string) => new RegExp(`${k}=(\\S+)`).exec(bruto)?.[1] ?? "?";
+      const a = `${campo("width")}x${campo("height")} · ${campo("sample_rate")}Hz ${campo("channels")}ch`;
+      if (!assinaturas.has(a)) assinaturas.set(a, []);
+      assinaturas.get(a)!.push(path.basename(p.file));
     }
-    if (resolucoes.size > 1) {
-      const detalhe = [...resolucoes.entries()].map(([r, fs]) => `${r}: ${fs.length} parte(s) (${fs[0]}…)`).join(" · ");
-      throw new Error(`Partes com resoluções diferentes, o concat sairia quebrado — ${detalhe}`);
+    if (assinaturas.size > 1) {
+      const detalhe = [...assinaturas.entries()].map(([a, fs]) => `${a}: ${fs.length} parte(s) (${fs[0]}…)`).join(" · ");
+      throw new Error(`Partes com parâmetros diferentes, o concat sairia quebrado — ${detalhe}`);
     }
     const lista = path.join(work, "concat.txt");
     await writeFile(lista, partes.map((p) => `file '${p.file.replace(/\\/g, "/")}'`).join("\n"), "utf8");

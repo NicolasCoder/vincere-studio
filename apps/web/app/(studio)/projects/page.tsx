@@ -9,12 +9,25 @@ import { KanbanBoard } from "./KanbanBoard";
 
 const HOOKS = ["Clímax nos 30s", "Cliffhangers Triplos", "Revelação Gradual", "Conflito Não Resolvido"];
 
-export default async function ProjectsPage() {
+export default async function ProjectsPage({ searchParams }: { searchParams: Promise<{ erro?: string; apagado?: string }> }) {
+  const { erro, apagado } = await searchParams;
   const [projects, usage] = await Promise.all([listProjects(), getUsageSummary()]);
   return (
     <>
       <Topbar crumbs={["Ideation", "Novo projeto"]} costUsd={usage.costUsd} />
       <main className="space-y-8 p-6">
+        {erro && (
+          <Card className="border-warning/50 p-4 text-sm text-warning">
+            <Icon name="warning" className="mr-2 align-middle" />
+            {erro}
+          </Card>
+        )}
+        {apagado && (
+          <Card className="p-4 text-sm text-fg-secondary">
+            <Icon name="delete" className="mr-2 align-middle text-muted" />
+            Projeto apagado, com os arquivos do disco junto.
+          </Card>
+        )}
         <Card className="p-6" accent="dual">
           <PageHeader
             icon="auto_awesome"
