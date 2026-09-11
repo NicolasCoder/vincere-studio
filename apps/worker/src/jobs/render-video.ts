@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { FORMATS, getVisualStyle, type VideoFormat, eixosDe, legendaDe} from "@docupulse/core";
+import { FORMATS, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe} from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
@@ -131,7 +131,7 @@ export async function renderVideo(ctx: JobContext) {
 
   // O eixo de transições vem do perfil de edição, mesma fonte que o plano visual usa. Sem isso,
   // pedir um vídeo "mais calmo" mudaria as inserções e deixaria os cortes no mesmo ritmo.
-  const eixos = eixosDe(null, project.format as VideoFormat, "equilibrado");
+  const eixos = eixosDe(null, project.format as VideoFormat, project.intensidade as Intensidade);
   const res = await renderTimeline(timeline, {
     profile,
     captions,

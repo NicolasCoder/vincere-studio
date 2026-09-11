@@ -1,14 +1,32 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@docupulse/db";
-import { EDIT_PLAN_PROMPT_VERSION, LAYOUT_META, needsOpaquePlate, type EditLayout, type EditPlanData } from "@docupulse/core";
+import {
+  EDIT_PLAN_PROMPT_VERSION,
+  INTENSIDADES,
+  LAYOUT_META,
+  eixosDe,
+  needsOpaquePlate,
+  segundosPorInsercao,
+  type EditLayout,
+  type EditPlanData,
+  type Intensidade,
+  type VideoFormat,
+} from "@docupulse/core";
 import { motoresDisponiveis } from "@docupulse/providers";
 import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
 import { getUsageSummary, fmtMs } from "@/lib/data";
-import { applyVisualLayer, generateEditPlan, generateEvidences } from "./actions";
+import { applyVisualLayer, generateEditPlan, generateEvidences, setIntensidade } from "./actions";
+
+const INTENSIDADE_LABEL: Record<Intensidade, string> = {
+  calmo: "Calmo",
+  equilibrado: "Equilibrado",
+  dinamico: "Dinâmico",
+  "muito-dinamico": "Muito dinâmico",
+};
 
 const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
   "lower-third": "cyan",
@@ -93,6 +111,9 @@ export default async function EditPlanPage({
     byAct.get(ins.act)!.push(ins);
   }
 
+  const intensidadeAtual = (project.intensidade ?? "equilibrado") as Intensidade;
+  const eixosAtuais = eixosDe(null, project.format as VideoFormat, intensidadeAtual);
+
   return (
     <>
       <Topbar crumbs={["Projetos", project.title, "Plano de Edição"]} costUsd={usage.costUsd} />
@@ -103,6 +124,31 @@ export default async function EditPlanPage({
           title="Plano de Edição (camada visual DVP)"
           subtitle="O que entra POR CIMA do master já renderizado — lower thirds, destaques de dado, intertítulos. Nada é renderizado aqui: este é o plano para você revisar."
         />
+
+        <Card className="p-5">
+          <h3 className="font-display font-semibold">
+            <Icon name="tune" className="mr-1 align-middle text-primary-bright" />
+            Intensidade da edição
+          </h3>
+          <p className="mt-1 text-[11px] text-fg-secondary">
+            Um multiplicador sobre os eixos do perfil — quanto do vídeo recebe inserção visual e quanto dos cortes
+            recebe transição marcada. Vale a partir do próximo plano gerado; não muda um plano já existente.
+          </p>
+          <div className="mt-3 flex flex-wrap items-center gap-2">
+            <Chip icon="layers">{eixosAtuais.insercoes}% em inserção (1 a cada {segundosPorInsercao(eixosAtuais.insercoes)}s)</Chip>
+            <Chip icon="switch_video">{eixosAtuais.transicoes}% dos cortes com transição marcada</Chip>
+          </div>
+          <form action={setIntensidade.bind(null, project.id)} className="mt-3 flex flex-wrap items-center gap-2">
+            <select name="intensidade" defaultValue={intensidadeAtual} className="field px-3 py-2 text-sm">
+              {INTENSIDADES.map((i) => (
+                <option key={i} value={i} className="bg-surface-low">
+                  {INTENSIDADE_LABEL[i]}
+                </option>
+              ))}
+            </select>
+            <Button type="submit" size="sm" icon="check">Aplicar intensidade</Button>
+          </form>
+        </Card>
 
         <Card className="flex flex-wrap items-center justify-between gap-4 p-5">
           <div className="flex flex-wrap gap-2">

@@ -24,6 +24,7 @@ model Project {
   status         String   @default("DRAFT") // DRAFT | IN_PROGRESS | PUBLISHED | ARCHIVED
   costUsd        Float    @default(0)
   visualStyle    String   @default("DARK_DOC") // ver @docupulse/core VISUAL_STYLES
+  intensidade    String   @default("equilibrado") // calmo | equilibrado | dinamico | muito-dinamico (ver @docupulse/core INTENSIDADES)
   thumbnailPath      String?
   thumbnailUpdatedAt DateTime?
   voiceProfileId String?

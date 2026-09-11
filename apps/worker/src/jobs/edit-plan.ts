@@ -14,6 +14,7 @@ import {
   getEditProfile,
   layoutsPermitidos,
   eixosDe,
+  type Intensidade,
   segundosPorInsercao,
   insertionRegion,
   needsOpaquePlate,
@@ -122,10 +123,7 @@ export async function generateEditPlan(ctx: JobContext) {
   // único lugar que muda.
   const perfil = getEditProfile(null);
   const permitidos = layoutsPermitidos(null, project.format as VideoFormat);
-  // Intensidade ainda sem coluna, pelo mesmo motivo do perfil: enquanto só existe um valor em uso,
-  // a coluna seria escolha que não existe. O eixo já está parametrizado, então quando virar campo
-  // no projeto é aqui — e só aqui — que muda.
-  const eixos = eixosDe(null, project.format as VideoFormat, "equilibrado");
+  const eixos = eixosDe(null, project.format as VideoFormat, project.intensidade as Intensidade);
   const system = editPlanSystemPrompt(perfil.orientacao);
   await ctx.log(
     `Perfil: ${perfil.label} · ${permitidos.length} layout(s) para ${project.format} · ` +

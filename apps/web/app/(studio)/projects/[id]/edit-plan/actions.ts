@@ -1,6 +1,20 @@
 "use server";
 import { redirect } from "next/navigation";
+import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
+import { INTENSIDADES, type Intensidade } from "@docupulse/core";
+
+/**
+ * Muda a intensidade do projeto — o multiplicador sobre os eixos do perfil (inserções e
+ * transições). Não regenera o plano sozinho: o plano só reflete isto na próxima vez que for
+ * gerado, porque regenerar automaticamente descartaria uma revisão manual já feita.
+ */
+export async function setIntensidade(projectId: string, formData: FormData) {
+  const raw = String(formData.get("intensidade") ?? "equilibrado");
+  const intensidade: Intensidade = (INTENSIDADES as readonly string[]).includes(raw) ? (raw as Intensidade) : "equilibrado";
+  await prisma.project.update({ where: { id: projectId }, data: { intensidade } });
+  revalidatePath(`/projects/${projectId}/edit-plan`);
+}
 
 export async function generateEditPlan(projectId: string) {
   const job = await prisma.job.create({
