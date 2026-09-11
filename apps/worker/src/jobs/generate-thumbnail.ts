@@ -1,53 +1,76 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { getVisualStyle } from "@docupulse/core";
 import { FFMPEG, run } from "@docupulse/providers";
 import { absPath, projectDir, relPath } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
-/** Cor de destaque por estilo visual — a linha de impacto (última linha) usa essa cor. */
-const ACCENTS: Record<string, string> = {
-  DARK_DOC: "0xFF8A3D",
-  HISTORIC_REAL: "0xE8C27A",
-  SPACE_SCI: "0x37E6FF",
-  KIDS_3D: "0xFF6FA8",
-  WATERCOLOR: "0xE0A97A",
-  TRUE_CRIME: "0xFF3B3B",
-};
-
-/** Quebra o título em até 3 linhas curtas, no estilo "manchete" (poucas palavras por linha). */
-function wrapLines(text: string, max: number): string[] {
-  const words = text.replace(/\s+/g, " ").trim().split(" ");
-  const lines: string[] = [];
-  let cur = "";
-  for (const w of words) {
-    if ((cur + " " + w).trim().length > max && cur) {
-      lines.push(cur);
-      cur = w;
-    } else cur = (cur + " " + w).trim();
-  }
-  if (cur) lines.push(cur);
-  return lines.slice(0, 3);
-}
-const winFont = () => (process.platform === "win32" ? "C:/Windows/Fonts/segoeuib.ttf" : "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
+/**
+ * Fonte de display: condensada e pesada. É ela que dá o peso do formato — uma sans normal em
+ * negrito ocupa largura demais por letra e o título nunca chega ao tamanho que o estilo pede.
+ * Impact vem instalada em todo Windows; fora dele cai numa bold comum e o resultado fica mais
+ * largo, porém legível.
+ */
+const displayFont = () =>
+  process.env.THUMB_FONT ||
+  (process.platform === "win32" ? "C:/Windows/Fonts/impact.ttf" : "/usr/share/fonts/truetype/dejavu/DejaVuSans-Bold.ttf");
 const ffPath = (p: string) => p.replace(/\\/g, "/").replace(/:/g, "\\:");
 
 /**
- * GENERATE_THUMBNAIL: monta uma thumbnail 1280x720 gratuita via ffmpeg — sem gerador de imagem
- * (isso fica pra quando entrarmos com Nano Banana Pro/GPT Image). Pega a melhor cena com mídia já
- * baixada, faz um cover-crop punchy (contraste/saturação bem acima do normal pra chamar atenção),
- * um degradê escuro no terço inferior pra legibilidade, e o título em "manchete": linhas em branco
- * com stroke grosso e a última linha bem maior na cor de destaque do estilo — no estilo dos canais
- * de documentário/mistério do YouTube (texto grande, 2 tons, contorno preto pesado).
+ * Separa a manchete em título grande e subtítulo fino, como no padrão do formato.
+ *
+ * Com dois-pontos (ou travessão/barra) o corte é o do próprio título — é onde o autor já separou
+ * gancho de explicação. Sem separador, as primeiras palavras que couberem viram o título e o resto
+ * desce: "O DESASTRE NUCLEAR" / "QUE A URSS ESCONDEU POR 31 ANOS".
+ */
+function partirManchete(texto: string): { titulo: string; sub: string } {
+  const t = texto.replace(/\s+/g, " ").trim();
+  const partes = t.split(/\s*[:—–|]\s*/);
+  if (partes.length > 1 && partes[0].length >= 6) {
+    return { titulo: partes[0], sub: partes.slice(1).join(" ") };
+  }
+  const palavras = t.split(" ");
+  let titulo = "";
+  let i = 0;
+  while (i < palavras.length && `${titulo} ${palavras[i]}`.trim().length <= 18) {
+    titulo = `${titulo} ${palavras[i]}`.trim();
+    i++;
+  }
+  if (!titulo) {
+    titulo = palavras[0] ?? t;
+    i = 1;
+  }
+  return { titulo, sub: palavras.slice(i).join(" ") };
+}
+
+/**
+ * Espaça o subtítulo letra a letra. O drawtext não tem entrelinhamento, e a Impact é estreita
+ * demais para o espaço simples aparecer — daí o espaço triplo entre palavras.
+ */
+const espacar = (s: string) =>
+  s
+    .toUpperCase()
+    .split("")
+    .map((c) => (c === " " ? "   " : c))
+    .join(" ");
+
+/**
+ * GENERATE_THUMBNAIL: monta uma thumbnail 1280x720 gratuita via ffmpeg — sem gerador de imagem.
+ *
+ * Pega a melhor cena com mídia já baixada e a trata em vez de realçá-la: contraste firme,
+ * saturação PARA BAIXO e brilho negativo, mais vinheta. A tentação é saturar para "chamar
+ * atenção", mas na grade do YouTube todo mundo satura; foto escura com tipografia clara é o que
+ * destaca, e é o que os canais do formato fazem.
+ *
+ * Em cima, manchete em duas alturas — título condensado enorme e subtítulo fino espaçado — com
+ * halo no lugar de contorno preto.
+ *
  * payload: { projectId, sceneId?, title? }
  */
 export async function generateThumbnail(ctx: JobContext) {
   const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new Error("Projeto não encontrado");
-  const style = getVisualStyle(project.visualStyle);
-  const accent = ACCENTS[style.id] ?? "0xFF8A3D";
 
   const idea = await prisma.idea.findFirst({ where: { projectId, selected: true } });
   const title = String(ctx.payload.title ?? idea?.title ?? project.title);
@@ -83,35 +106,44 @@ export async function generateThumbnail(ctx: JobContext) {
   }
 
   const out = path.join(outDir, `thumb-${stamp}.jpg`);
-  const fontFile = winFont();
+  const fontFile = ffPath(displayFont());
 
-  const lines = wrapLines(title.toUpperCase(), 18);
-  const accentLine = lines[lines.length - 1] ?? title.toUpperCase();
-  const whiteLines = lines.slice(0, -1);
-  const longest = Math.max(accentLine.length, ...whiteLines.map((l) => l.length), 1);
-  const accentSize = Math.max(52, Math.min(104, Math.floor(1750 / longest)));
-  const whiteSize = Math.max(40, Math.round(accentSize * 0.66));
+  const { titulo, sub } = partirManchete(title);
+  const arqTitulo = path.join(outDir, `thumb-${stamp}-t.txt`);
+  await writeFile(arqTitulo, titulo.toUpperCase(), "utf8");
+  const tamTitulo = Math.max(70, Math.min(160, Math.floor(2350 / Math.max(1, titulo.length))));
 
-  const txtAccent = path.join(outDir, `thumb-${stamp}-accent.txt`);
-  await writeFile(txtAccent, accentLine, "utf8");
-  let whiteDraw = "";
-  if (whiteLines.length) {
-    const txtWhite = path.join(outDir, `thumb-${stamp}-white.txt`);
-    await writeFile(txtWhite, whiteLines.join("\n"), "utf8");
-    whiteDraw = `,drawtext=fontfile='${ffPath(fontFile)}':textfile='${ffPath(txtWhite)}':fontcolor=white:fontsize=${whiteSize}:line_spacing=6:borderw=7:bordercolor=black@0.95:x=(w-text_w)/2:y=h*0.60`;
+  const t1 = `drawtext=fontfile='${fontFile}':textfile='${ffPath(arqTitulo)}':fontcolor=white:fontsize=${tamTitulo}:x=(w-text_w)/2:y=h*0.58`;
+  let t2 = "";
+  if (sub) {
+    const arqSub = path.join(outDir, `thumb-${stamp}-s.txt`);
+    await writeFile(arqSub, espacar(sub), "utf8");
+    t2 = `,drawtext=fontfile='${fontFile}':textfile='${ffPath(arqSub)}':fontcolor=white@0.92:fontsize=30:x=(w-text_w)/2:y=h*0.82`;
   }
-  const accentY = whiteLines.length ? "h-text_h-46" : "h*0.80";
+  const textos = `${t1}${t2}`;
 
+  /**
+   * O texto ganha halo em vez de contorno preto: o mesmo texto é desenhado numa camada preta,
+   * borrado e somado em `screen`, e a versão nítida entra por cima. Contorno grosso lê como
+   * legenda de televisão; o halo separa o texto do fundo sem desenhar uma moldura em volta dele.
+   *
+   * O `format=gbrp` antes do blend não é decoração. Em YUV o modo screen também opera nos planos
+   * de croma, que são centrados em 128 — o resultado sai com um magenta que não existe na foto.
+   */
   const filter =
-    `scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,` +
-    `eq=contrast=1.2:saturation=1.4:brightness=0.01,` +
-    `drawbox=x=0:y=ih*0.55:w=iw:h=ih*0.08:color=black@0.12:t=fill,` +
-    `drawbox=x=0:y=ih*0.63:w=iw:h=ih*0.12:color=black@0.30:t=fill,` +
-    `drawbox=x=0:y=ih*0.75:w=iw:h=ih*0.25:color=black@0.62:t=fill` +
-    whiteDraw +
-    `,drawtext=fontfile='${ffPath(fontFile)}':textfile='${ffPath(txtAccent)}':fontcolor=${accent}:fontsize=${accentSize}:borderw=9:bordercolor=black@1.0:x=(w-text_w)/2:y=${accentY}`;
+    `[0:v]scale=${W}:${H}:force_original_aspect_ratio=increase,crop=${W}:${H},setsar=1,` +
+    `eq=contrast=1.26:saturation=0.72:brightness=-0.07,` +
+    `vignette=PI/3.5,format=gbrp[bg];` +
+    `color=c=black:s=${W}x${H},format=gbrp,${textos},gblur=sigma=24[glow];` +
+    `[bg][glow]blend=all_mode=screen:all_opacity=0.8,format=yuv420p[lit];` +
+    `[lit]${textos}[out]`;
 
-  await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-loop", "1", "-i", stillSource, "-frames:v", "1", "-vf", filter, out]);
+  await run(FFMPEG, [
+    "-y", "-hide_banner", "-loglevel", "error",
+    "-loop", "1", "-i", stillSource,
+    "-filter_complex", filter, "-map", "[out]",
+    "-frames:v", "1", "-q:v", "2", out,
+  ]);
 
   await prisma.project.update({ where: { id: projectId }, data: { thumbnailPath: relPath(out), thumbnailUpdatedAt: new Date() } });
   await ctx.log(`Thumbnail gerada a partir de ${scene.mediaType === "video" ? "frame de vídeo" : "imagem"} (cena ${scene.id.slice(-6)}): ${path.basename(out)}`);
