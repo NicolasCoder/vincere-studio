@@ -99,7 +99,17 @@ export const Banco: React.FC<BancoProps> = ({ layout, format, sobreMaster = true
       ) : layout === "insert-arquivo" ? (
         <InsertArquivo substrato="papel-dossie" primary={primary} secondary={secondary} evidencia="tmp-mesa/e2.jpg" />
       ) : layout === "split-evidencia" ? (
-        <SplitEvidencia evidencia="tmp-mesa/e2.jpg" primary={primary} secondary={secondary} ladoDireito />
+        /*
+          O lado alterna com o formato de propósito, para a matriz cobrir os dois ramos em vez de
+          testar o mesmo duas vezes. Em 9:16 o painel de cima é o caso arriscado — é lá que o texto
+          precisa subir para não cair na legenda queimada do meio do quadro.
+        */
+        <SplitEvidencia
+          evidencia="tmp-mesa/e2.jpg"
+          primary={primary}
+          secondary={secondary}
+          ladoDireito={format === "LONG_16_9"}
+        />
       ) : layout === "graphic-fullscreen" ? (
         <Intertitulo primary={primary} secondary={secondary} />
       ) : layout === "cronologia" ? (

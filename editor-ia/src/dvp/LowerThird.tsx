@@ -1,5 +1,5 @@
 import { AbsoluteFill, Easing, Interactive, interpolate, staticFile, useCurrentFrame, useVideoConfig } from "remotion";
-import { DVP, SIDE_MARGIN_PCT, bodyFont, bottomBandTopPct, titleFont } from "./tokens";
+import { DVP, SIDE_MARGIN_PCT, baseSeguraPct, bodyFont, escala, titleFont } from "./tokens";
 
 export type LowerThirdStyle = "AUTORIDADE" | "EMOCIONAL" | "DATADO";
 
@@ -19,7 +19,9 @@ export const LowerThird: React.FC<{
   burnedCaptions?: boolean;
 }> = ({ style, primary, secondary, burnedCaptions = false }) => {
   const frame = useCurrentFrame();
-  const { fps, height } = useVideoConfig();
+  const { fps, width, height } = useVideoConfig();
+  // Tudo dimensionado pelo menor lado: por `height`, o Short recebia fonte de 100px.
+  const u = escala(width, height);
 
   // Sobe e aparece; a saída fica por conta do <Sequence> que envolve o componente.
   const enter = { extrapolateLeft: "clamp", extrapolateRight: "clamp", easing: Easing.bezier(0.16, 1, 0.3, 1) } as const;
@@ -31,10 +33,11 @@ export const LowerThird: React.FC<{
         style={{
           position: "absolute",
           left: `${SIDE_MARGIN_PCT}%`,
-          // Ancorado logo acima da faixa proibida do rodape — nunca invade.
-          bottom: `${100 - bottomBandTopPct(burnedCaptions) + 1.5}%`,
+          // Ancorado logo acima da faixa livre mais baixa. No Short a legenda queimada fica no
+          // MEIO do quadro, entao o rodape volta a ser territorio valido.
+          bottom: `${100 - baseSeguraPct(width, height, burnedCaptions) + 1.5}%`,
           maxWidth: "62%",
-          padding: style === "EMOCIONAL" ? 0 : `${height * 0.018}px ${height * 0.028}px`,
+          padding: style === "EMOCIONAL" ? 0 : `${u * 0.018}px ${u * 0.028}px`,
           background:
             style === "AUTORIDADE"
               // Opacidade calibrada num still real: escuro o bastante para texto claro ficar legível
@@ -43,7 +46,7 @@ export const LowerThird: React.FC<{
               : style === "DATADO"
                 ? `${DVP.carvao}CC`
                 : "transparent",
-          borderLeft: style === "DATADO" ? `${height * 0.004}px solid ${DVP.terra}` : "none",
+          borderLeft: style === "DATADO" ? `${u * 0.004}px solid ${DVP.terra}` : "none",
           opacity: interpolate(frame, [0, 0.4 * fps], [0, 1], enter),
           translate: interpolate(frame, [0, 0.5 * fps], ["0px 14px", "0px 0px"], enter),
         }}
@@ -52,13 +55,13 @@ export const LowerThird: React.FC<{
           name="Primary"
           style={{
             fontFamily: style === "DATADO" ? bodyFont : titleFont,
-            fontSize: height * (style === "DATADO" ? 0.038 : 0.052),
+            fontSize: u * (style === "DATADO" ? 0.038 : 0.052),
             fontWeight: style === "DATADO" ? 600 : 700,
             letterSpacing: style === "DATADO" ? "0.08em" : "0",
             textTransform: style === "DATADO" ? "uppercase" : "none",
             color: style === "DATADO" ? DVP.areia : DVP.creme,
             lineHeight: 1.15,
-            textShadow: style === "EMOCIONAL" ? `0 ${height * 0.003}px ${height * 0.012}px #000000CC` : "none",
+            textShadow: style === "EMOCIONAL" ? `0 ${u * 0.003}px ${u * 0.012}px #000000CC` : "none",
           }}
         >
           {primary}
@@ -68,12 +71,12 @@ export const LowerThird: React.FC<{
             name="Secondary"
             style={{
               fontFamily: bodyFont,
-              fontSize: height * 0.028,
+              fontSize: u * 0.028,
               fontWeight: 400,
               color: style === "AUTORIDADE" ? DVP.olive : DVP.areia,
-              marginTop: height * 0.008,
+              marginTop: u * 0.008,
               lineHeight: 1.25,
-              textShadow: style === "EMOCIONAL" ? `0 ${height * 0.002}px ${height * 0.01}px #000000CC` : "none",
+              textShadow: style === "EMOCIONAL" ? `0 ${u * 0.002}px ${u * 0.01}px #000000CC` : "none",
               opacity: interpolate(frame, [0.2 * fps, 0.6 * fps], [0, 1], enter),
             }}
           >

@@ -37,6 +37,9 @@ export const SplitEvidencia: React.FC<SplitEvidenciaProps> = ({ evidencia, prima
   // Desloca a partir da borda de onde o painel vem, não de um ponto arbitrário.
   const deslocaPx = (1 - entra) * (vertical ? height * 0.12 : width * 0.12);
 
+  // Painel na metade de cima em vertical: o texto vai para o topo dele, longe da legenda queimada.
+  const textoNoTopo = vertical && !ladoDireito;
+
   const painel: React.CSSProperties = vertical
     ? { left: 0, right: 0, top: ladoDireito ? "50%" : 0, height: "50%", transform: `translateY(${ladoDireito ? deslocaPx : -deslocaPx}px)` }
     : { top: 0, bottom: 0, left: ladoDireito ? "50%" : 0, width: "50%", transform: `translateX(${ladoDireito ? deslocaPx : -deslocaPx}px)` };
@@ -48,13 +51,23 @@ export const SplitEvidencia: React.FC<SplitEvidenciaProps> = ({ evidencia, prima
           src={staticFile(evidencia)}
           style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover" }}
         />
-        {/* Escurece a base do painel para o texto ter onde assentar, sem cobrir a evidência. */}
+        {/*
+          O texto assenta na borda EXTERNA do painel, não sempre no rodapé.
+
+          Em 9:16 a legenda queimada do master fica no meio do quadro (47%–59% da altura). Com o
+          painel na metade de cima, um texto ancorado no rodapé dele cai em ~806–960px, ou seja,
+          dentro da faixa da legenda — duas camadas de texto uma sobre a outra. Ancorando na borda
+          externa, o texto foge do miolo nos dois casos e ainda fica mais longe da costura, que é
+          onde ele lê melhor. Em 16:9 o rodapé continua sendo a borda externa, então nada muda.
+        */}
         <AbsoluteFill
           style={{
-            background: `linear-gradient(to top, rgba(20,18,16,0.92) 0%, rgba(20,18,16,0.55) 22%, rgba(20,18,16,0) 46%)`,
+            background: textoNoTopo
+              ? `linear-gradient(to bottom, rgba(20,18,16,0.92) 0%, rgba(20,18,16,0.55) 22%, rgba(20,18,16,0) 46%)`
+              : `linear-gradient(to top, rgba(20,18,16,0.92) 0%, rgba(20,18,16,0.55) 22%, rgba(20,18,16,0) 46%)`,
           }}
         />
-        <div style={{ position: "absolute", left: "7%", right: "7%", bottom: "8%" }}>
+        <div style={{ position: "absolute", left: "7%", right: "7%", ...(textoNoTopo ? { top: "8%" } : { bottom: "8%" }) }}>
           <div
             style={{
               fontFamily: titleFont,

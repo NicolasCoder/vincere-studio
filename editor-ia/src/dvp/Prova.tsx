@@ -1,5 +1,5 @@
-import { AbsoluteFill, CanvasImage, staticFile } from "remotion";
-import { DVP, bottomBandTopPct } from "./tokens";
+import { AbsoluteFill, CanvasImage, staticFile, useVideoConfig } from "remotion";
+import { DVP, zonaProibida } from "./tokens";
 import { LowerThird, type LowerThirdStyle } from "./LowerThird";
 import { OverlayDado } from "./OverlayDado";
 import { InsertArquivo, type SubstratoKind } from "./InsertArquivo";
@@ -34,6 +34,9 @@ export const Prova: React.FC<ProvaProps> = ({
   burnedCaptions,
   showSafeZone,
 }) => {
+  const { width, height } = useVideoConfig();
+  // A guia desenha a faixa REAL: no Short ela fica no meio, não no rodapé.
+  const zona = zonaProibida(width, height, burnedCaptions);
   return (
     <AbsoluteFill name="Prova" style={{ backgroundColor: DVP.carvao }}>
       <CanvasImage src={staticFile(`masters/${frame}`)} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
@@ -53,10 +56,11 @@ export const Prova: React.FC<ProvaProps> = ({
               position: "absolute",
               left: 0,
               right: 0,
-              top: `${bottomBandTopPct(burnedCaptions)}%`,
-              bottom: 0,
+              top: `${zona.fromPct}%`,
+              bottom: `${100 - zona.toPct}%`,
               background: "#FF000022",
               borderTop: "2px dashed #FF3B3B",
+              borderBottom: zona.toPct < 100 ? "2px dashed #FF3B3B" : "none",
             }}
           />
         </AbsoluteFill>
