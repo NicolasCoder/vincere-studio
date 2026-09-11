@@ -46,6 +46,36 @@ export async function applyVisualLayer(ctx: JobContext) {
   if (!render?.outputPath) throw new Error("Sem render concluído para aplicar a camada.");
   const master = absPath(render.outputPath);
 
+  /**
+   * A camada segue a resolução REAL do master, não a nominal do formato.
+   *
+   * As lacunas são reencodadas a partir do master e herdam o tamanho dele; os trechos do Remotion
+   * usavam `profile.width/height`. Com um master de rascunho (perfil WEB_720, 1280×720) num
+   * projeto LONG_16_9, as lacunas saíam 1280×720 e os segmentos 1920×1080 — o concat por cópia
+   * não junta isso, e a checagem de parâmetros barrou a costura, corretamente.
+   *
+   * Consertar pelo lado do master (em vez de exigir render 1080p) é o que faz sentido: o trabalho
+   * desta etapa é sobrepor ALGO em cima de UM master, e aplicar a camada num rascunho para revisar
+   * rápido é justamente o fluxo útil.
+   */
+  const sonda = await run(FFPROBE, [
+    "-v", "error", "-select_streams", "v:0",
+    "-show_entries", "stream=width,height", "-of", "csv=p=0", master,
+  ]).catch(() => "");
+  const [mw, mh] = sonda.trim().split(",").map(Number);
+  const dims =
+    Number.isFinite(mw) && Number.isFinite(mh) && mw > 0 && mh > 0
+      ? { width: mw, height: mh }
+      : { width: profile.width, height: profile.height };
+  await ctx.log(`Master: ${path.basename(master)} · ${dims.width}×${dims.height}`);
+  if (dims.width < profile.width || dims.height < profile.height) {
+    // Não bloqueia: só deixa claro que a saída herda a qualidade do master escolhido.
+    await ctx.log(
+      `Atenção: o master é menor que o alvo do formato (${profile.width}×${profile.height}). ` +
+        `A camada sai em ${dims.width}×${dims.height} — bom para revisar, mas renderize o master final antes de publicar.`,
+    );
+  }
+
   const segments = planSegments(data.insertions, data.totalMs);
   const gaps = passthroughRanges(segments, data.totalMs);
   const segSec = segments.reduce((t, s) => t + (s.endMs - s.startMs), 0) / 1000;
@@ -153,11 +183,12 @@ export async function applyVisualLayer(ctx: JobContext) {
         insertions,
         burnedCaptions: format.captions.required,
         durationInFrames: Math.round((durMs / 1000) * profile.fps),
-        // Resolução do perfil, não a da composição. Sem isto o Remotion devolve 1920×1080 fixo e
-        // um projeto vertical sai deitado — o concat então mistura resoluções e a duração final
-        // vira qualquer coisa.
-        width: profile.width,
-        height: profile.height,
+        // Resolução medida no master, não a da composição nem a nominal do formato. Sem passar
+        // nada o Remotion devolve 1920×1080 fixo e um projeto vertical sai deitado; passando a do
+        // formato, um master de rascunho em 720p gera segmentos 1080p que não costuram. As duas
+        // falhas terminam igual: concat misturando resoluções.
+        width: dims.width,
+        height: dims.height,
       };
       const propsFile = path.join(work, `props-${i}.json`);
       await writeFile(propsFile, JSON.stringify(props), "utf8");
