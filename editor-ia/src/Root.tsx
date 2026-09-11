@@ -1,5 +1,6 @@
 import "./index.css";
 import { Composition } from "remotion";
+import { Cronologia } from "./dvp/Cronologia";
 import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
@@ -41,6 +42,31 @@ export const RemotionRoot: React.FC = () => {
           insertions: TRECHO_INSERTIONS,
           burnedCaptions: false,
           durationInFrames: 45 * 30,
+        }}
+      />
+
+      {/*
+        Cronologia: substrato de época por baixo, linha do tempo desenhada em vetor por cima.
+        Fica separada do Segmento porque não é uma inserção sobre o master — ela OCUPA a tela
+        inteira por alguns segundos, como um intertítulo longo.
+      */}
+      <Composition
+        id="Cronologia"
+        component={Cronologia}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={8 * 30}
+        defaultProps={{
+          subtitulo: "Cronologia do caso",
+          titulo: "Vinte e seis anos no mesmo trecho de quinze quilômetros",
+          fundo: null,
+          eventos: [
+            { ano: "Out 1995", rotulo: "Primeiro sedã no km 32", t: 0, destaque: true },
+            { ano: "Mai 2008", rotulo: "Arquivos da delegacia são abertos", t: 0.5 },
+            { ano: "Mai 2021", rotulo: "Sétimo veículo, km 12", t: 0.96, destaque: true },
+            { ano: "Dez 2021", rotulo: "Caso arquivado", t: 1 },
+          ],
         }}
       />
 
