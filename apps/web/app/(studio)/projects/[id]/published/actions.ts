@@ -23,8 +23,18 @@ const SeoResponseSchema = z.object({
   chapters: z.array(z.object({ time: z.string(), label: z.string() })),
 });
 
-function seoSystemPrompt() {
-  return `Você é um especialista em SEO e copywriting para YouTube, focado em canais de documentário/mistério em português do Brasil (estilo "Fatos Desconhecidos"). Escreva título, descrição e tags otimizados para CTR e retenção, sem clickbait enganoso — a curiosidade prometida no título tem que ser genuína e entregue no vídeo.`;
+function seoSystemPrompt(short: boolean) {
+  const base = `Você é um especialista em SEO e copywriting para YouTube, focado em canais de documentário/mistério em português do Brasil (estilo "Fatos Desconhecidos"). Escreva título, descrição e tags otimizados para CTR e retenção, sem clickbait enganoso — a curiosidade prometida no título tem que ser genuína e entregue no vídeo.`;
+  if (!short) return base;
+  // Short e vídeo longo não competem pela mesma atenção: um é descoberto no feed vertical,
+  // com o texto quase invisível; o outro é escolhido na busca e na home, onde a descrição
+  // ainda pesa. Pedir a mesma peça para os dois entrega uma errada nas duas pontas.
+  return `${base}
+
+Este vídeo é um SHORT vertical de menos de 3 minutos, descoberto no feed, não na busca. Isso muda tudo:
+- O título é lido em meio segundo, com o polegar já em movimento. Curto e concreto vence elaborado.
+- Quase ninguém abre a descrição. Ela existe para contexto e palavras-chave, não para estrutura.
+- Short NÃO tem capítulos. Timestamps aqui não servem para nada.`;
 }
 
 function seoUserPrompt(input: {
@@ -35,6 +45,7 @@ function seoUserPrompt(input: {
   logline?: string | null;
   hookLines: string[];
   chapters: { act: number; title: string; startMs?: number | null }[];
+  short: boolean;
 }) {
   const durMin = input.targetDuration ? Math.round(input.targetDuration / 60) : null;
   const fmtTime = (ms?: number | null) => {
@@ -42,14 +53,26 @@ function seoUserPrompt(input: {
     const totalSec = Math.floor(ms / 1000);
     return `${Math.floor(totalSec / 60)}:${String(totalSec % 60).padStart(2, "0")}`;
   };
-  return `Gere metadados de publicação para este vídeo de YouTube:
+  const cabecalho = `Gere metadados de publicação para este vídeo de YouTube:
 
 Título de trabalho: "${input.projectTitle}"
 Nicho: ${input.niche}
 Tom: ${input.tone ?? "documentário sério, dark"}
 Duração aproximada: ${durMin ? `${durMin} min` : "desconhecida"}
 Sinopse/gancho: ${input.logline ?? "—"}
-Frases de gancho do roteiro: ${input.hookLines.join(" · ") || "—"}
+Frases de gancho do roteiro: ${input.hookLines.join(" · ") || "—"}`;
+
+  if (input.short) {
+    return `${cabecalho}
+
+Retorne:
+- title: até 70 caracteres, de preferência bem menos. Uma pergunta ou afirmação concreta que alguém entenda rolando o feed. Sem dois-pontos separando conceito e subtítulo — isso é linguagem de vídeo longo.
+- description: 1 a 2 frases de contexto, mais as palavras-chave centrais. Termine com "#Shorts". Nada de chamada para inscrever-se (não funciona em Short), nada de timestamps, nada de links inventados.
+- tags: 10 a 15 tags relevantes (sem #, minúsculas).
+- chapters: array VAZIO. Short não tem capítulos.`;
+  }
+
+  return `${cabecalho}
 Blocos do roteiro (use para montar os capítulos):
 ${input.chapters.map((c) => `- Ato ${c.act}: ${c.title}${fmtTime(c.startMs) ? ` (${fmtTime(c.startMs)})` : ""}`).join("\n")}
 
@@ -87,6 +110,8 @@ export async function generateSeoMetadata(projectId: string, _formData?: FormDat
     return true;
   });
 
+  const short = project.format === "SHORT_9_16";
+
   const provider = getTextProvider();
   const { data, usage } = await provider.generateJson(
     seoUserPrompt({
@@ -97,17 +122,24 @@ export async function generateSeoMetadata(projectId: string, _formData?: FormDat
       logline: script?.logline ?? idea?.synopsis ?? null,
       hookLines,
       chapters: chapterBlocks.map((b) => ({ act: b.act, title: b.title, startMs: b.startMs })),
+      short,
     }),
     SeoResponseSchema,
-    { system: seoSystemPrompt(), temperature: 0.8 },
+    { system: seoSystemPrompt(short), temperature: 0.8 },
   );
   await recordUsage(projectId, usage);
 
+  // A instrução no prompt cobre o caso normal; estas duas linhas cobrem o modelo desobedecendo.
+  // Capítulo em Short é ruído e a #Shorts é o único sinal de formato que a API nos deixa mandar.
+  const description = short && !/#shorts\b/i.test(data.description)
+    ? `${data.description.trimEnd()}\n\n#Shorts`
+    : data.description;
+
   const payload = {
     title: data.title.slice(0, 100),
-    description: data.description,
+    description,
     tags: JSON.stringify(data.tags.slice(0, 25)),
-    chapters: JSON.stringify(data.chapters),
+    chapters: JSON.stringify(short ? [] : data.chapters),
   };
 
   const existing = await prisma.publication.findFirst({ where: { projectId } });
