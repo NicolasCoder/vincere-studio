@@ -6,6 +6,7 @@ import type { RenderProfile } from "./profiles";
 import type { Timeline, TimelineScene } from "./timeline";
 import { buildAss } from "./captions";
 import { LUMA_PISO, planejarExposicao } from "./exposure";
+import type { EstiloLegenda } from "@docupulse/core";
 
 export interface RenderOptions {
   profile: RenderProfile;
@@ -20,6 +21,8 @@ export interface RenderOptions {
   fontFile?: string;
   /** % dos cortes com transição marcada (eixo do perfil). Sem valor, mantém os 20% históricos. */
   transicoesPct?: number;
+  /** Tipografia e cor da legenda queimada. Sem valor, usa a do perfil padrão. */
+  legenda?: EstiloLegenda;
 }
 
 /** Quebra texto em linhas de até N caracteres (drawtext não quebra sozinho). */
@@ -280,7 +283,7 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
   const vf: string[] = [];
   if (o.captions !== "none") {
     const ass = path.join(o.workDir, "captions.ass");
-    await writeFile(ass, buildAss(t, profile, o.captions), "utf8");
+    await writeFile(ass, buildAss(t, profile, o.captions, o.legenda), "utf8");
     vf.push(`subtitles='${ffPath(ass)}'`);
   }
   const enc = await detectEncoder(o.encoder ?? "auto");

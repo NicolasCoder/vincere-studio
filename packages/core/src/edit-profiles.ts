@@ -65,6 +65,34 @@ const FATOR_INTENSIDADE: Record<Intensidade, number> = {
   "muito-dinamico": 1.8,
 };
 
+/**
+ * Estilo de legenda do perfil.
+ *
+ * Cores em hex RGB comum (#RRGGBB) de propósito. O ASS guarda cor em BGR — `&H00EED322` é
+ * #22D3EE, um ciano, não o amarelo que o número sugere — e essa inversão é exatamente o tipo de
+ * detalhe que faz alguém escolher a cor errada com confiança. A conversão fica num lugar só.
+ *
+ * Só entram aqui os campos que o render realmente usa hoje. Sem opção que não muda nada.
+ */
+export interface EstiloLegenda {
+  /** Família tipográfica instalada no sistema que roda o render. */
+  fonte: string;
+  /** Cor do texto. */
+  cor: string;
+  /** Cor da palavra sendo dita, no modo com realce palavra a palavra. */
+  corAtiva: string;
+  /** Cor do contorno. */
+  corContorno: string;
+  /**
+   * Tamanho como fração da ALTURA do quadro, por orientação.
+   *
+   * Vertical usa fração maior porque a altura é 1920: 0,045 dá ~86px, que é a convenção de Short
+   * (leitura no celular, legenda como elemento gráfico). Horizontal em 0,042 de 1080 dá ~45px.
+   * Os dois foram calibrados em vídeo publicado — não são o mesmo número por acaso.
+   */
+  tamanhoRel: { horizontal: number; vertical: number };
+}
+
 export interface EditProfile {
   id: string;
   label: string;
@@ -86,6 +114,8 @@ export interface EditProfile {
   };
   /** Entra no prompt do plano como direção editorial do nicho. */
   orientacao: string;
+  /** Tipografia e cor da legenda queimada. */
+  legenda: EstiloLegenda;
 }
 
 const TODOS_16_9 = EDIT_LAYOUTS;
@@ -129,6 +159,14 @@ export const EDIT_PROFILES: Record<string, EditProfile> = {
         "props/fundos/papel-milimetrado-01.jpg",
       ],
     },
+    // Valores extraídos do buildAss, onde estavam cravados. Trocá-los aqui muda o vídeo inteiro.
+    legenda: {
+      fonte: "Segoe UI",
+      cor: "#FCFAF8",
+      corAtiva: "#22D3EE",
+      corContorno: "#201810",
+      tamanhoRel: { horizontal: 0.042, vertical: 0.045 },
+    },
     orientacao:
       "Identidade sóbria e documental: nada de emoji, gíria ou linguagem de marketing. O texto na tela é enxuto e factual, e a imagem sugere o contexto sem afirmar o que a narração não afirma.",
   },
@@ -169,3 +207,18 @@ export function eixosDe(
  */
 export const segundosPorInsercao = (percentual: number) =>
   Math.round(DURACAO_INSERCAO_S / (limitar(percentual, 1, 100) / 100));
+
+/**
+ * Converte #RRGGBB no literal de cor do ASS, que é `&H00BBGGRR` — os bytes ao contrário.
+ * Existe para que ninguém precise pensar nisso duas vezes.
+ */
+export function corAss(hex: string): string {
+  const h = hex.replace("#", "").trim();
+  const rr = h.slice(0, 2);
+  const gg = h.slice(2, 4);
+  const bb = h.slice(4, 6);
+  return `&H00${bb}${gg}${rr}`.toUpperCase();
+}
+
+/** Estilo de legenda deste projeto. */
+export const legendaDe = (profileId?: string | null): EstiloLegenda => getEditProfile(profileId).legenda;

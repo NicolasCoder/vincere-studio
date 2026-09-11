@@ -1,3 +1,11 @@
+import { corAss, getEditProfile, type EstiloLegenda } from "@docupulse/core";
+
+/** Identidade que estava cravada no ASS; segue como padrao quando nenhum perfil e passado. */
+const LEGENDA_PADRAO: EstiloLegenda = getEditProfile(null).legenda;
+
+/** Dentro de uma tag inline o ASS usa &Hbbggrr& — sem o 00 do estilo e com & no fim. */
+const corAssInline = (hex: string) => corAss(hex).replace("&H00", "&H") + "&";
+
 import type { Timeline } from "./timeline";
 import type { RenderProfile } from "./profiles";
 
@@ -102,9 +110,15 @@ function recortarAteFimDeFrase(
   return words.slice(inicio, fim);
 }
 
-export function buildAss(t: Timeline, p: RenderProfile, mode: "subtle-bottom" | "bold-center-animated"): string {
+export function buildAss(
+  t: Timeline,
+  p: RenderProfile,
+  mode: "subtle-bottom" | "bold-center-animated",
+  /** Estilo do perfil de edição. Sem ele, mantém a identidade que já estava cravada aqui. */
+  estilo: EstiloLegenda = LEGENDA_PADRAO,
+): string {
   const vertical = p.height > p.width;
-  const fontSize = vertical ? Math.round(p.height * 0.045) : Math.round(p.height * 0.042);
+  const fontSize = Math.round(p.height * (vertical ? estilo.tamanhoRel.vertical : estilo.tamanhoRel.horizontal));
 
   /**
    * Vertical ancora no TOPO (alinhamento 8), não no meio.
@@ -129,7 +143,7 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Base,Segoe UI,${fontSize},&H00F8FAFC,&H00EED322,&H00101820,&H80000000,${mode === "bold-center-animated" ? -1 : 0},0,0,0,100,100,0,0,1,${bord},${vertical ? 0 : 1},${alignment},60,60,${marginV},1
+Style: Base,${estilo.fonte},${fontSize},${corAss(estilo.cor)},${corAss(estilo.corAtiva)},${corAss(estilo.corContorno)},&H80000000,${mode === "bold-center-animated" ? -1 : 0},0,0,0,100,100,0,0,1,${bord},${vertical ? 0 : 1},${alignment},60,60,${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
@@ -151,7 +165,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // verdade (escala, deslocamento) foi descartado de propósito: qualquer coisa que mude a
         // largura do texto reflui a linha inteira, e o bloco volta a balançar — que é
         // exatamente o problema que estamos corrigindo. Borda não altera o avanço do glifo.
-        const ativo = `{\\c&HEED322&\\b1\\bord${bord + 3}\\t(0,120,\\bord${bord})}`;
+        const ativo = `{\\c${corAssInline(estilo.corAtiva)}\\b1\\bord${bord + 3}\\t(0,120,\\bord${bord})}`;
         const normal = `{\\c&HF8FAFC&\\b1\\bord${bord}}`;
         for (let k = 0; k < chunk.length; k++) {
           const ws = offset + chunk[k].startMs;

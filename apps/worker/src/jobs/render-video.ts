@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { FORMATS, getVisualStyle, type VideoFormat, eixosDe} from "@docupulse/core";
+import { FORMATS, getVisualStyle, type VideoFormat, eixosDe, legendaDe} from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
@@ -138,6 +138,7 @@ export async function renderVideo(ctx: JobContext) {
     workDir,
     outFile,
     transicoesPct: eixos.transicoes,
+    legenda: legendaDe(null),
     onLog: appendLog,
     onProgress: async (p) => {
       await ctx.progress(p);
