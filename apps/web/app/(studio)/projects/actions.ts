@@ -1,8 +1,9 @@
 "use server";
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
 import { prisma } from "@docupulse/db";
-import { CostModeSchema, FORMATS, STAGE_META, nextStage, type Stage, type VideoFormat } from "@docupulse/core";
+import { CostModeSchema, FORMATS, STAGES, STAGE_META, nextStage, type Stage, type VideoFormat } from "@docupulse/core";
 
 const NewProject = z.object({
   format: z.enum(["LONG_16_9", "SHORT_9_16"]),
@@ -77,6 +78,28 @@ export async function advanceStage(projectId: string) {
     data: { stage: next, status: next === "PUBLISH" ? "PUBLISHED" : "IN_PROGRESS" },
   });
   redirect(`/projects/${projectId}/${STAGE_META[next].href}`);
+}
+
+/**
+ * Move o projeto de coluna no quadro, arrastando.
+ *
+ * Sem as validações do `advanceStage` de propósito: isto é organização do quadro, não o botão
+ * "avançar" do pipeline. Serve para corrigir um projeto que ficou na coluna errada, ou para
+ * separar o que está parado do que está andando — e para isso precisa aceitar ir para trás.
+ * A etapa é só um rótulo: nada do pipeline é apagado ou refeito ao mudar de coluna.
+ */
+export async function moveProjectStage(projectId: string, stage: string) {
+  if (!(STAGES as readonly string[]).includes(stage)) throw new Error(`Etapa inválida: ${stage}`);
+  await prisma.project.update({
+    where: { id: projectId },
+    data: {
+      stage,
+      // `status` acompanha para o resto da interface não contradizer a coluna. Só PUBLISH tem
+      // leitura própria; as demais colunas são todas "em andamento".
+      status: stage === "PUBLISH" ? "PUBLISHED" : "IN_PROGRESS",
+    },
+  });
+  revalidatePath("/projects");
 }
 
 export async function selectIdea(projectId: string, ideaId: string) {
