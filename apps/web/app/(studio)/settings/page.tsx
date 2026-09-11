@@ -7,7 +7,7 @@ import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
 import { updateBudget } from "./budget-actions";
 import { prisma } from "@docupulse/db";
-import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, getBudgetStatus } from "@docupulse/providers";
+import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@docupulse/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
 
@@ -37,6 +37,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   ]);
   const edgeVoices = new EdgeVoiceProvider().voices();
   const ytCredentialsSet = youtubeCredentialsConfigured();
+  const podeLegenda = await youtubePodeLegenda();
   return (
     <>
       <Topbar crumbs={["Settings"]} costUsd={usage.costUsd} />
@@ -125,6 +126,13 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
               <div className="flex-1">
                 <div className="font-semibold">{youtubeConnection.channel_title}</div>
                 <div className="font-mono text-[11px] text-muted">conectado em {new Date(youtubeConnection.connected_at).toLocaleString("pt-BR")}</div>
+                {/* O escopo de legenda foi adicionado depois da primeira conexão; sem reconectar,
+                    o envio volta "insufficient authentication scopes" só na hora de publicar. */}
+                {!podeLegenda && (
+                  <div className="mt-1 text-[11px] text-warning">
+                    Reconecte para liberar o envio de legenda — o consentimento atual não cobre esse acesso.
+                  </div>
+                )}
               </div>
               <form action={disconnectYoutubeAction}><Button type="submit" size="sm" variant="ghost" icon="link_off">Desconectar</Button></form>
             </div>

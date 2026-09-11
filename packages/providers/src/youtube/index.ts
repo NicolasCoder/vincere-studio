@@ -9,7 +9,36 @@ import { prisma } from "@docupulse/db";
  */
 
 const SETTING_KEY = "youtube_oauth";
-const SCOPES = ["https://www.googleapis.com/auth/youtube.upload", "https://www.googleapis.com/auth/youtube.readonly"];
+/**
+ * `youtube.force-ssl` entrou porque `captions.insert` exige — com só `upload` + `readonly` o
+ * envio da legenda volta "Request had insufficient authentication scopes", e o vídeo vai ao ar
+ * sem faixa de CC. Não existe escopo mais estreito para legenda; a própria API do YouTube só
+ * oferece esse.
+ *
+ * Mudar esta lista invalida o consentimento já dado: a conta precisa ser reconectada em
+ * Settings para o novo escopo valer.
+ */
+const SCOPES = [
+  "https://www.googleapis.com/auth/youtube.upload",
+  "https://www.googleapis.com/auth/youtube.readonly",
+  "https://www.googleapis.com/auth/youtube.force-ssl",
+];
+
+/** Escopos que a conexão guardada realmente concedeu — a UI usa para avisar o que falta. */
+export async function getYoutubeScopes(): Promise<string[]> {
+  const row = await prisma.setting.findUnique({ where: { key: SETTING_KEY } });
+  if (!row) return [];
+  try {
+    return String((JSON.parse(row.value) as YoutubeTokens).scope ?? "").split(/\s+/).filter(Boolean);
+  } catch {
+    return [];
+  }
+}
+
+/** true quando o consentimento atual já cobre o envio de legenda. */
+export async function youtubePodeLegenda(): Promise<boolean> {
+  return (await getYoutubeScopes()).includes("https://www.googleapis.com/auth/youtube.force-ssl");
+}
 
 interface YoutubeTokens {
   access_token: string;
