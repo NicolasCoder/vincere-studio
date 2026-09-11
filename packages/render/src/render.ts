@@ -5,6 +5,7 @@ import { FFMPEG, run } from "@docupulse/providers";
 import type { RenderProfile } from "./profiles";
 import type { Timeline, TimelineScene } from "./timeline";
 import { buildAss } from "./captions";
+import { LUMA_PISO, planejarExposicao } from "./exposure";
 
 export interface RenderOptions {
   profile: RenderProfile;
@@ -99,24 +100,27 @@ function encoderArgs(codec: string): { codec: string; args: string[] } {
 }
 
 /** Renderiza um clipe de cena (só vídeo) já no tamanho final. */
-async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptions, out: string, fontFile: string) {
+async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptions, out: string, fontFile: string, expo?: string) {
   const { width: W, height: H, fps } = o.profile;
   const dur = (s.durationMs + extraMs) / 1000;
   const common = ["-y", "-hide_banner", "-loglevel", "error"];
   const enc = ["-c:v", "libx264", "-preset", "veryfast", "-crf", "18", "-pix_fmt", "yuv420p", "-r", String(fps), "-an"];
+  // Piso de exposição entra logo depois do enquadramento e antes do movimento: o `zoompan` do Ken
+  // Burns já reamostra a imagem, e corrigir depois dele é corrigir pixel interpolado.
+  const ex = expo ? `,${expo}` : "";
   if (s.file && existsSync(s.file) && s.mediaType === "video") {
     const seek = s.startOffsetSec && s.startOffsetSec > 0 ? ["-ss", s.startOffsetSec.toFixed(2)] : [];
-    await run(FFMPEG, [...common, ...seek, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${cover(W, H)},fps=${fps}`, ...enc, out]);
+    await run(FFMPEG, [...common, ...seek, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${cover(W, H)}${ex},fps=${fps}`, ...enc, out]);
     return;
   }
   if (s.file && existsSync(s.file)) {
     if (s.mediaType === "image" && shouldFrame(s.id)) {
-      const filter = framedPhoto(W, H, fps, s.durationMs + extraMs);
+      const filter = `${expo ? `${expo},` : ""}${framedPhoto(W, H, fps, s.durationMs + extraMs)}`;
       await run(FFMPEG, [...common, "-loop", "1", "-framerate", String(fps), "-i", s.file, "-t", dur.toFixed(3), "-filter_complex", filter, "-map", "[vout]", ...enc, out]);
       return;
     }
     const pre = `${cover(Math.round(W * 1.25), Math.round(H * 1.25))}`;
-    await run(FFMPEG, [...common, "-loop", "1", "-framerate", String(fps), "-i", s.file, "-t", dur.toFixed(3), "-vf", `${pre},${kenBurns(s.motion, W, H, fps, s.durationMs + extraMs)},format=yuv420p`, ...enc, out]);
+    await run(FFMPEG, [...common, "-loop", "1", "-framerate", String(fps), "-i", s.file, "-t", dur.toFixed(3), "-vf", `${pre}${ex},${kenBurns(s.motion, W, H, fps, s.durationMs + extraMs)},format=yuv420p`, ...enc, out]);
     return;
   }
   // Cartão de título (cena sem mídia): fundo obsidian com grade sutil e texto centralizado
@@ -173,6 +177,29 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
   const totalScenes = t.acts.reduce((s, a) => s + a.scenes.length, 0);
   let done = 0;
 
+  // 0) Piso de exposição: mede cada cena antes de renderizar qualquer coisa, porque o custo é de
+  // três seeks por cena e o prejuízo de descobrir depois é um render inteiro de ~11 minutos.
+  await o.onProgress?.({ percent: 3, message: "Medindo exposição das cenas" });
+  const todasAsCenas = t.acts.flatMap((a) => a.scenes);
+  const { filtros: expoPorCena, levantadas, irrecuperaveis, medidas } = await planejarExposicao(todasAsCenas, o.workDir);
+  if (levantadas.length) {
+    const piores = [...levantadas].sort((x, y) => x.luma - y.luma).slice(0, 5);
+    await log(
+      `Exposição: ${levantadas.length}/${medidas} cenas abaixo do piso (luma ${LUMA_PISO}) foram levantadas · ` +
+        `piores: ${piores.map((p) => `${p.id} luma ${p.luma}→${p.lumaFinal}`).join(", ")}`,
+    );
+  } else if (medidas) {
+    await log(`Exposição: ${medidas} cenas medidas, nenhuma abaixo do piso (luma ${LUMA_PISO}).`);
+  }
+  if (irrecuperaveis.length) {
+    // Não é um aviso decorativo: são cenas que vão para o master ainda escuras porque não há o que
+    // recuperar. O caminho é gerar a mídia de novo, e quem decide isso é quem está editando.
+    await log(
+      `Exposição: ${irrecuperaveis.length} cena(s) escuras demais para corrigir (gamma no teto) — vale regerar a mídia: ` +
+        irrecuperaveis.map((p) => `${p.id} (luma ${p.luma}→${p.lumaFinal})`).join(", "),
+    );
+  }
+
   // 1) Clipes por cena → 2) ato com dissolves
   const actFiles: string[] = [];
   for (const a of t.acts) {
@@ -182,7 +209,7 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
       const s = a.scenes[i];
       const isLast = i === a.scenes.length - 1;
       const out = path.join(o.workDir, `a${String(a.act).padStart(2, "0")}-s${String(i + 1).padStart(2, "0")}.mp4`);
-      await renderSceneClip(s, isLast ? 0 : transitionMs, o, out, fontFile);
+      await renderSceneClip(s, isLast ? 0 : transitionMs, o, out, fontFile, expoPorCena.get(s.id));
       clips.push(out);
       durs.push(s.durationMs);
       done++;
