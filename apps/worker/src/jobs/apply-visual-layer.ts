@@ -269,5 +269,8 @@ export async function applyVisualLayer(ctx: JobContext) {
   } finally {
     // O public/tmp fica dentro do projeto Remotion e sujaria o bundle das próximas execuções.
     await rm(pub, { recursive: true, force: true }).catch(() => {});
+    // work/ (gap-*.mp4, seg-*.mp4, props, concat.txt) só serve até a costura final sair em
+    // visual/dvp-*.mp4 — mesmo bug de acúmulo já corrigido em render-video.ts, agora aqui também.
+    await rm(work, { recursive: true, force: true }).catch(() => {});
   }
 }
