@@ -4,7 +4,9 @@ import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration, parseJson } from "@/lib/data";
 import { getYoutubeConnection } from "@docupulse/providers";
+import { partirManchete } from "@docupulse/render";
 import { generateSeoMetadata, publishToYoutube } from "./actions";
+import { ThumbnailStudio } from "./ThumbnailStudio";
 
 export default async function PublishedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
   const { id } = await params;
@@ -16,6 +18,8 @@ export default async function PublishedPage({ params, searchParams }: { params: 
   const tags = parseJson<string[]>(pub?.tags, []);
   const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
   const canPublish = !!pub && !!master?.outputPath;
+  // O título de publicação já é a manchete final quando o SEO rodou; antes disso, o do projeto.
+  const manchete = partirManchete(pub?.title ?? project.title);
 
   return (
     <>
@@ -85,6 +89,7 @@ export default async function PublishedPage({ params, searchParams }: { params: 
                 <div className="p-3"><div className="label-mono text-muted">Publicado em</div><div className="mt-1 font-mono">{pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
               </div>
             </Card>
+            <ThumbnailStudio projectId={project.id} tituloInicial={manchete.titulo} subInicial={manchete.sub} />
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Stat label="Views" value={(stats.views ?? 0).toLocaleString("pt-BR")} sub="YouTube Analytics" />
               <Stat label="CTR" value={`${stats.ctr ?? 0}%`} sub="thumbnail ativa" tone="violet" />

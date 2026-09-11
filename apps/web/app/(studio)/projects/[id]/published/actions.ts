@@ -1,8 +1,10 @@
 "use server";
+import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@docupulse/db";
-import { getTextProvider, recordUsage } from "@docupulse/providers";
+import { absPath, getTextProvider, projectDir, recordUsage, relPath } from "@docupulse/providers";
+import { quadroDe, renderizarThumbnail } from "@docupulse/render";
 import { z } from "zod";
 
 /** Enfileira o upload real pro YouTube (job PUBLISH_YOUTUBE) — nasce no privacyStatus
@@ -14,6 +16,37 @@ export async function publishToYoutube(projectId: string, formData: FormData) {
     data: { type: "PUBLISH_YOUTUBE", projectId, payload: JSON.stringify({ projectId, privacyStatus }) },
   });
   redirect(`/projects/${projectId}/published?job=${job.id}`);
+}
+
+/**
+ * Grava a variação escolhida como a thumbnail do projeto.
+ *
+ * Recompõe em vez de copiar o arquivo da prévia. A prévia é descartável — some na próxima
+ * chamada da rota — e uma thumbnail publicada apontando para um caminho que vai ser apagado é
+ * um link quebrado esperando para acontecer.
+ */
+export async function aplicarThumbnail(
+  projectId: string,
+  escolha: { sceneId: string; titulo: string; sub: string; escuridao: number; halo: number },
+) {
+  const cena = await prisma.scene.findUnique({ where: { id: escolha.sceneId } });
+  if (!cena?.filePath) throw new Error("Cena não encontrada ou sem arquivo.");
+
+  const outDir = await projectDir(projectId, "thumbnails");
+  const origem = await quadroDe(absPath(cena.filePath), outDir);
+  const saida = path.join(outDir, `thumb-${Date.now()}.jpg`);
+  await renderizarThumbnail(origem, saida, {
+    titulo: escolha.titulo,
+    sub: escolha.sub,
+    escuridao: escolha.escuridao,
+    halo: escolha.halo,
+  });
+
+  await prisma.project.update({
+    where: { id: projectId },
+    data: { thumbnailPath: relPath(saida), thumbnailUpdatedAt: new Date() },
+  });
+  revalidatePath(`/projects/${projectId}/published`);
 }
 
 const SeoResponseSchema = z.object({
