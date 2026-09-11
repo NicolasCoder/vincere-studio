@@ -227,15 +227,37 @@ O app publica direto no seu canal via OAuth do Google (login e permissão aconte
 
 O app nunca pede nem armazena sua senha do Google em nenhum momento — a autenticação inteira acontece na tela oficial do Google.
 
+### Continuação 11/09/2026 (tarde/noite) — disco cheio e eixos expostos na interface
+
+- **10GB livres no disco, causa raiz encontrada e corrigida**: `apply-visual-layer.ts` tinha o
+  mesmo bug já corrigido em `render-video.ts` em 09/09 — o `finally` limpava `public/tmp` do
+  Remotion mas esquecia `storage/projects/<id>/visual/job-<jobId>/` (segmentos intermediários).
+  ~2,9GB acumulados em 3 projetos, com o `dvp-*.mp4` final já pronto ao lado. Corrigido apagando
+  `work` também no `finally`. Mais ~1GB liberado limpando renders duplicados além dos 3 mais
+  recentes por projeto e `node_modules` de dois worktrees Git abandonados
+  (`docs/.claude/worktrees/`, ~870MB cada) — foram achados dois commits pequenos de valor real
+  ali dentro (fix de `ACT_GAP_MS` faltando em `repurposing/page.tsx`, e duas limpezas em
+  `actions.ts`/`Stat.tsx`), trazidos via cherry-pick antes de remover os worktrees. Disco foi de
+  ~10GB para ~15,5GB livres. Nova memória de longo prazo registrada sobre esse padrão de bug
+  (pastas `work/` que só um job conhece e só ele deveria limpar).
+- **Eixos e intensidade expostos na interface** (item 2 da lista de pendências, fechado): coluna
+  `Project.intensidade` nova (default `"equilibrado"`, migration
+  `20260911214449_add_project_intensidade`) e um card no Passo do Plano de Edição com o seletor
+  calmo/equilibrado/dinâmico/muito-dinâmico, mostrando ao vivo os eixos efetivos (% de inserção
+  convertido em "1 a cada Ns", % de transição) para o formato do projeto. Os dois call sites do
+  worker que chamavam `eixosDe(..., "equilibrado")` fixo (`edit-plan.ts` e `render-video.ts`)
+  agora leem `project.intensidade`. `migration_lock.toml` entrou no versionamento junto — tinha
+  ficado de fora sem querer na baseline de `b09f9d7`.
+
 ## Pendente após 11/09/2026 (ordem de risco)
 
 1. **Unificar as duas zonas seguras** — ver "Duplicação que já causou bug" abaixo. É a correção
    estrutural com maior retorno.
-2. **Expor os eixos e a intensidade na interface** — o motor já é parametrizado; falta o controle
-   e a coluna no `Project`. É o que transforma "o código aceita" em "dá para escolher".
+2. ~~Expor os eixos e a intensidade na interface~~ — **pronto** nesta sessão (ver "Continuação
+   11/09/2026" acima): coluna `Project.intensidade` + card no Passo do Plano de Edição.
 3. **Testes no monorepo** — `apps/*` e `packages/*` seguem com zero. Só o `editor-ia` tem
    verificação.
-4. ~~Escolher tipografia/cor da legenda~~ — **o preset existe no perfil**; falta expor na interface (item 2).
+4. ~~Escolher tipografia/cor da legenda~~ — **pronto junto com o item 2**, mesma interface.
 5. **Variantes verticais de `cronologia` e `mesa-arquivo`** — hoje o perfil DVP libera só 5 dos
    7 layouts em 9:16. A folha de contato mostra o título da cronologia colidindo com os rótulos
    dos eventos em vertical.
