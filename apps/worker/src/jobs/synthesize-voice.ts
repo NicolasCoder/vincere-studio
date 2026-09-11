@@ -1,7 +1,7 @@
 import path from "node:path";
 import { prisma } from "@docupulse/db";
 import { pauseMs } from "@docupulse/core";
-import { concatWithSilences, getVoiceProvider, projectDir, relPath, trimLongSilences, type VoiceProvider } from "@docupulse/providers";
+import { concatWithSilences, ehCobravel, getVoiceProvider, projectDir, relPath, trimLongSilences, type VoiceProvider } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -106,7 +106,7 @@ export async function synthesizeVoice(ctx: JobContext) {
     await prisma.voiceTrack.create({
       data: { scriptBlockId: b.id, provider: used.provider, voiceId: used.voiceId, filePath: relPath(finalFile), durationMs, fallbackUsed: used !== chain[0], params: JSON.stringify({ style: profile.style, rate: profile.rate, units, costUsd: cost }) },
     });
-    await prisma.usage.create({ data: { projectId, provider: used.provider, unit: "AUDIO_SECONDS", quantity: durationMs / 1000, costUsd: cost } });
+    await prisma.usage.create({ data: { projectId, provider: used.provider, unit: "AUDIO_SECONDS", quantity: durationMs / 1000, costUsd: cost, billable: ehCobravel(used.provider) } });
     await prisma.project.update({ where: { id: projectId }, data: { costUsd: { increment: cost } } });
     await ctx.log(`Ato ${b.act}: ${(durationMs / 1000).toFixed(1)}s · ${used.provider} ${used.voiceId}${used !== chain[0] ? " (reserva)" : ""}`);
     // Marca o bloco como concluído no payload: se o worker reiniciar, o job retoma de onde parou.

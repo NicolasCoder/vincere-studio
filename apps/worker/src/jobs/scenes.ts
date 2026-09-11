@@ -221,7 +221,7 @@ export async function huntBroll(ctx: JobContext) {
       await downloadTo(hit.url, dest);
       const durationMs = hit.type === "video" ? await probeDurationMs(dest).catch(() => null) : null;
       await prisma.scene.update({ where: { id: s.id }, data: { filePath: relPath(dest), mediaType: hit.type, source: "STOCK", provider: hit.provider, providerRef: hit.id, sourceUrl: hit.pageUrl, width: hit.width, height: hit.height, durationMs, status: "READY", license: `${hit.license}${hit.author ? ` · ${hit.author}` : ""}` } });
-      await prisma.usage.create({ data: { projectId, provider: hit.provider, unit: "REQUESTS", quantity: 1, costUsd: 0 } });
+      await prisma.usage.create({ data: { projectId, provider: hit.provider, unit: "REQUESTS", quantity: 1, costUsd: 0, billable: false } });
       found++;
     } catch (err) {
       await ctx.log(`Cena ${sceneFileStem(act, s.order)}: download falhou (${String(err).slice(0, 100)})`);

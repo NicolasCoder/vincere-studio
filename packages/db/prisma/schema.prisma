@@ -227,7 +227,11 @@ model Usage {
   provider  String
   unit      String   // TOKENS_IN | TOKENS_OUT | IMAGES | AUDIO_SECONDS | VIDEO_SECONDS | REQUESTS
   quantity  Float
+  /// Preco de tabela estimado: o que ESTA chamada custaria num plano pago. Serve para visibilidade.
   costUsd   Float    @default(0)
+  /// Se esse custo sai do bolso de verdade. Free tier registra o custo estimado com billable=false,
+  /// senao o teto de orcamento passa a bloquear geracao paga por causa de dinheiro que nunca saiu.
+  billable  Boolean  @default(true)
   createdAt DateTime @default(now())
 }
 

@@ -24,8 +24,36 @@ export async function setBudgetCapUsd(value: number): Promise<void> {
   });
 }
 
-/** Soma gasta no mês corrente (todas as origens: texto, voz, imagem, vídeo — tabela Usage). */
+/**
+ * Provedores que cobram de verdade. O resto roda em plano gratuito e tem o custo registrado só
+ * para visibilidade ("quanto isso custaria"), sem consumir o teto.
+ *
+ * A distinção não é cosmética: `Usage.costUsd` sempre guardou preço de tabela, e o teto somava
+ * tudo. Com o Gemini no free tier, gerar roteiro e narração acumulava "gasto" que nunca saiu do
+ * bolso — já eram US$ 1,14 de tokens de texto num teto de US$ 10, ou seja, 14% do orçamento
+ * consumido por dinheiro imaginário. Mais alguns meses e a geração paga seria bloqueada com uma
+ * mensagem tecnicamente correta e factualmente falsa.
+ *
+ * Se um dia o faturamento do Gemini for ativado, é aqui que ele entra.
+ */
+const PROVEDORES_COBRAVEIS = new Set(["ELEVENLABS", "OPENAI", "KIE", "NANO_BANANA", "RUNWAY", "KLING", "VEO"]);
+
+export const ehCobravel = (provider: string) => PROVEDORES_COBRAVEIS.has(provider.toUpperCase());
+
+/**
+ * Soma que sai do bolso no mês corrente. Conta só o que é cobrável — linhas de plano gratuito
+ * ficam de fora, por mais que tenham um `costUsd` estimado.
+ */
 export async function getSpentThisMonthUsd(): Promise<number> {
+  const start = new Date();
+  start.setDate(1);
+  start.setHours(0, 0, 0, 0);
+  const rows = await prisma.usage.findMany({ where: { createdAt: { gte: start }, billable: true }, select: { costUsd: true } });
+  return rows.reduce((s, r) => s + r.costUsd, 0);
+}
+
+/** O que teria sido gasto se nada fosse gratuito. Serve para a tela de custos, não para o teto. */
+export async function getEstimatedThisMonthUsd(): Promise<number> {
   const start = new Date();
   start.setDate(1);
   start.setHours(0, 0, 0, 0);
@@ -34,8 +62,12 @@ export async function getSpentThisMonthUsd(): Promise<number> {
 }
 
 export async function getBudgetStatus() {
-  const [capUsd, spentUsd] = await Promise.all([getBudgetCapUsd(), getSpentThisMonthUsd()]);
-  return { capUsd, spentUsd, remainingUsd: Math.max(0, capUsd - spentUsd) };
+  const [capUsd, spentUsd, estimatedUsd] = await Promise.all([
+    getBudgetCapUsd(),
+    getSpentThisMonthUsd(),
+    getEstimatedThisMonthUsd(),
+  ]);
+  return { capUsd, spentUsd, remainingUsd: Math.max(0, capUsd - spentUsd), estimatedUsd };
 }
 
 /**

@@ -64,6 +64,18 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <div>
               <div className="label-mono text-muted">Gasto este mês</div>
               <div className="font-display text-2xl font-bold">US$ {budget.spentUsd.toFixed(2)}</div>
+              <div className="text-[11px] text-fg-secondary">só o que é cobrado de verdade</div>
+            </div>
+            {/*
+              O estimado fica ao lado do real de propósito. Os dois números sempre existiram, mas o
+              teto somava os dois juntos: rodar no plano gratuito ia "gastando" orçamento que nunca
+              saiu do bolso e, sem esta separação, um dia bloquearia geração paga por dinheiro
+              imaginário. Mostrar os dois deixa a diferença visível em vez de escondida na conta.
+            */}
+            <div>
+              <div className="label-mono text-muted">Se tudo fosse pago</div>
+              <div className="font-display text-2xl font-bold text-fg-secondary">US$ {budget.estimatedUsd.toFixed(2)}</div>
+              <div className="text-[11px] text-fg-secondary">inclui o que rodou no plano gratuito</div>
             </div>
             <div>
               <div className="label-mono text-muted">Teto atual</div>

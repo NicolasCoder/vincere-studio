@@ -1,5 +1,6 @@
 import { mkdir, writeFile } from "node:fs/promises";
 import path from "node:path";
+import { checkBudget } from "../budget";
 import { probeDurationMs } from "../media/ffmpeg";
 import { ProviderError } from "../types";
 import type { VoiceProvider, VoiceRequest, VoiceResult } from "./types";
@@ -22,6 +23,19 @@ export class ElevenLabsVoiceProvider implements VoiceProvider {
     ];
   }
   async synthesize(req: VoiceRequest, outFile: string): Promise<VoiceResult> {
+    /*
+     * A trava de orçamento fica AQUI, e não no job que chama.
+     *
+     * Até agora `checkBudget` cobria só imagem: a voz calculava o custo, registrava em `Usage` e
+     * somava no projeto — depois de já ter gasto. Ou seja, o teto de US$ 0 bloqueava imagem paga e
+     * deixava voz paga passar, o que contraria a regra do projeto de produzir no gratuito.
+     *
+     * Travar no provedor e não no chamador é a mesma lição do registro de motores de imagem: com a
+     * trava no job, cada novo caminho que sintetizar voz (preview, workflow, um AUTO_PRODUCE
+     * futuro) precisa lembrar de chamar — e um dia não lembra. Aqui não tem como desviar.
+     */
+    await checkBudget((req.text.length / 1000) * PRICE_PER_1K_CHARS);
+
     const res = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${encodeURIComponent(req.voiceId)}?output_format=mp3_44100_128`, {
       method: "POST",
       headers: { "xi-api-key": this.apiKey, "content-type": "application/json", accept: "audio/mpeg" },
