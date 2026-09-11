@@ -6,3 +6,8 @@ dist
 # Ignore the output video from Git but not videos you import into src/.
 out
 _provas/layouts/
+
+# Temporarios do job APPLY_VISUAL_LAYER (frames e evidencias por projeto).
+# Ficam dentro de public/ porque o Remotion so serve staticFile() dali, mas sao
+# descartaveis -- o proprio job limpa depois de renderizar.
+public/tmp/
