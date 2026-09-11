@@ -1,6 +1,7 @@
 import "./index.css";
 import { Composition } from "remotion";
 import { Cronologia } from "./dvp/Cronologia";
+import { MesaArquivo } from "./dvp/MesaArquivo";
 import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
@@ -68,6 +69,28 @@ export const RemotionRoot: React.FC = () => {
             { ano: "Mai 2008", rotulo: "Arquivos da delegacia são abertos", t: 0.5 },
             { ano: "Mai 2021", rotulo: "Sétimo veículo, km 12", t: 0.96, destaque: true },
             { ano: "Dez 2021", rotulo: "Caso arquivado", t: 1 },
+          ],
+        }}
+      />
+
+      {/*
+        MesaArquivo: evidências como fotos reveladas sobre papel de dossiê. Estética trazida de um
+        template de After Effects, construída aqui com os assets que o projeto já tem.
+      */}
+      <Composition
+        id="MesaArquivo"
+        component={MesaArquivo}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={7 * 30}
+        defaultProps={{
+          titulo: "O que sobrou dos sete veículos",
+          carimbo: "OUT 1995 — MAI 2021",
+          fotos: [
+            { src: "tmp-mesa/e1.jpg", legenda: "central telefônica" },
+            { src: "tmp-mesa/e2.jpg", legenda: "pastas do inquérito" },
+            { src: "tmp-mesa/e3.jpg", legenda: "marcas no teto" },
           ],
         }}
       />
