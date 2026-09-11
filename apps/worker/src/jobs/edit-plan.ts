@@ -7,6 +7,7 @@ import {
   type VideoFormat,
   backdropFor,
   captionSafeZone,
+  composeEvidencePrompt,
   editPlanPrompt,
   editPlanSystemPrompt,
   findPhrase,
@@ -179,9 +180,11 @@ export async function generateEditPlan(ctx: JobContext) {
         note: raw.note,
         // Só faz sentido nos layouts que mostram evidência; nos demais o modelo às vezes preenche
         // por hábito, e guardar isso confundiria a revisão.
+        // Os campos viram a frase final aqui, com estilo e cláusula negativa fixos. O que vai pro
+        // banco continua sendo o prompt pronto — é por ele que o job de imagens casa a evidência.
         evidencePrompt:
-          raw.layout === "insert-arquivo" || raw.layout === "split-evidencia"
-            ? (raw.evidencePrompt?.trim() || undefined)
+          (raw.layout === "insert-arquivo" || raw.layout === "split-evidencia") && raw.evidence
+            ? composeEvidencePrompt(raw.evidence)
             : undefined,
         resolved: ok,
       });
