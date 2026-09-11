@@ -1,7 +1,7 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { ProviderError, gerarImagem, motorImagem, projectDir, relPath } from "@docupulse/providers";
+import { ProviderError, gerarImagemComRedundancia, motorImagem, projectDir, relPath } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 const MAX_COUNT = 8;
@@ -72,16 +72,25 @@ export async function generateImages(ctx: JobContext) {
       // A retentativa com espera crescente vale para qualquer motor: o 429 do grátis e o do pago
       // querem a mesma coisa — esperar. O orçamento é conferido dentro de gerarImagem, antes da
       // chamada paga, então repetir não gasta nada a mais do que uma tentativa custaria.
-      const result = await comRetentativa(() => gerarImagem(engine, input, { projectId }), ctx, `Imagem ${i + 1}`);
+      const result = await comRetentativa(
+        () => gerarImagemComRedundancia(engine, input, { projectId, onAviso: (m) => ctx.log(m) }),
+        ctx,
+        `Imagem ${i + 1}`,
+      );
       const costUsd = result.custoUsd;
       spent += costUsd;
-      const model = engine === "GEMINI" ? (process.env.GEMINI_IMAGE_MODEL ?? null) : motor.medidor;
+      // Grava o motor que REALMENTE gerou, não o pedido: com a cascata os dois divergem, e a
+      // galeria dizendo "Pollinations" numa imagem feita pela Cloudflare esconderia justamente o
+      // que interessa saber depois — qual motor está sustentando a produção.
+      const usado = motorImagem(result.motor);
+      const model = usado.id === "GEMINI" ? (process.env.GEMINI_IMAGE_MODEL ?? null) : usado.medidor;
+      if (usado.id !== engine) await ctx.log(`Imagem ${i + 1}: gerada por ${usado.label} (pedido: ${motor.label})`);
 
       const ext = result.mimeType.includes("png") ? ".png" : ".jpg";
       const file = path.join(dir, `img-${Date.now()}-${i + 1}${ext}`);
       await writeFile(file, result.buffer);
       await prisma.generatedImage.create({
-        data: { projectId, prompt, engine, model, aspect, filePath: relPath(file), costUsd },
+        data: { projectId, prompt, engine: usado.id, model, aspect, filePath: relPath(file), costUsd },
       });
       made++;
     } catch (err) {

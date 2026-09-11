@@ -24,6 +24,33 @@ export interface OpcoesAmostra {
   workDir: string;
 }
 
+/**
+ * Empurra o fim da janela para o silêncio entre palavras mais próximo do alvo.
+ *
+ * Cortar no milissegundo exato pega a narração no meio de uma palavra, e o resultado soa como
+ * defeito em vez de amostra — foi o primeiro reparo de quem assistiu. Amostra corta frase pela
+ * metade por natureza; o que ela não precisa fazer é cortar sílaba.
+ *
+ * Tolerância de 1,2s para os dois lados: se não houver pausa por perto, mantém o alvo em vez de
+ * deformar a janela atrás de um silêncio distante.
+ */
+function fimNaPausa(words: { endMs: number }[], alvoMs: number, maxMs: number, toleranciaMs = 1200): number {
+  if (!words.length) return alvoMs;
+  let melhor = alvoMs;
+  let menorDist = Infinity;
+  for (const w of words) {
+    if (w.endMs > maxMs) break;
+    const dist = Math.abs(w.endMs - alvoMs);
+    if (dist < menorDist) {
+      menorDist = dist;
+      melhor = w.endMs;
+    }
+  }
+  if (menorDist > toleranciaMs) return alvoMs;
+  // Um respiro depois da última palavra: cortar exatamente no fim dela ainda come o final do som.
+  return Math.min(maxMs, melhor + 180);
+}
+
 /** Índices espalhados uniformemente de 0 a n-1 — começo, meio(s) e fim. */
 function espalhados(n: number, quantos: number): number[] {
   if (n <= quantos) return Array.from({ length: n }, (_, i) => i);
@@ -41,7 +68,7 @@ export async function amostrarTimeline(t: Timeline, o: OpcoesAmostra): Promise<T
 
   for (const i of escolhidos) {
     const a = t.acts[i];
-    const janela = Math.min(janelaMs, a.voiceDurationMs);
+    const janela = fimNaPausa(a.words, Math.min(janelaMs, a.voiceDurationMs), a.voiceDurationMs);
     if (janela < 500) continue;
 
     const ext = path.extname(a.voiceFile) || ".wav";

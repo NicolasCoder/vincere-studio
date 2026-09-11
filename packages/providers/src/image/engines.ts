@@ -4,6 +4,8 @@ import { ProviderError } from "../types";
 import { estimateImageCostUsd, generateImageGemini, type GenerateImageInput, type GenerateImageResult } from "./gemini-image";
 import { generateImagePollinations } from "./pollinations-image";
 import { cloudflareConfigurado, generateImageCloudflare } from "./cloudflare-image";
+import { generateImageHuggingface, huggingfaceConfigurado } from "./huggingface-image";
+import { generateImageTogether, togetherConfigurado } from "./together-image";
 import { estimateKieImageCostUsd, generateImageKie, kieConfigurado } from "./kie-image";
 
 /**
@@ -17,7 +19,7 @@ import { estimateKieImageCostUsd, generateImageKie, kieConfigurado } from "./kie
  * entra como uma linha nesta tabela e nasce com a trava.
  */
 
-export const IMAGE_ENGINES = ["POLLINATIONS", "CLOUDFLARE", "GEMINI", "KIE"] as const;
+export const IMAGE_ENGINES = ["POLLINATIONS", "CLOUDFLARE", "HUGGINGFACE", "TOGETHER", "GEMINI", "KIE"] as const;
 export type ImageEngine = (typeof IMAGE_ENGINES)[number];
 
 export interface MotorImagem {
@@ -55,6 +57,26 @@ export const MOTORES_IMAGEM: Record<ImageEngine, MotorImagem> = {
     custoUsd: () => 0,
     medidor: "CLOUDFLARE_FLUX",
     gerar: generateImageCloudflare,
+  },
+  HUGGINGFACE: {
+    id: "HUGGINGFACE",
+    label: "FLUX (Hugging Face)",
+    pago: false,
+    nota: "grátis com token · fila compartilhada",
+    disponivel: huggingfaceConfigurado,
+    custoUsd: () => 0,
+    medidor: "HUGGINGFACE_FLUX",
+    gerar: generateImageHuggingface,
+  },
+  TOGETHER: {
+    id: "TOGETHER",
+    label: "FLUX (Together.ai)",
+    pago: false,
+    nota: "grátis com chave · limite por minuto",
+    disponivel: togetherConfigurado,
+    custoUsd: () => 0,
+    medidor: "TOGETHER_FLUX",
+    gerar: generateImageTogether,
   },
   GEMINI: {
     id: "GEMINI",
@@ -113,4 +135,40 @@ export async function gerarImagem(
   const r = await motor.gerar(input);
   await recordImageUsage(opts.projectId ?? null, motor.medidor, custoUsd);
   return { ...r, motor: motor.id, custoUsd };
+}
+
+/**
+ * Cascata entre os motores grátis: tenta o escolhido e, se ele negar, passa ao próximo disponível.
+ *
+ * Os quatro grátis falham por motivos diferentes — limite de taxa no Pollinations, cota diária na
+ * Cloudflare, fila compartilhada na Hugging Face, limite por minuto na Together. Quando um nega,
+ * a chance de outro atender é alta, e foi exatamente a falta disso que deixou 3 das 9 evidências
+ * do "Rodovia 44" sem imagem.
+ *
+ * Só encadeia motores GRÁTIS, de propósito. Cair de um grátis esgotado para um pago gastaria
+ * dinheiro por causa de uma falha, sem ninguém pedir — isso é escolha de quem decide, não
+ * consequência de um 429. Se o motor pedido for pago, tenta só ele.
+ */
+export async function gerarImagemComRedundancia(
+  engine: string,
+  input: GenerateImageInput,
+  opts: { projectId?: string | null; onAviso?: (msg: string) => Promise<void> | void } = {},
+): Promise<ResultadoGeracao> {
+  const pedido = motorImagem(engine);
+  if (pedido.pago) return gerarImagem(pedido.id, input, opts);
+
+  const fila = [pedido, ...Object.values(MOTORES_IMAGEM).filter((m) => !m.pago && m.id !== pedido.id && m.disponivel())];
+
+  let ultimo: unknown;
+  for (const m of fila) {
+    if (!m.disponivel()) continue;
+    try {
+      return await gerarImagem(m.id, input, opts);
+    } catch (err) {
+      ultimo = err;
+      const msg = err instanceof Error ? err.message : String(err);
+      await opts.onAviso?.(`${m.label} negou (${msg.slice(0, 120)}) — tentando o próximo motor grátis`);
+    }
+  }
+  throw ultimo instanceof Error ? ultimo : new ProviderError("Nenhum motor grátis conseguiu gerar a imagem.");
 }
