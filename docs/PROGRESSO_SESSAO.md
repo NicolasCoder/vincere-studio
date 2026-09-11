@@ -205,9 +205,12 @@ O app nunca pede nem armazena sua senha do Google em nenhum momento — a autent
 8. **`tsconfig.tsbuildinfo` deveria sair do controle de versão** — é artefato de build e suja o
    working tree a cada typecheck.
 
-Decisão pendente do usuário: o preview do template VideoHive (29MB) em `Edição/Assets/` **não
-foi commitado** — `.git` está em 50MB e vídeo não ganha nada com delta, então versionar é
-praticamente irreversível. Opções: ignorar, versionar, ou deixar sem rastrear.
+**Decidido em 11/09/2026**: o preview do template VideoHive (29MB) em `Edição/Assets/` fica na
+pasta mas **fora do controle de versão** (`Edição/Assets/*.mp4` no `.gitignore`). Versionar
+seria praticamente irreversível — `.git` está em 50MB, vídeo não ganha nada com delta, e tirar
+um blob do histórico exige reescrevê-lo inteiro. Os 30 arquivos de `Edição/Assets` que o
+pipeline usa de verdade (props em jpg, PNGs, `PROMPTS_ASSETS.md`) seguem versionados; o padrão
+é escopado em `*.mp4` justamente para não pegá-los.
 
 ## Backlog de melhorias identificado (priorizado)
 
