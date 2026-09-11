@@ -54,16 +54,48 @@ export async function generateScript(ctx: JobContext) {
 
   // Remove versões vazias deixadas por execuções interrompidas
   await prisma.script.deleteMany({ where: { projectId, blocks: { none: {} } } });
-  const version = (project.scripts[0]?.version ?? 0) + 1;
-  const script = await prisma.script.create({
-    data: { projectId, ideaId: idea.id, version, logline: outline.logline, promptVersion: SCRIPT_PROMPT_VERSION, model: `${outlineRes.usage.provider}/${outlineRes.usage.model}` },
-  });
 
-  let summary = "";
+  /**
+   * Retoma um roteiro pela metade em vez de recomeçar.
+   *
+   * Antes, qualquer erro num ato apagava o roteiro inteiro no catch — um 503 do Gemini no ato 3
+   * jogou fora os atos 1 e 2 já escritos, e a retentativa recomeçava do outline, com boa chance
+   * de morrer no mesmo ponto. Num roteiro de 6 atos isso é quase uma hora de trabalho perdida por
+   * uma indisponibilidade de segundos.
+   *
+   * Só retoma o que veio da MESMA versão de prompt: com o prompt diferente, os atos antigos foram
+   * escritos sob outras regras e misturá-los faria um roteiro sem unidade.
+   */
+  const parcial = await prisma.script.findFirst({
+    where: { projectId, promptVersion: SCRIPT_PROMPT_VERSION, ideaId: idea.id },
+    orderBy: { version: "desc" },
+    include: { blocks: { orderBy: { act: "asc" } } },
+  });
+  const retomar = parcial && parcial.blocks.length > 0 && parcial.blocks.length < outline.acts.length ? parcial : null;
+
+  const version = retomar ? retomar.version : (project.scripts[0]?.version ?? 0) + 1;
+  const script = retomar
+    ? retomar
+    : await prisma.script.create({
+        data: { projectId, ideaId: idea.id, version, logline: outline.logline, promptVersion: SCRIPT_PROMPT_VERSION, model: `${outlineRes.usage.provider}/${outlineRes.usage.model}` },
+      });
+
+  const jaEscritos = new Set(retomar ? retomar.blocks.map((b) => b.act) : []);
+  if (retomar) {
+    await ctx.log(`Retomando o roteiro v${version}: ${jaEscritos.size} de ${outline.acts.length} atos já escritos.`);
+  }
+
+  // O resumo acumulado alimenta o prompt do próximo ato — ao retomar, ele precisa ser
+  // reconstruído dos atos que já existem, senão o ato novo é escrito sem saber o que veio antes.
+  let summary = retomar
+    ? retomar.blocks.map((b) => `Ato ${b.act} (${b.title}): ${b.narration.slice(0, 180)}`).join(" ")
+    : "";
+
   try {
   for (let i = 0; i < outline.acts.length; i++) {
     if (await ctx.isCancelled()) return { cancelled: true };
     const a = outline.acts[i];
+    if (jaEscritos.has(a.act)) continue;
     await ctx.progress({ percent: 10 + ((i + 0.5) / outline.acts.length) * 80, message: `Escrevendo Ato ${a.act}: ${a.title}` });
     const res = await provider.generateJson(actPrompt(c, outline, i, summary), ActSchema, { system, temperature: 0.9 });
     await recordUsage(projectId, res.usage);
@@ -101,7 +133,11 @@ export async function generateScript(ctx: JobContext) {
   }
 
   } catch (err) {
-    await prisma.script.delete({ where: { id: script.id } }).catch(() => {});
+    // NÃO apaga o que já foi escrito. O roteiro parcial é o que permite retomar de onde parou na
+    // próxima tentativa; apagá-lo por assepsia custa todos os atos anteriores. Roteiro sem NENHUM
+    // ato é limpo no começo da próxima execução, então não sobra lixo.
+    const escritos = await prisma.scriptBlock.count({ where: { scriptId: script.id } });
+    await ctx.log(`Falhou com ${escritos} ato(s) já escritos — eles ficam salvos e a próxima tentativa retoma daqui.`);
     throw err;
   }
 
