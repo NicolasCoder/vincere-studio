@@ -32,3 +32,9 @@ editor-ia/public/props/
 # Frames extraidos de videos de terceiros pela skill watch: referencia local, nao versionar
 Edição/docs/videos/ref-*-frames/
 editor-ia/public/tmp-mesa/
+
+# Previews de templates de terceiros guardados como referencia visual (VideoHive etc.).
+# Ficam na pasta porque sao consultados durante a edicao, mas nao entram no historico:
+# video ja vem comprimido, entao o git nao ganha nada com delta e o blob fica para sempre.
+# Os props de verdade em Edicao/Assets (jpg/png) continuam versionados.
+Edição/Assets/*.mp4
