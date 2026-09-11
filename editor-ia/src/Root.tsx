@@ -6,6 +6,7 @@ import { SplitEvidencia } from "./dvp/SplitEvidencia";
 import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
+import { Banco, calculateBancoMetadata } from "./dvp/Banco";
 
 const base: ProvaProps = {
   frame: "frame-escuro-0014.jpg",
@@ -45,6 +46,23 @@ export const RemotionRoot: React.FC = () => {
           burnedCaptions: false,
           durationInFrames: 45 * 30,
         }}
+      />
+
+      {/*
+        Banco: qualquer layout em qualquer formato, via props. Serve ao script
+        `verificar-layouts.mjs`, que renderiza os sete layouts nos dois formatos e confere o que
+        saiu. As dimensões vêm do `format` pelo calculateMetadata — por isso uma composição só
+        cobre os quatorze casos.
+      */}
+      <Composition
+        id="Banco"
+        component={Banco}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={90}
+        calculateMetadata={calculateBancoMetadata}
+        defaultProps={{ layout: "lower-third" as const, format: "LONG_16_9" as const }}
       />
 
       {/*

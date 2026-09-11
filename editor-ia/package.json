@@ -28,7 +28,8 @@
     "build": "remotion bundle",
     "upgrade": "remotion upgrade",
     "lint": "eslint src && tsc",
-    "sync-assets": "node scripts/sync-assets.mjs"
+    "sync-assets": "node scripts/sync-assets.mjs",
+    "verificar-layouts": "node scripts/verificar-layouts.mjs"
   },
   "sideEffects": [
     "*.css"
