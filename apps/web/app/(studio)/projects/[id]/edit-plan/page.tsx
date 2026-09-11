@@ -67,6 +67,24 @@ export default async function EditPlanPage({
   const ready = blocks.length > 0 && captioned === blocks.length;
   const data: EditPlanData | null = plan ? (JSON.parse(plan.data) as EditPlanData) : null;
   const planoDesatualizado = !!plan && plan.promptVersion !== EDIT_PLAN_PROMPT_VERSION;
+
+  // Todos os prompts que este plano pede: a evidência única do insert-arquivo e as 2-3 da mesa.
+  const promptsEvidencia = [
+    ...new Set(
+      (data?.insertions ?? [])
+        .flatMap((i) => [...(i.evidencePrompt ? [i.evidencePrompt] : []), ...(i.mesa ?? []).map((m) => m.prompt)])
+        .map((p) => p.trim())
+        .filter(Boolean),
+    ),
+  ];
+  const [jaGeradas, imagensEmAndamento] = await Promise.all([
+    promptsEvidencia.length
+      ? prisma.generatedImage.findMany({ where: { projectId: id, prompt: { in: promptsEvidencia } }, select: { prompt: true } })
+      : Promise.resolve([]),
+    prisma.job.count({ where: { projectId: id, type: "GENERATE_IMAGES", status: { in: ["QUEUED", "RUNNING"] } } }),
+  ]);
+  const geradas = new Set(jaGeradas.map((g) => g.prompt.trim()));
+  const evidenciasFaltando = promptsEvidencia.filter((p) => !geradas.has(p)).length;
   const overLight = (data?.insertions ?? []).filter(needsOpaquePlate).length;
   const comEvidencia = (data?.insertions ?? []).filter((i) => i.evidencePrompt).length;
   const byAct = new Map<number, EditPlanData["insertions"]>();
@@ -184,10 +202,28 @@ export default async function EditPlanPage({
               Evidências propostas
             </h3>
             <p className="mt-1 text-[11px] text-fg-secondary">
-              <strong>{comEvidencia}</strong> inserção(ões) de arquivo pedem uma imagem de evidência que ainda não
-              existe. O plano escreveu o prompt de cada uma a partir da narração — gerar é decisão sua, porque custa
-              crédito no motor pago e tempo no grátis.
+              <strong>{promptsEvidencia.length}</strong> imagem(ns) de evidência são pedidas por este plano. O plano
+              escreveu o prompt de cada uma a partir da narração — gerar é decisão sua, porque custa crédito no motor
+              pago e tempo no grátis.
             </p>
+
+            {/* Contagem lida do BANCO, não de um observador de job.
+                Antes, a tela seguia só o primeiro dos N jobs e ficava muda enquanto os outros
+                rodavam — parecia que nada estava acontecendo quando na verdade tudo já tinha
+                terminado. Contar imagem existente responde a pergunta certa ("quantas faltam?") e
+                sobrevive a recarregar a página. */}
+            <div className="mt-3 flex flex-wrap items-center gap-2">
+              <Chip icon={evidenciasFaltando === 0 ? "check_circle" : "hourglass_top"} active={evidenciasFaltando === 0}>
+                {promptsEvidencia.length - evidenciasFaltando}/{promptsEvidencia.length} geradas
+              </Chip>
+              {evidenciasFaltando > 0 && <Chip icon="pending">{evidenciasFaltando} faltando</Chip>}
+              {imagensEmAndamento > 0 && <Chip icon="autorenew" active>{imagensEmAndamento} na fila agora</Chip>}
+            </div>
+            {imagensEmAndamento > 0 && (
+              <p className="mt-2 text-[11px] text-muted">
+                Recarregue a página para atualizar a contagem — cada imagem leva alguns segundos.
+              </p>
+            )}
             <form action={generateEvidences.bind(null, project.id)} className="mt-3 flex flex-wrap items-center gap-2">
               {/* Lista os motores com chave presente, grátis primeiro. Estava fixo em Pollinations
                   e Gemini enquanto a tela de imagens já listava os sete — inconsistência que
