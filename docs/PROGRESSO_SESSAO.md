@@ -71,6 +71,47 @@ silêncio. Junto veio o **mesmo bug do OverlayDado** — tudo dimensionado por `
 Depois: y=1520..1738 com 218px, e o horizontal idêntico. No split de evidência o texto passou a
 assentar na borda **externa** do painel.
 
+### Eixos de edição em porcentagem + faixa de intensidade
+
+Inspirado na estrutura do Dark Planner (ver [REFERENCIA_DARK_PLANNER_STUDIO](REFERENCIA_DARK_PLANNER_STUDIO.md)).
+Os números que decidem o ritmo estavam cravados: uma inserção a cada 18s no gancho e 28s nos
+demais, e uma regra `h % 5` dando ~20% de transições marcadas. Os valores estavam certos, mas não
+tinham nome nem ajuste de fora — nem a interface nem uma conversa conseguiam pedir "mais calmo".
+
+Agora o perfil declara cada eixo como **% do vídeo**: quanto ele ocupa, e fora disso fica limpo.
+
+**Os padrões vieram de medição, não de escolha.** Nos 226 itens dos planos já produzidos a
+inserção dura **4,0s de mediana E de média**, e a cobertura ficou entre 13,6% e 16,5% nos longos e
+entre 25% e 30% nos Shorts. Daí os 15% e 28%. Conferido depois de ligar: **27s contra os 28s de
+antes**, e 17s contra 18s no gancho — ligar os eixos não mudou nada do que já existia.
+
+A **faixa de intensidade** (`calmo · equilibrado · dinamico · muito-dinamico`) é um multiplicador
+sobre os eixos, não um segundo conjunto de números.
+
+| intensidade | inserções | 1 a cada | transições |
+|---|---|---|---|
+| calmo | 9% | 44s | 12% |
+| equilibrado | 15% | 27s | 20% |
+| dinâmico | 21% | 19s | 28% |
+| muito dinâmico | 27% | 15s | 36% |
+
+Sem coluna no banco para intensidade, mesmo critério do perfil: enquanto só há um valor em uso, a
+coluna seria escolha que não existe.
+
+### Estilo de legenda vira preset do perfil
+
+Tipografia e cor estavam cravadas no `buildAss`. Agora vêm do perfil, junto com paleta e assets.
+
+Cores entram em **hex RGB comum** e a conversão para ASS fica num lugar só — o ASS guarda cor em
+**BGR**, então `&H00EED322` é `#22D3EE`, um **ciano**, não o amarelo que o número sugere. Era um
+literal fácil de copiar errado com confiança.
+
+Conferido antes de commitar: as quatro cores geradas saem **idênticas** às cravadas.
+
+As duas frações de tamanho ficaram separadas por orientação de propósito: vertical usa 0,045 de
+1920 (~86px) porque legenda de Short é elemento gráfico lido no celular; horizontal usa 0,042 de
+1080 (~45px). Não são o mesmo número por acaso.
+
 ### Outros
 
 - **YouTube reconectado com `force-ssl`** — escopo confirmado no banco. Legendas destravadas
@@ -190,19 +231,21 @@ O app nunca pede nem armazena sua senha do Google em nenhum momento — a autent
 
 1. **Unificar as duas zonas seguras** — ver "Duplicação que já causou bug" abaixo. É a correção
    estrutural com maior retorno.
-2. **Testes no monorepo** — `apps/*` e `packages/*` seguem com zero. Só o `editor-ia` tem
+2. **Expor os eixos e a intensidade na interface** — o motor já é parametrizado; falta o controle
+   e a coluna no `Project`. É o que transforma "o código aceita" em "dá para escolher".
+3. **Testes no monorepo** — `apps/*` e `packages/*` seguem com zero. Só o `editor-ia` tem
    verificação.
-3. **Escolher tipografia/cor da legenda** — pedido pelo usuário, não existe.
-4. **Variantes verticais de `cronologia` e `mesa-arquivo`** — hoje o perfil DVP libera só 5 dos
+4. ~~Escolher tipografia/cor da legenda~~ — **o preset existe no perfil**; falta expor na interface (item 2).
+5. **Variantes verticais de `cronologia` e `mesa-arquivo`** — hoje o perfil DVP libera só 5 dos
    7 layouts em 9:16. A folha de contato mostra o título da cronologia colidindo com os rótulos
    dos eventos em vertical.
-5. **Legendas retroativas** nos 4 vídeos já publicados — hoje `captions.insert` só roda dentro
+6. **Legendas retroativas** nos 4 vídeos já publicados — hoje `captions.insert` só roda dentro
    do job de publicação.
-6. **MesaArquivo** com o que o preview do template ensinou: fundo escuro com o papel como
+7. **MesaArquivo** com o que o preview do template ensinou: fundo escuro com o papel como
    objeto (hoje está invertido), fotos sobrepostas em vez de enfileiradas, cartão de nome em
    papel rasgado.
-7. **Pasta inbox do Flow** (soltar zip → importar sozinho).
-8. **`tsconfig.tsbuildinfo` deveria sair do controle de versão** — é artefato de build e suja o
+8. **Pasta inbox do Flow** (soltar zip → importar sozinho).
+9. **`tsconfig.tsbuildinfo` deveria sair do controle de versão** — é artefato de build e suja o
    working tree a cada typecheck.
 
 **Decidido em 11/09/2026**: o preview do template VideoHive (29MB) em `Edição/Assets/` fica na
