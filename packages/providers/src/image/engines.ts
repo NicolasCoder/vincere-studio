@@ -6,6 +6,7 @@ import { generateImagePollinations } from "./pollinations-image";
 import { cloudflareConfigurado, generateImageCloudflare } from "./cloudflare-image";
 import { generateImageHuggingface, huggingfaceConfigurado } from "./huggingface-image";
 import { generateImageTogether, togetherConfigurado } from "./together-image";
+import { estimateOpenAiImageCostUsd, generateImageOpenAi, openaiConfigurado } from "./openai-image";
 import { estimateKieImageCostUsd, generateImageKie, kieConfigurado } from "./kie-image";
 
 /**
@@ -19,7 +20,7 @@ import { estimateKieImageCostUsd, generateImageKie, kieConfigurado } from "./kie
  * entra como uma linha nesta tabela e nasce com a trava.
  */
 
-export const IMAGE_ENGINES = ["POLLINATIONS", "CLOUDFLARE", "HUGGINGFACE", "TOGETHER", "GEMINI", "KIE"] as const;
+export const IMAGE_ENGINES = ["POLLINATIONS", "CLOUDFLARE", "HUGGINGFACE", "TOGETHER", "GEMINI", "OPENAI", "KIE"] as const;
 export type ImageEngine = (typeof IMAGE_ENGINES)[number];
 
 export interface MotorImagem {
@@ -88,6 +89,16 @@ export const MOTORES_IMAGEM: Record<ImageEngine, MotorImagem> = {
     medidor: "GEMINI_IMAGE",
     gerar: generateImageGemini,
   },
+  OPENAI: {
+    id: "OPENAI",
+    label: "GPT Image (OpenAI)",
+    pago: true,
+    nota: "pago · melhor em layout, tipografia e composição gráfica",
+    disponivel: openaiConfigurado,
+    custoUsd: estimateOpenAiImageCostUsd,
+    medidor: "OPENAI_IMAGE",
+    gerar: generateImageOpenAi,
+  },
   KIE: {
     id: "KIE",
     label: "kie.ai",
@@ -135,6 +146,70 @@ export async function gerarImagem(
   const r = await motor.gerar(input);
   await recordImageUsage(opts.projectId ?? null, motor.medidor, custoUsd);
   return { ...r, motor: motor.id, custoUsd };
+}
+
+export interface DiagnosticoMotor {
+  id: ImageEngine;
+  label: string;
+  pago: boolean;
+  configurado: boolean;
+  ok: boolean | null;
+  ms: number | null;
+  detalhe: string;
+}
+
+/**
+ * Testa de verdade cada motor GRÁTIS configurado, gerando uma imagem pequena.
+ *
+ * Existe porque a qualidade e a disponibilidade dos motores foram descobertas por acidente, no
+ * meio de um trabalho: o Pollinating recusando 7 de 9 evidências apareceu como "faltaram
+ * imagens", e a marca d'água dele só apareceu quando alguém olhou o arquivo. Uma chave presente
+ * no .env não diz nada sobre o motor responder.
+ *
+ * Motor PAGO não é testado, só reportado como configurado: gastar dinheiro para descobrir que a
+ * chave funciona é uma troca ruim, e o erro de chave inválida aparece na primeira geração real.
+ */
+export async function diagnosticarMotores(): Promise<DiagnosticoMotor[]> {
+  const saida: DiagnosticoMotor[] = [];
+  for (const m of Object.values(MOTORES_IMAGEM)) {
+    const configurado = m.disponivel();
+    if (!configurado || m.pago) {
+      saida.push({
+        id: m.id,
+        label: m.label,
+        pago: m.pago,
+        configurado,
+        ok: null,
+        ms: null,
+        detalhe: configurado ? "configurado (motor pago não é testado para não gastar)" : "sem chave no .env",
+      });
+      continue;
+    }
+    const t0 = Date.now();
+    try {
+      const r = await m.gerar({ prompt: "a plain grey concrete wall, flat even light", aspectRatio: "1:1" });
+      saida.push({
+        id: m.id,
+        label: m.label,
+        pago: false,
+        configurado: true,
+        ok: true,
+        ms: Date.now() - t0,
+        detalhe: `${Math.round(r.buffer.length / 1024)} KB · ${r.mimeType}`,
+      });
+    } catch (err) {
+      saida.push({
+        id: m.id,
+        label: m.label,
+        pago: false,
+        configurado: true,
+        ok: false,
+        ms: Date.now() - t0,
+        detalhe: (err instanceof Error ? err.message : String(err)).slice(0, 180),
+      });
+    }
+  }
+  return saida;
 }
 
 /**

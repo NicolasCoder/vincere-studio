@@ -25,6 +25,7 @@ export * from "./image/pollinations-image";
 export * from "./image/cloudflare-image";
 export * from "./image/huggingface-image";
 export * from "./image/together-image";
+export * from "./image/openai-image";
 export * from "./image/kie-image";
 export * from "./image/engines";
 export * from "./budget";

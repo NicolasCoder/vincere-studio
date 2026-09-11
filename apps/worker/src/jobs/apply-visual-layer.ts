@@ -172,7 +172,12 @@ export async function applyVisualLayer(ctx: JobContext) {
     // quebrou o primeiro Short que passou pela camada.
     const resolucoes = new Map<string, string[]>();
     for (const p of partes) {
-      const r = (await run(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", p.file])).trim();
+      const bruto = await run(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", p.file]);
+      // Extrai os dois primeiros números em vez de comparar o texto cru: o ffprobe às vezes
+      // devolve um campo vazio a mais ("1080,1920,") e uma comparação de string reprovava partes
+      // que tinham exatamente a mesma resolução.
+      const nums = bruto.match(/\d+/g) ?? [];
+      const r = nums.length >= 2 ? `${nums[0]}x${nums[1]}` : "desconhecida";
       if (!resolucoes.has(r)) resolucoes.set(r, []);
       resolucoes.get(r)!.push(path.basename(p.file));
     }

@@ -20,6 +20,7 @@ const PROVIDERS = [
   ["CLOUDFLARE_ACCOUNT_ID", "Cloudflare — ID da conta", "dash.cloudflare.com → a conta → o ID aparece na URL"],
   ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "token com permissão Workers AI · cota diária gratuita, sem cartão"],
   ["HUGGINGFACE_TOKEN", "Hugging Face (FLUX, imagens grátis)", "huggingface.co → Settings → Access Tokens · gratuito"],
+  ["OPENAI_API_KEY", "OpenAI (GPT Image)", "platform.openai.com → API keys · pago, melhor em layout e tipografia"],
   ["TOGETHER_API_KEY", "Together.ai (FLUX schnell Free)", "api.together.xyz · nível gratuito, sem cartão"],
   ["KIE_API_KEY", "kie.ai (imagens pagas, muitos modelos)", "kie.ai → Chaves API · só funciona com teto de orçamento acima de US$ 0"],
 ];
