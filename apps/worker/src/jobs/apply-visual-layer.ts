@@ -123,6 +123,7 @@ export async function applyVisualLayer(ctx: JobContext) {
           endMs: ins.endMs,
           onLight: ins.backdrop === "light",
           evidencePath,
+          eventos: ins.eventos ?? null,
         });
       }
 

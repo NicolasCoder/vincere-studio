@@ -60,7 +60,9 @@ export const RemotionRoot: React.FC = () => {
         defaultProps={{
           subtitulo: "Cronologia do caso",
           titulo: "Vinte e seis anos no mesmo trecho de quinze quilômetros",
-          fundo: null,
+          // Asset nosso, não imagem gerada na hora: papel real, sempre igual, sem custo e sem
+          // depender de motor de imagem responder. É o que dá continuidade visual entre vídeos.
+          fundo: "props/fundos/fundo-papel-creme-01.jpg",
           eventos: [
             { ano: "Out 1995", rotulo: "Primeiro sedã no km 32", t: 0, destaque: true },
             { ano: "Mai 2008", rotulo: "Arquivos da delegacia são abertos", t: 0.5 },

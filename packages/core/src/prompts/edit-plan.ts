@@ -9,7 +9,10 @@ import { EDIT_LAYOUTS, LOWER_THIRD_STYLES } from "../edit-plan";
 // modelo lembrar de nove regras em prosa a cada chamada — e obediência a prosa não é garantia,
 // é probabilidade. Agora o modelo preenche slots e o CÓDIGO monta a frase, então a cláusula
 // negativa e a ordem dos elementos deixam de depender dele.
-export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v4";
+// v5: layout `cronologia`. O modelo devolve os eventos com a data em formato ordenável e o
+// código calcula a posição no eixo — pedir a posição ao modelo daria espaçamento igual, que é
+// exatamente o que a cronologia não pode ser.
+export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v5";
 
 /** Enquadramentos aceitos na evidência — fechado para o modelo não inventar jargão de lente. */
 export const EVIDENCE_FRAMINGS = ["close-up", "medium shot", "wide shot", "overhead shot"] as const;
@@ -80,6 +83,17 @@ export const InsertionSchema = z.object({
   evidence: EvidenceSchema.nullable().describe(
     "SÓ quando layout = insert-arquivo ou split-evidencia. Descreva a imagem da evidência preenchendo os campos. Nos demais layouts, null.",
   ),
+  eventos: z
+    .array(
+      z.object({
+        ano: z.string().describe("Como o rótulo aparece na tela. Ex: '1995', 'Out 1995', 'Mai 2008'."),
+        rotulo: z.string().describe("O que aconteceu, em até 6 palavras. Sem ponto final."),
+        data: z.string().describe("A mesma data em formato ordenável: 'AAAA' ou 'AAAA-MM'. É o que posiciona o ponto no eixo."),
+        destaque: z.boolean().describe("true nos dois ou três eventos mais decisivos da história."),
+      }),
+    )
+    .nullable()
+    .describe("SÓ quando layout = cronologia. De 3 a 6 eventos em ordem cronológica. Nos demais layouts, null."),
 });
 export const EditPlanResponseSchema = z.object({ insertions: z.array(InsertionSchema) });
 
@@ -130,7 +144,8 @@ export function editPlanPrompt(opts: {
     "- overlay-dado: quando aparece um número que sustenta o argumento (quantidade, distância, duração, custo).",
     "- insert-arquivo: quando a fala se refere a um registro concreto que o espectador precisa ver (foto, documento, manchete, mapa antigo).",
     "- split-evidencia: quando a fala compara duas coisas ou confronta a versão oficial com a evidência.",
-    "- graphic-fullscreen: para reconstituir uma cronologia ou uma geografia — linha do tempo ou mapa de rota.",
+    "- graphic-fullscreen: cartão de virada de ato ou intertítulo cobrindo o quadro.",
+    "- cronologia: quando a fala percorre um INTERVALO de datas e a ordem dos fatos é o argumento — 'entre 1995 e 2021', 'ao longo de três décadas'. Cobre o quadro inteiro por 8 segundos, então use no máximo uma vez por vídeo, no ato em que a linha do tempo esclarece mais.",
     "",
     "Regras rígidas:",
     "1. O campo `trigger` tem que ser copiado PALAVRA POR PALAVRA da narração abaixo. Não parafraseie, não corrija, não traduza. Se o trecho não existir igual no texto, a inserção é descartada.",
@@ -142,7 +157,8 @@ export function editPlanPrompt(opts: {
     "7. Quando a fala citar um documento, fotografe o OBJETO, não a informação: pasta fechada sobre a mesa, pilha de papéis vista pela borda, envelope lacrado, papel virado para baixo, gaveta de arquivo aberta. Se precisar da folha à mostra, descreva-a em branco ou fora de foco a ponto de nada ser resolvível.",
     "8. Não invente registro oficial como se fosse autêntico (nada de 'documento ultrassecreto', 'relatório do FBI') nem descreva pessoa real identificável. A imagem sugere o contexto; ela não é prova.",
     "9. Não escreva estilo de foto nem cláusula negativa nos campos — a assinatura visual e o 'no text' são acrescentados automaticamente depois.",
-    opts.isLastAct ? "10. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
+    "10. Em `cronologia`, toda data precisa estar DITA na narração. Não complete a linha do tempo com fatos que você sabe de fora: o vídeo afirma só o que foi narrado.",
+    opts.isLastAct ? "11. Este é o último ato: não proponha inserção nos 10 segundos finais, onde entra o encerramento." : "",
     "",
     "Retorne apenas o JSON.",
     "--- NARRAÇÃO ---",

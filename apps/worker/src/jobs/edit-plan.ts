@@ -13,6 +13,7 @@ import {
   findPhrase,
   insertionRegion,
   needsOpaquePlate,
+  posicionarEventos,
   resolveOverlaps,
   type EditInsertion,
   type EditPlanData,
@@ -186,6 +187,10 @@ export async function generateEditPlan(ctx: JobContext) {
           (raw.layout === "insert-arquivo" || raw.layout === "split-evidencia") && raw.evidence
             ? composeEvidencePrompt(raw.evidence)
             : undefined,
+        // A posição no eixo é calculada aqui, pelas datas. Pedir a posição ao modelo devolve
+        // espaçamento igual — e eixo com espaçamento igual apaga o que a cronologia conta.
+        eventos:
+          raw.layout === "cronologia" && raw.eventos?.length ? posicionarEventos(raw.eventos) : undefined,
         resolved: ok,
       });
     });

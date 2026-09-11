@@ -41,7 +41,10 @@ export const Cronologia: React.FC<CronologiaProps> = ({ titulo, subtitulo, event
   // O eixo começa e termina onde a caixa de rótulo ainda cabe inteira dentro do quadro.
   const x0 = margemRotulo + larguraRotulo / 2;
   const x1 = width - margemRotulo - larguraRotulo / 2;
-  const yEixo = height * 0.52;
+  // Eixo abaixo do meio, não no meio. Com o título no terço superior, centrar o eixo empurrava
+  // todo o peso para cima e deixava 40% de tela vazia embaixo — o defeito que mais aparece
+  // quando a composição não é pensada para o quadro inteiro.
+  const yEixo = height * 0.62;
 
   // A linha se desenha da esquerda para a direita e os eventos entram atrás dela, nunca antes:
   // ponto aparecendo em pedaço de eixo que ainda não existe fica solto no ar.

@@ -23,6 +23,7 @@ export const EDIT_LAYOUTS = [
   "insert-arquivo",
   "split-evidencia",
   "graphic-fullscreen",
+  "cronologia",
 ] as const;
 export type EditLayout = (typeof EDIT_LAYOUTS)[number];
 
@@ -35,8 +36,51 @@ export const LAYOUT_META: Record<EditLayout, { label: string; description: strin
   "overlay-dado": { label: "Destaque de dado", description: "Número ou estatística em evidência num canto", defaultMs: 3500 },
   "insert-arquivo": { label: "Inserção de arquivo", description: "Foto, print ou documento sobreposto em moldura", defaultMs: 5000 },
   "split-evidencia": { label: "Split de evidência", description: "Master de um lado, evidência do outro", defaultMs: 6000 },
-  "graphic-fullscreen": { label: "Tela cheia gráfica", description: "Intertítulo, linha do tempo ou mapa cobrindo o quadro", defaultMs: 3000 },
+  "graphic-fullscreen": { label: "Tela cheia gráfica", description: "Intertítulo ou cartão cobrindo o quadro", defaultMs: 3000 },
+  // Mais longa que os outros de propósito: a linha se desenha, os pontos entram em sequência e o
+  // espectador precisa LER. Abaixo de 7s vira piscada e ninguém termina o último rótulo.
+  cronologia: { label: "Cronologia", description: "Linha do tempo animada sobre papel, quando a fala cobre um intervalo de datas", defaultMs: 8000 },
 };
+
+/** Evento de uma cronologia. `t` (0 a 1) é calculado pelo código a partir das datas. */
+export interface EventoCronologia {
+  ano: string;
+  rotulo: string;
+  t: number;
+  destaque?: boolean;
+}
+
+/**
+ * Converte as datas propostas em posições no eixo, de 0 a 1.
+ *
+ * Espaçamento igual seria mais fácil e mentiria: numa cronologia de 1995 a 2021, um evento de
+ * 2008 no meio do eixo e outro de 2021 na ponta CONTAM a história do intervalo. Igualar tudo
+ * apagaria justamente o que a cronologia existe para mostrar — que o caso ficou treze anos parado
+ * e depois desabou em meses.
+ *
+ * Datas ilegíveis ou todas iguais caem em espaçamento uniforme: melhor um eixo regular que um
+ * eixo com todos os pontos empilhados no zero.
+ */
+export function posicionarEventos(
+  brutos: { ano: string; rotulo: string; data: string; destaque?: boolean }[],
+): EventoCronologia[] {
+  const valores = brutos.map((e) => {
+    const m = /(\d{4})(?:-(\d{1,2}))?/.exec(e.data ?? "");
+    if (!m) return null;
+    return Number(m[1]) + (m[2] ? (Number(m[2]) - 1) / 12 : 0);
+  });
+
+  const validos = valores.filter((v): v is number => v != null);
+  const min = validos.length ? Math.min(...validos) : 0;
+  const max = validos.length ? Math.max(...validos) : 0;
+  const faixa = max - min;
+
+  return brutos.map((e, i) => {
+    const v = valores[i];
+    const t = faixa > 0 && v != null ? (v - min) / faixa : brutos.length > 1 ? i / (brutos.length - 1) : 0;
+    return { ano: e.ano, rotulo: e.rotulo, t, destaque: e.destaque };
+  });
+}
 
 export interface EditInsertion {
   id: string;
@@ -67,6 +111,8 @@ export interface EditInsertion {
   evidencePrompt?: string;
   /** Caminho relativo da evidência já gerada (GeneratedImage.filePath), quando existir. */
   evidencePath?: string;
+  /** Só em cronologia: os eventos do eixo, já com a posição calculada pelas datas. */
+  eventos?: EventoCronologia[];
   /**
    * false quando o trigger não casou com nenhuma palavra do áudio alinhado e o tempo
    * caiu num fallback. Inserção não resolvida NÃO deve ser renderizada sem revisão.

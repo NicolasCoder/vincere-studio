@@ -4,10 +4,11 @@ import { LowerThird, type LowerThirdStyle } from "./LowerThird";
 import { OverlayDado } from "./OverlayDado";
 import { Intertitulo } from "./Intertitulo";
 import { InsertArquivo, SUBSTRATOS, type SubstratoKind } from "./InsertArquivo";
+import { Cronologia, type EventoCronologia } from "./Cronologia";
 
 export type TrechoInsertion = {
   id: string;
-  layout: "lower-third" | "overlay-dado" | "graphic-fullscreen" | "insert-arquivo" | "split-evidencia";
+  layout: "lower-third" | "overlay-dado" | "graphic-fullscreen" | "insert-arquivo" | "split-evidencia" | "cronologia";
   lowerThirdStyle: LowerThirdStyle | null;
   primary: string;
   secondary: string | null;
@@ -18,6 +19,8 @@ export type TrechoInsertion = {
   onLight: boolean;
   /** Caminho em public/ da evidência gerada; sem ela, o layout de arquivo não tem o que mostrar. */
   evidencePath?: string | null;
+  /** Só em cronologia: os eventos do eixo, com a posição já calculada pelas datas. */
+  eventos?: EventoCronologia[] | null;
 };
 
 export type TrechoProps = {
@@ -70,7 +73,15 @@ export const Trecho: React.FC<TrechoProps> = ({ master, insertions, burnedCaptio
         const substrato = SUBSTRATO_ORDEM[idx % SUBSTRATO_ORDEM.length];
         return (
           <Sequence key={ins.id} name={`${ins.layout} · ${ins.primary}`} from={from} durationInFrames={durationInFrames} premountFor={fps}>
-            {ins.layout === "graphic-fullscreen" ? (
+            {ins.layout === "cronologia" && ins.eventos?.length ? (
+              <Cronologia
+                titulo={ins.primary}
+                subtitulo={ins.secondary ?? undefined}
+                eventos={ins.eventos}
+                // Papel nosso, sempre o mesmo: é o que dá continuidade visual entre os vídeos.
+                fundo="props/fundos/fundo-papel-creme-01.jpg"
+              />
+            ) : ins.layout === "graphic-fullscreen" ? (
               <Intertitulo primary={ins.primary} secondary={ins.secondary ?? undefined} />
             ) : ins.layout === "overlay-dado" ? (
               <OverlayDado primary={ins.primary} secondary={ins.secondary ?? undefined} onLight={ins.onLight} />
