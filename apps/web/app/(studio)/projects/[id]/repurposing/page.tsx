@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@docupulse/db";
+import { ACT_GAP_MS } from "@docupulse/render";
 import { Badge, Button, Card, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
@@ -31,11 +32,13 @@ export default async function RepurposingPage({ params }: { params: Promise<{ id
   if (!project) notFound();
 
   const blocks = project.scripts[0]?.blocks ?? [];
+  // Cada bloco vira um ato da Timeline no render, com ACT_GAP_MS de silêncio entre atos: sem somar
+  // esse gap o erro acumula bloco a bloco e os cortes sugeridos saem adiantados em relação ao master.
   let cursor = 0;
-  const timed = blocks.map((b) => {
+  const timed = blocks.map((b, i) => {
     const durationMs = b.voiceTracks[0]?.durationMs ?? 0;
-    const startMs = cursor;
-    cursor += durationMs;
+    const startMs = cursor + (i > 0 ? ACT_GAP_MS : 0);
+    cursor = startMs + durationMs;
     return { ...b, computedStartMs: startMs, computedEndMs: cursor, durationMs };
   });
 
