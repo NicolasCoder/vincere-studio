@@ -13,6 +13,8 @@ import {
   findPhrase,
   getEditProfile,
   layoutsPermitidos,
+  eixosDe,
+  segundosPorInsercao,
   insertionRegion,
   needsOpaquePlate,
   posicionarEventos,
@@ -120,8 +122,15 @@ export async function generateEditPlan(ctx: JobContext) {
   // único lugar que muda.
   const perfil = getEditProfile(null);
   const permitidos = layoutsPermitidos(null, project.format as VideoFormat);
+  // Intensidade ainda sem coluna, pelo mesmo motivo do perfil: enquanto só existe um valor em uso,
+  // a coluna seria escolha que não existe. O eixo já está parametrizado, então quando virar campo
+  // no projeto é aqui — e só aqui — que muda.
+  const eixos = eixosDe(null, project.format as VideoFormat, "equilibrado");
   const system = editPlanSystemPrompt(perfil.orientacao);
-  await ctx.log(`Perfil: ${perfil.label} · ${permitidos.length} layout(s) para ${project.format}`);
+  await ctx.log(
+    `Perfil: ${perfil.label} · ${permitidos.length} layout(s) para ${project.format} · ` +
+      `inserções em ${eixos.insercoes}% do vídeo (1 a cada ${segundosPorInsercao(eixos.insercoes)}s), transições em ${eixos.transicoes}% dos cortes`,
+  );
   const insertions: EditInsertion[] = [];
   let cost = 0;
   let unresolved = 0;
@@ -161,6 +170,7 @@ export async function generateEditPlan(ctx: JobContext) {
         isLastAct: i === acts.length - 1,
         usedSoFar: insertions.filter((x) => x.trigger !== "(virada de ato)").map((x) => x.primary),
         layouts: permitidos,
+        insercoesPct: eixos.insercoes,
       }),
       EditPlanResponseSchema,
       { system, temperature: 0.6 },

@@ -20,6 +20,51 @@ import type { VideoFormat } from "./formats";
  * reescrever o Remotion.
  */
 
+/**
+ * Duração média de uma inserção, medida nos 226 itens dos planos já produzidos: mediana 4,0s e
+ * média 4,0s — raro um número bater tão redondo, e é o que torna honesta a conversão entre
+ * "% do vídeo" e "quantas inserções pedir ao modelo".
+ */
+export const DURACAO_INSERCAO_S = 4;
+
+/**
+ * Os eixos de edição do perfil, em porcentagem.
+ *
+ * A ideia é a mesma que torna um editor controlável: cada eixo diz QUANTO do vídeo ele ocupa, e
+ * fora disso o vídeo fica limpo. Antes esses números estavam cravados no código — uma inserção a
+ * cada 18s ou 28s no prompt, e uma regra de hash `h % 5` decidindo transição. Funcionavam, mas
+ * não eram ajustáveis nem nomeáveis, então nem a interface nem uma conversa conseguiam pedir
+ * "menos" ou "mais".
+ *
+ * Medido nos planos reais antes de escolher os padrões: longos ficaram entre 13,6% e 16,5%, e
+ * Shorts entre 25% e 30%. Os valores abaixo reproduzem isso, então ligar os eixos não muda o
+ * resultado de nada que já existe.
+ */
+export interface EixosDeEdicao {
+  /** % do tempo do vídeo coberto por inserção visual. O resto é descanso, não é falha. */
+  insercoes: number;
+  /** % dos cortes que recebem transição marcada; o resto segue no dissolve discreto. */
+  transicoes: number;
+}
+
+/**
+ * Faixa de intensidade: um dial só que move todos os eixos juntos.
+ *
+ * Existe porque ajustar eixo por eixo é trabalho de quem já sabe o que quer. Na maioria das vezes
+ * a pergunta real é "mais calmo ou mais agitado?", e essa pergunta merece uma resposta de um
+ * clique. É um multiplicador sobre os eixos do perfil, não um conjunto separado de números — o
+ * perfil continua sendo a única fonte da verdade.
+ */
+export const INTENSIDADES = ["calmo", "equilibrado", "dinamico", "muito-dinamico"] as const;
+export type Intensidade = (typeof INTENSIDADES)[number];
+
+const FATOR_INTENSIDADE: Record<Intensidade, number> = {
+  calmo: 0.6,
+  equilibrado: 1,
+  dinamico: 1.4,
+  "muito-dinamico": 1.8,
+};
+
 export interface EditProfile {
   id: string;
   label: string;
@@ -30,6 +75,8 @@ export interface EditProfile {
    * Declarar isso aqui evita o modelo propor no plano algo que o quadro não comporta.
    */
   layoutsPorFormato: Record<VideoFormat, readonly EditLayout[]>;
+  /** Quanto de cada eixo entra, por formato. Short aguenta (e pede) mais densidade que longo. */
+  eixosPorFormato: Record<VideoFormat, EixosDeEdicao>;
   /** Assets do pacote, relativos a editor-ia/public. */
   assets: {
     substratos: readonly string[];
@@ -51,6 +98,12 @@ export const EDIT_PROFILES: Record<string, EditProfile> = {
     label: "Documentário investigativo (DVP)",
     description: "Papel de dossiê, fotografia revelada, tipografia sóbria. Para mistério, true crime e história.",
     layoutsPorFormato: { LONG_16_9: TODOS_16_9, SHORT_9_16: VERTICAL_DVP },
+    // Reproduzem o que os planos já produziam antes dos eixos existirem: longos em ~15% e Shorts
+    // em ~28%. Transições em 20% é a regra `h % 5` de antes, escrita como número.
+    eixosPorFormato: {
+      LONG_16_9: { insercoes: 15, transicoes: 20 },
+      SHORT_9_16: { insercoes: 28, transicoes: 20 },
+    },
     assets: {
       substratos: [
         "props/substratos/papel-dossie-01.jpg",
@@ -88,3 +141,31 @@ export const getEditProfile = (id?: string | null): EditProfile =>
 export function layoutsPermitidos(profileId: string | null | undefined, format: VideoFormat): readonly EditLayout[] {
   return getEditProfile(profileId).layoutsPorFormato[format] ?? EDIT_LAYOUTS;
 }
+
+const limitar = (n: number, min: number, max: number) => Math.max(min, Math.min(max, n));
+
+/**
+ * Eixos efetivos deste projeto: os do perfil para o formato, escalados pela intensidade.
+ *
+ * O teto de 60% não é arbitrário: acima disso "fora disso fica limpo" deixa de ser verdade e o
+ * vídeo vira carrossel de efeito, que é exatamente o que o perfil documental existe para evitar.
+ */
+export function eixosDe(
+  profileId: string | null | undefined,
+  format: VideoFormat,
+  intensidade: Intensidade = "equilibrado",
+): EixosDeEdicao {
+  const base = getEditProfile(profileId).eixosPorFormato[format];
+  const f = FATOR_INTENSIDADE[intensidade] ?? 1;
+  return {
+    insercoes: limitar(Math.round(base.insercoes * f), 4, 60),
+    transicoes: limitar(Math.round(base.transicoes * f), 0, 100),
+  };
+}
+
+/**
+ * Converte "% do vídeo" em "uma inserção a cada N segundos", que é o que o prompt sabe pedir.
+ * Sai da duração média medida, não de um palpite.
+ */
+export const segundosPorInsercao = (percentual: number) =>
+  Math.round(DURACAO_INSERCAO_S / (limitar(percentual, 1, 100) / 100));

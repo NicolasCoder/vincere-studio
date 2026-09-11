@@ -1,5 +1,12 @@
 import { z } from "zod";
 import { EDIT_LAYOUTS, LOWER_THIRD_STYLES, type EditLayout } from "../edit-plan";
+import { segundosPorInsercao } from "../edit-profiles";
+
+/**
+ * O gancho recebe mais inserção que o resto. O fator vem da razão que já estava no código
+ * (uma a cada 18s no primeiro ato contra 28s nos demais): 28/18 ≈ 1,56.
+ */
+const DENSIDADE_DO_GANCHO = 1.56;
 
 // v2: passou a pedir evidencePrompt nos layouts de evidência — mudança real no formato da resposta.
 // v3: regra do evidencePrompt endurecida. Na v2, 4 de 10 prompts se contradiziam — pediam
@@ -140,12 +147,19 @@ export function editPlanPrompt(opts: {
    * em Short, onde não cabem — e a inserção era descartada silenciosamente no render.
    */
   layouts?: readonly EditLayout[];
+  /**
+   * % do vídeo que deve receber inserção, vindo dos eixos do perfil. Sem isso o prompt caía em
+   * números cravados (uma a cada 18s ou 28s) que ninguém conseguia ajustar de fora.
+   */
+  insercoesPct?: number;
 }) {
   const permitidos = new Set<string>(opts.layouts ?? EDIT_LAYOUTS);
   const seLiberado = (l: string, texto: string) => (permitidos.has(l) ? texto : "");
   // O gancho é o trecho que mais decide retenção e costuma ser o mais curto — sem uma taxa
-  // própria ele acabava recebendo menos inserções que qualquer outro ato.
-  const perInsertionSec = opts.isFirstAct ? 18 : 28;
+  // própria ele acabava recebendo menos inserções que qualquer outro ato. O fator vem da razão
+  // que estava cravada aqui antes (18s contra 28s), agora escrita como o que ela sempre foi.
+  const pct = (opts.insercoesPct ?? 15) * (opts.isFirstAct ? DENSIDADE_DO_GANCHO : 1);
+  const perInsertionSec = segundosPorInsercao(pct);
   const target = Math.max(opts.isFirstAct ? 2 : 1, Math.min(8, Math.round(opts.durationSec / perInsertionSec)));
   return [
     `Vídeo: "${opts.title}" · nicho: ${opts.niche}.`,
@@ -155,7 +169,7 @@ export function editPlanPrompt(opts: {
     `Proponha aproximadamente ${target} inserções visuais para este ato (pode ser uma a menos ou a mais se o conteúdo pedir).`,
     opts.isFirstAct
       ? "Este é o gancho — o trecho que decide se a pessoa continua assistindo. Densidade um pouco maior aqui é bem-vinda: ancore rápido a data, o lugar e o número que sustentam a promessa do vídeo."
-      : "Ritmo: cerca de uma inserção a cada 20–35 segundos. Trecho sem inserção é descanso, não é falha — não encha o ato.",
+      : `Ritmo: cerca de uma inserção a cada ${perInsertionSec} segundos. Trecho sem inserção é descanso, não é falha — não encha o ato.`,
     "",
     opts.usedSoFar.length
       ? `Já apareceram na tela, nos atos anteriores: ${opts.usedSoFar.map((t) => `"${t}"`).join(", ")}.\nNão repita nenhum desses textos nem uma variação próxima deles. Se a mesma ideia voltar neste ato, ou traga um dado novo sobre ela, ou deixe passar sem inserção.\n`

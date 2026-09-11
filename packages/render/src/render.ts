@@ -18,6 +18,8 @@ export interface RenderOptions {
   encoder?: "auto" | "libx264" | "h264_qsv" | "h264_nvenc";
   grading?: string; // rótulo apenas informativo por enquanto
   fontFile?: string;
+  /** % dos cortes com transição marcada (eixo do perfil). Sem valor, mantém os 20% históricos. */
+  transicoesPct?: number;
 }
 
 /** Quebra texto em linhas de até N caracteres (drawtext não quebra sozinho). */
@@ -139,16 +141,28 @@ async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptio
 // transição diferente — dá dinamismo sem virar carrossel de efeitos. Escolha determinística (mesmo
 // projeto/render sempre produz o mesmo resultado) via um hash simples da posição do corte.
 const LIGHT_TRANSITIONS = ["smoothleft", "smoothright", "wiperight", "wipeleft", "dissolve"];
-function pickTransition(actNum: number, cutIndex: number): string {
+/**
+ * `pct` é a fatia dos cortes que recebe transição marcada; o resto fica no dissolve discreto.
+ *
+ * Antes isto era `h % 5 !== 0`, ou seja, 20% cravados no código. O número estava certo — é o que
+ * os vídeos já publicados usam — mas não tinha nome nem como ser ajustado de fora, então nem a
+ * interface nem uma conversa conseguiam pedir "mais calmo". Agora vem do eixo do perfil, e o
+ * padrão continua em 20%: ligar o eixo não muda nada do que já existe.
+ *
+ * A escolha segue determinística por hash: o mesmo projeto renderizado duas vezes dá o mesmo
+ * resultado, que é o que permite comparar dois renders e saber que a diferença é a mudança, não o
+ * sorteio.
+ */
+function pickTransition(actNum: number, cutIndex: number, pct = 20): string {
   let h = 0;
   const key = `${actNum}:${cutIndex}`;
   for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
-  if (h % 5 !== 0) return "fade"; // ~80% dos cortes ficam no dissolve clássico e discreto
+  if (h % 100 >= Math.max(0, Math.min(100, pct))) return "fade";
   return LIGHT_TRANSITIONS[h % LIGHT_TRANSITIONS.length];
 }
 
 /** Junta os clipes de um ato com dissolves (xfade), variando o tipo de transição em alguns cortes. */
-async function renderAct(clips: string[], durationsMs: number[], transitionMs: number, fps: number, out: string, actNum = 1) {
+async function renderAct(clips: string[], durationsMs: number[], transitionMs: number, fps: number, out: string, actNum = 1, transicoesPct = 20) {
   if (clips.length === 1) {
     await run(FFMPEG, ["-y", "-hide_banner", "-loglevel", "error", "-i", clips[0], "-c", "copy", out]);
     return;
@@ -161,7 +175,7 @@ async function renderAct(clips: string[], durationsMs: number[], transitionMs: n
   for (let i = 1; i < clips.length; i++) {
     offset += durationsMs[i - 1] / 1000; // clipes têm +transição de sobra; o offset usa a duração "útil"
     const label = i === clips.length - 1 ? "[v]" : `[x${i}]`;
-    const transition = pickTransition(actNum, i);
+    const transition = pickTransition(actNum, i, transicoesPct);
     filters.push(`${prev}[${i}:v]xfade=transition=${transition}:duration=${tr.toFixed(3)}:offset=${offset.toFixed(3)}${label}`);
     prev = label;
   }
@@ -216,7 +230,7 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
       await o.onProgress?.({ percent: 5 + (done / totalScenes) * 60, message: `Ato ${a.act}: cena ${i + 1}/${a.scenes.length}` });
     }
     const actOut = path.join(o.workDir, `act-${String(a.act).padStart(2, "0")}.mp4`);
-    await renderAct(clips, durs, transitionMs, profile.fps, actOut, a.act);
+    await renderAct(clips, durs, transitionMs, profile.fps, actOut, a.act, o.transicoesPct ?? 20);
     actFiles.push(actOut);
     await log(`Ato ${a.act}: ${a.scenes.length} cenas → ${path.basename(actOut)}`);
   }
