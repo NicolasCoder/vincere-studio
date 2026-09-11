@@ -48,7 +48,7 @@ export class OpenverseProvider implements StockProvider {
 
     const json = (await res.json()) as { results?: OpenverseImage[] };
     return (json.results ?? [])
-      .filter((r) => r.url && (r.width ?? 0) >= 800)
+      .flatMap((r) => (r.url && (r.width ?? 0) >= 800 ? [{ ...r, url: r.url }] : []))
       .map((r) => ({
         provider: "OPENVERSE" as const,
         id: String(r.id),

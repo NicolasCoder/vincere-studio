@@ -27,8 +27,16 @@ export async function generateImageCloudflare(input: GenerateImageInput): Promis
     throw new ProviderError("Cloudflare Workers AI não configurado — falta CLOUDFLARE_ACCOUNT_ID ou CLOUDFLARE_API_TOKEN no .env.");
   }
 
-  // O FLUX schnell da Workers AI não aceita proporção como parâmetro; o jeito de influenciar é
-  // pelo texto. Sem isso ele volta quadrado e o corte para 16:9 come metade do assunto.
+  /**
+   * O FLUX schnell da Workers AI sempre devolve 1024×1024 — medido: passar `width`/`height`
+   * retorna 400 "Additional or unevaluated properties not allowed". A proporção entra só como
+   * pista no texto, e o modelo obedece a composição, não a moldura.
+   *
+   * Consequência prática: serve muito bem para SUBSTRATO (textura, papel, fundo), que é usado com
+   * recorte e não perde nada ao ser cortado. Para imagem com composição — assunto centrado,
+   * elemento encostado na borda — o corte para 16:9 ou 9:16 come as pontas. Nesses casos o
+   * prompt deve manter o assunto longe das bordas.
+   */
   const prompt = [
     input.prompt.trim(),
     input.aspectRatio ? `${input.aspectRatio} aspect ratio, cinematic framing` : null,

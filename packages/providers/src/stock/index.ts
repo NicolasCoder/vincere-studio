@@ -3,6 +3,7 @@ import { mkdir } from "node:fs/promises";
 import path from "node:path";
 import { pipeline } from "node:stream/promises";
 import { Readable } from "node:stream";
+import { OpenverseProvider } from "./openverse";
 
 export interface StockQuery {
   keywords: string;
@@ -11,7 +12,7 @@ export interface StockQuery {
   minDurationSec?: number;
 }
 export interface StockAsset {
-  provider: "PEXELS" | "PIXABAY" | "COVERR";
+  provider: "PEXELS" | "PIXABAY" | "COVERR" | "OPENVERSE";
   id: string;
   type: "video" | "image";
   url: string; // download
@@ -25,7 +26,7 @@ export interface StockAsset {
   tags?: string;
 }
 export interface StockProvider {
-  readonly name: "PEXELS" | "PIXABAY" | "COVERR";
+  readonly name: "PEXELS" | "PIXABAY" | "COVERR" | "OPENVERSE";
   search(q: StockQuery, limit?: number): Promise<StockAsset[]>;
 }
 
@@ -128,7 +129,13 @@ export class CoverrProvider implements StockProvider {
 interface CoverrVideo { id: string | number; tags?: string[]; duration?: number; is_vertical?: boolean; max_width?: number; max_height?: number; thumbnail?: string; urls?: { mp4?: string; mp4_download?: string; mp4_preview?: string } }
 
 export function getStockProviders(): StockProvider[] {
-  return [new PexelsProvider(), new PixabayProvider(), new CoverrProvider()].filter((p) => p.enabled);
+  // Openverse por último: é acervo histórico e documental, não cena genérica. Numa busca real
+  // "soviet archive documents" devolveu material do Wikimedia com licença por item, enquanto
+  // "abandoned car highway night" voltou zero. Ele complementa Pexels/Pixabay, não substitui —
+  // por isso entra depois deles na ordem, como fonte extra e não como primeira opção.
+  return [new PexelsProvider(), new PixabayProvider(), new CoverrProvider(), new OpenverseProvider()].filter(
+    (p) => p.enabled,
+  );
 }
 
 export async function downloadTo(url: string, file: string) {
