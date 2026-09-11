@@ -1,7 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { prisma } from "@docupulse/db";
-import { LAYOUT_META, needsOpaquePlate, type EditLayout, type EditPlanData } from "@docupulse/core";
+import { EDIT_PLAN_PROMPT_VERSION, LAYOUT_META, needsOpaquePlate, type EditLayout, type EditPlanData } from "@docupulse/core";
+import { motoresDisponiveis } from "@docupulse/providers";
 import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
@@ -65,6 +66,7 @@ export default async function EditPlanPage({
   const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
   const ready = blocks.length > 0 && captioned === blocks.length;
   const data: EditPlanData | null = plan ? (JSON.parse(plan.data) as EditPlanData) : null;
+  const planoDesatualizado = !!plan && plan.promptVersion !== EDIT_PLAN_PROMPT_VERSION;
   const overLight = (data?.insertions ?? []).filter(needsOpaquePlate).length;
   const comEvidencia = (data?.insertions ?? []).filter((i) => i.evidencePrompt).length;
   const byAct = new Map<number, EditPlanData["insertions"]>();
@@ -96,7 +98,16 @@ export default async function EditPlanPage({
                 {overLight} sobre fundo claro
               </Chip>
             )}
-            {plan && <Chip icon="history">v{plan.version}</Chip>}
+            {/* Mostra as DUAS versões: o contador do projeto não diz nada sobre as regras usadas,
+                e um plano antigo não conhece os layouts novos. Sem isso, "v5" parecia recente
+                quando na verdade o plano tinha sido escrito três versões de prompt atrás. */}
+            {plan && <Chip icon="history">plano {plan.version}</Chip>}
+            {plan && (
+              <Chip icon={planoDesatualizado ? "update" : "check"} active={planoDesatualizado}>
+                {plan.promptVersion ?? "regras antigas"}
+                {planoDesatualizado ? ` · atual é ${EDIT_PLAN_PROMPT_VERSION}` : ""}
+              </Chip>
+            )}
           </div>
           <div className="flex flex-wrap items-center gap-2">
             <form action={generateEditPlan.bind(null, project.id)}>
@@ -178,13 +189,17 @@ export default async function EditPlanPage({
               crédito no motor pago e tempo no grátis.
             </p>
             <form action={generateEvidences.bind(null, project.id)} className="mt-3 flex flex-wrap items-center gap-2">
-              <select name="engine" defaultValue="POLLINATIONS" className="field px-3 py-2 text-sm">
-                <option value="POLLINATIONS" className="bg-surface-low">
-                  Pollinations — grátis
-                </option>
-                <option value="GEMINI" className="bg-surface-low">
-                  Gemini / Nano Banana — pago
-                </option>
+              {/* Lista os motores com chave presente, grátis primeiro. Estava fixo em Pollinations
+                  e Gemini enquanto a tela de imagens já listava os sete — inconsistência que
+                  escondia justamente os motores novos, que são os melhores. */}
+              <select name="engine" defaultValue={motoresDisponiveis().find((m) => !m.pago)?.id ?? "POLLINATIONS"} className="field px-3 py-2 text-sm">
+                {motoresDisponiveis()
+                  .sort((a, b) => Number(a.pago) - Number(b.pago))
+                  .map((m) => (
+                    <option key={m.id} value={m.id} className="bg-surface-low">
+                      {m.label} — {m.pago ? "pago" : "grátis"}
+                    </option>
+                  ))}
               </select>
               <Button type="submit" icon="auto_awesome" variant="primary">
                 Gerar {comEvidencia} evidência(s)
