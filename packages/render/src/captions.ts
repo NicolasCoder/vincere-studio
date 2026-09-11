@@ -16,6 +16,71 @@ const esc = (t: string) => t.replace(/\\/g, "\\\\").replace(/\{/g, "(").replace(
  * Longo (16:9): linhas de até 7 palavras no rodapé, discretas.
  * Curto (9:16): 2–3 palavras por vez, grandes, centralizadas, com a palavra atual em destaque.
  */
+/** Tempo no formato do SubRip: HH:MM:SS,mmm (vírgula, não ponto — o YouTube recusa com ponto). */
+const fmtSrt = (ms: number) => {
+  const total = Math.max(0, Math.round(ms));
+  const h = Math.floor(total / 3_600_000);
+  const m = Math.floor((total % 3_600_000) / 60_000);
+  const s = Math.floor((total % 60_000) / 1000);
+  return `${String(h).padStart(2, "0")}:${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")},${String(total % 1000).padStart(3, "0")}`;
+};
+
+export interface FaixaLegenda {
+  /** Deslocamento do ato no vídeo inteiro, em ms. */
+  offsetMs: number;
+  /** Palavras alinhadas, com tempo relativo ao ato. */
+  words: { text: string; startMs: number; endMs: number }[];
+}
+
+/**
+ * Gera legenda .srt com tempos absolutos, para enviar ao YouTube como faixa de legenda.
+ *
+ * Diferente do ASS, que é queimado na imagem: isto é texto que o YouTube indexa, traduz e oferece
+ * como CC. No vídeo longo é a única legenda que existe — o master não queima nada de propósito,
+ * porque o rodapé livre é onde a camada visual DVP põe os lower thirds.
+ *
+ * Agrupa por pausa, não por contagem fixa de palavras: quebrar a cada N palavras corta frase no
+ * meio e o resultado fica difícil de ler. Uma pausa acima de `pausaMs` fecha a linha.
+ */
+export function buildSrt(faixas: FaixaLegenda[], opts: { maxPalavras?: number; maxMs?: number; pausaMs?: number } = {}): string {
+  const maxPalavras = opts.maxPalavras ?? 12;
+  const maxMs = opts.maxMs ?? 6000;
+  const pausaMs = opts.pausaMs ?? 450;
+
+  const linhas: { startMs: number; endMs: number; texto: string }[] = [];
+  for (const f of faixas) {
+    let atual: { startMs: number; endMs: number; palavras: string[] } | null = null;
+    let fimAnterior: number | null = null;
+
+    for (const w of f.words) {
+      const ini = f.offsetMs + w.startMs;
+      const fim = f.offsetMs + w.endMs;
+      const quebrou =
+        !atual ||
+        atual.palavras.length >= maxPalavras ||
+        fim - atual.startMs > maxMs ||
+        (fimAnterior != null && f.offsetMs + w.startMs - fimAnterior > pausaMs);
+
+      if (quebrou || !atual) {
+        if (atual) linhas.push({ startMs: atual.startMs, endMs: atual.endMs, texto: atual.palavras.join(" ") });
+        atual = { startMs: ini, endMs: fim, palavras: [w.text] };
+      } else {
+        atual.palavras.push(w.text);
+        atual.endMs = fim;
+      }
+      fimAnterior = fim;
+    }
+    if (atual) linhas.push({ startMs: atual.startMs, endMs: atual.endMs, texto: atual.palavras.join(" ") });
+  }
+
+  return (
+    linhas
+      .filter((l) => l.texto.trim())
+      .map((l, i) => `${i + 1}\n${fmtSrt(l.startMs)} --> ${fmtSrt(Math.max(l.endMs, l.startMs + 300))}\n${l.texto.trim()}`)
+      .join("\n\n") + "\n"
+  );
+}
+
 export function buildAss(t: Timeline, p: RenderProfile, mode: "subtle-bottom" | "bold-center-animated"): string {
   const vertical = p.height > p.width;
   const fontSize = vertical ? Math.round(p.height * 0.045) : Math.round(p.height * 0.042);

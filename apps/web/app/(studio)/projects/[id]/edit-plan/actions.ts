@@ -10,6 +10,26 @@ export async function generateEditPlan(projectId: string) {
 }
 
 /**
+ * Aplica a camada visual sobre o master — é este job que DESENHA as inserções no vídeo.
+ *
+ * Ficou sem botão desde que foi escrito: o plano tinha como ser gerado pela tela, mas aplicá-lo
+ * só acontecia enfileirando o job na mão. Na prática isso significava que os vídeos saíam sem
+ * nenhuma das inserções, e não havia como perceber pela interface que faltava um passo.
+ */
+export async function applyVisualLayer(projectId: string) {
+  const plan = await prisma.editPlan.findFirst({ where: { projectId }, orderBy: { version: "desc" } });
+  if (!plan) redirect(`/projects/${projectId}/edit-plan?erro=sem-plano`);
+
+  const render = await prisma.renderJob.findFirst({ where: { projectId, outputPath: { not: null } } });
+  if (!render) redirect(`/projects/${projectId}/edit-plan?erro=sem-render`);
+
+  const job = await prisma.job.create({
+    data: { type: "APPLY_VISUAL_LAYER", projectId, payload: JSON.stringify({ projectId }) },
+  });
+  redirect(`/projects/${projectId}/edit-plan?job=${job.id}`);
+}
+
+/**
  * Gera as imagens de evidência que o plano propôs mas ainda não existem.
  *
  * Fica separado da geração do plano de propósito: propor evidência é barato, gerar imagem gasta

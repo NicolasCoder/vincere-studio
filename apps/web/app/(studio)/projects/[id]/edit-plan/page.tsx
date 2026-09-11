@@ -7,7 +7,7 @@ import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
 import { getUsageSummary, fmtMs } from "@/lib/data";
-import { generateEditPlan, generateEvidences } from "./actions";
+import { applyVisualLayer, generateEditPlan, generateEvidences } from "./actions";
 
 const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
   "lower-third": "cyan",
@@ -22,10 +22,10 @@ export default async function EditPlanPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ job?: string }>;
+  searchParams: Promise<{ job?: string; erro?: string }>;
 }) {
   const { id } = await params;
-  const { job } = await searchParams;
+  const { job, erro } = await searchParams;
   const [usage, project, plan] = await Promise.all([
     getUsageSummary(),
     prisma.project.findUnique({
@@ -46,6 +46,18 @@ export default async function EditPlanPage({
     prisma.editPlan.findFirst({ where: { projectId: id }, orderBy: { version: "desc" } }),
   ]);
   if (!project) notFound();
+
+  // Aplicar a camada exige um master pronto; e o resultado da última aplicação vem do job,
+  // porque a camada não cria RenderJob (o master tem que continuar sendo o master).
+  const [temRender, camadaJob] = await Promise.all([
+    prisma.renderJob.findFirst({ where: { projectId: id, outputPath: { not: null } }, select: { id: true } }),
+    prisma.job.findFirst({
+      where: { projectId: id, type: "APPLY_VISUAL_LAYER", status: "DONE" },
+      orderBy: { finishedAt: "desc" },
+      select: { result: true, finishedAt: true },
+    }),
+  ]);
+  const camada = camadaJob?.result ? (JSON.parse(camadaJob.result) as { output?: string }) : null;
 
   const blocks = project.scripts[0]?.blocks ?? [];
   const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
@@ -84,18 +96,53 @@ export default async function EditPlanPage({
             )}
             {plan && <Chip icon="history">v{plan.version}</Chip>}
           </div>
-          <form action={generateEditPlan.bind(null, project.id)}>
-            <Button
-              type="submit"
-              variant="primary"
-              icon="auto_awesome"
-              disabled={!ready}
-              title={ready ? "" : "Alinhe as legendas de todos os atos no Passo 3"}
-            >
-              {plan ? "Gerar novo plano" : "Gerar plano com IA"}
-            </Button>
-          </form>
+          <div className="flex flex-wrap items-center gap-2">
+            <form action={generateEditPlan.bind(null, project.id)}>
+              <Button
+                type="submit"
+                icon="auto_awesome"
+                disabled={!ready}
+                title={ready ? "" : "Alinhe as legendas de todos os atos no Passo 3"}
+              >
+                {plan ? "Gerar novo plano" : "Gerar plano com IA"}
+              </Button>
+            </form>
+            {/* O passo que faltava na interface: gerar o plano não desenha nada. É este botão que
+                aplica as inserções sobre o master e produz o vídeo editado. */}
+            <form action={applyVisualLayer.bind(null, project.id)}>
+              <Button
+                type="submit"
+                variant="primary"
+                icon="movie_filter"
+                disabled={!data || !temRender}
+                title={!data ? "Gere o plano primeiro" : !temRender ? "Renderize o vídeo no Passo 4 primeiro" : ""}
+              >
+                Aplicar camada no vídeo
+              </Button>
+            </form>
+          </div>
         </Card>
+
+        {erro === "sem-plano" && <Card className="p-4 text-sm text-warning">Gere o plano de edição antes de aplicar a camada.</Card>}
+        {erro === "sem-render" && <Card className="p-4 text-sm text-warning">É preciso um render concluído no Passo 4 antes de aplicar a camada.</Card>}
+
+        {camada?.output && (
+          <Card className="p-5" accent="violet">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h3 className="font-display font-semibold">
+                <Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />
+                Vídeo com a camada aplicada
+              </h3>
+              <span className="font-mono text-[11px] text-muted">
+                {camadaJob?.finishedAt ? new Date(camadaJob.finishedAt).toLocaleString("pt-BR") : ""}
+              </span>
+            </div>
+            <p className="mt-1 text-xs text-fg-secondary">
+              É esta versão que o Passo 5 publica quando é mais nova que o master. O master continua intocado.
+            </p>
+            <video controls preload="metadata" src={`/api/media/${camada.output}`} className="mt-3 w-full max-h-[420px] bg-black" />
+          </Card>
+        )}
 
         {!ready && (
           <Card className="p-5 text-sm text-warning">

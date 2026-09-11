@@ -1,6 +1,8 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
+import { Readable } from "node:stream";
 import { prisma } from "@docupulse/db";
 import { absPath, getAuthenticatedYoutubeClient } from "@docupulse/providers";
+import { ACT_GAP_MS, buildSrt, type FaixaLegenda } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
 /**
@@ -36,6 +38,57 @@ async function escolherArquivo(
 
   await ctx.log("Subindo a versão com camada visual (não o master).");
   return saida;
+}
+
+/**
+ * Sobe a legenda como faixa de CC, a partir das palavras já alinhadas no Passo 3.
+ *
+ * No vídeo longo o master não queima legenda de propósito — o rodapé livre é onde a camada visual
+ * põe os lower thirds. Sem esta faixa, o vídeo longo fica SEM legenda nenhuma: nem queimada, nem
+ * enviada. Além da acessibilidade, é o texto que o YouTube indexa na busca e oferece traduzido.
+ *
+ * Falhar aqui não derruba a publicação: o vídeo já está no ar, e legenda se reenvia depois.
+ */
+async function enviarLegenda(
+  projectId: string,
+  youtube: Awaited<ReturnType<typeof getAuthenticatedYoutubeClient>>["youtube"],
+  videoId: string,
+  ctx: JobContext,
+) {
+  try {
+    const script = await prisma.script.findFirst({
+      where: { projectId },
+      orderBy: { version: "desc" },
+      include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: { include: { captions: true } } } } },
+    });
+    if (!script) return;
+
+    let offsetMs = 0;
+    const faixas: FaixaLegenda[] = [];
+    for (const b of script.blocks) {
+      const track = b.voiceTracks[0];
+      if (!track) continue;
+      const words = JSON.parse(track.captions[0]?.words ?? "[]") as { text: string; startMs: number; endMs: number }[];
+      if (words.length) faixas.push({ offsetMs, words });
+      // O deslocamento acumula mesmo sem palavras: um ato sem legenda ainda ocupa tempo, e ignorá-lo
+      // adiantaria tudo que vem depois.
+      offsetMs += track.durationMs + ACT_GAP_MS;
+    }
+    if (!faixas.length) {
+      await ctx.log("Sem palavras alinhadas — vídeo publicado sem faixa de legenda.");
+      return;
+    }
+
+    const srt = buildSrt(faixas);
+    await youtube.captions.insert({
+      part: ["snippet"],
+      requestBody: { snippet: { videoId, language: "pt-BR", name: "Português", isDraft: false } },
+      media: { mimeType: "application/octet-stream", body: Readable.from([srt]) },
+    });
+    await ctx.log(`Legenda enviada: ${srt.split("\n\n").length} linhas em pt-BR.`);
+  } catch (err) {
+    await ctx.log(`Não consegui enviar a legenda (o vídeo já está no ar): ${err instanceof Error ? err.message : String(err)}`);
+  }
 }
 
 /**
@@ -104,6 +157,8 @@ export async function publishYoutube(ctx: JobContext) {
   const url = `https://www.youtube.com/watch?v=${videoId}`;
   await ctx.log(`Upload concluído: ${url}`);
   await ctx.progress({ percent: 92, message: "Definindo thumbnail" });
+
+  await enviarLegenda(projectId, youtube, videoId, ctx);
 
   if (project.thumbnailPath) {
     try {
