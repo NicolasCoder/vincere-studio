@@ -1,5 +1,5 @@
 import { z } from "zod";
-import { EDIT_LAYOUTS, LOWER_THIRD_STYLES } from "../edit-plan";
+import { EDIT_LAYOUTS, LOWER_THIRD_STYLES, type EditLayout } from "../edit-plan";
 
 // v2: passou a pedir evidencePrompt nos layouts de evidência — mudança real no formato da resposta.
 // v3: regra do evidencePrompt endurecida. Na v2, 4 de 10 prompts se contradiziam — pediam
@@ -109,11 +109,15 @@ export const InsertionSchema = z.object({
 });
 export const EditPlanResponseSchema = z.object({ insertions: z.array(InsertionSchema) });
 
-export function editPlanSystemPrompt() {
+/**
+ * A orientação editorial vem do PERFIL, não está cravada aqui. É o que permite um nicho novo
+ * mudar o tom do texto na tela sem tocar neste arquivo.
+ */
+export function editPlanSystemPrompt(orientacao?: string) {
   return [
-    "Você é o editor de pós-produção de um canal de documentário investigativo em português do Brasil.",
+    "Você é o editor de pós-produção de um canal de documentário em português do Brasil.",
     "O vídeo JÁ ESTÁ montado e narrado. Você não corta, não reordena e não muda o áudio — só decide o que aparece POR CIMA da imagem e em que momento.",
-    "Identidade visual: sóbria, documental, sem emoji, sem gíria, sem linguagem de marketing. Texto na tela é enxuto e factual.",
+    orientacao ?? "Identidade visual sóbria e documental: texto na tela enxuto e factual.",
     "Você devolve apenas JSON.",
   ].join("\n");
 }
@@ -131,7 +135,14 @@ export function editPlanPrompt(opts: {
   isLastAct: boolean;
   /** Textos de tela já propostos nos atos anteriores, para não repetir. */
   usedSoFar: string[];
+  /**
+   * Layouts que o perfil libera para ESTE formato. Sem isso o modelo propunha cronologia e mesa
+   * em Short, onde não cabem — e a inserção era descartada silenciosamente no render.
+   */
+  layouts?: readonly EditLayout[];
 }) {
+  const permitidos = new Set<string>(opts.layouts ?? EDIT_LAYOUTS);
+  const seLiberado = (l: string, texto: string) => (permitidos.has(l) ? texto : "");
   // O gancho é o trecho que mais decide retenção e costuma ser o mais curto — sem uma taxa
   // própria ele acabava recebendo menos inserções que qualquer outro ato.
   const perInsertionSec = opts.isFirstAct ? 18 : 28;
@@ -149,16 +160,19 @@ export function editPlanPrompt(opts: {
     opts.usedSoFar.length
       ? `Já apareceram na tela, nos atos anteriores: ${opts.usedSoFar.map((t) => `"${t}"`).join(", ")}.\nNão repita nenhum desses textos nem uma variação próxima deles. Se a mesma ideia voltar neste ato, ou traga um dado novo sobre ela, ou deixe passar sem inserção.\n`
       : "",
-    "Quando usar cada layout:",
-    "- lower-third + DATADO: quando a narração ancora uma data, um ano ou um lugar específico.",
-    "- lower-third + AUTORIDADE: quando cita uma fonte, um documento oficial, um órgão ou um especialista.",
-    "- lower-third + EMOCIONAL: quando nomeia uma pessoa envolvida na história.",
-    "- overlay-dado: quando aparece um número que sustenta o argumento (quantidade, distância, duração, custo).",
-    "- insert-arquivo: quando a fala se refere a um registro concreto que o espectador precisa ver (foto, documento, manchete, mapa antigo).",
-    "- split-evidencia: quando a fala compara duas coisas ou confronta a versão oficial com a evidência.",
-    "- graphic-fullscreen: cartão de virada de ato ou intertítulo cobrindo o quadro.",
-    "- cronologia: quando a fala percorre um INTERVALO de datas e a ordem dos fatos é o argumento — 'entre 1995 e 2021', 'ao longo de três décadas'. Cobre o quadro inteiro por 8 segundos, então use no máximo uma vez por vídeo, no ato em que a linha do tempo esclarece mais.",
-    "- mesa-arquivo: quando a fala enumera DOIS OU TRÊS registros concretos e diferentes no mesmo trecho — 'as pastas, as marcas no teto e a gravação'. Mostra os três juntos como fotos reveladas sobre a mesa. Se a fala cita um registro só, use insert-arquivo; a mesa com uma foto só não tem motivo para existir.",
+    // Só os layouts liberados pelo perfil para este formato entram na lista. Descrever um layout
+    // que o render vai descartar é convidar o modelo a desperdiçar inserção.
+    `Layouts disponíveis neste vídeo: ${[...permitidos].join(", ")}. NÃO use nenhum fora desta lista.`,
+    "Quando usar cada um:",
+    seLiberado("lower-third", "- lower-third + DATADO: quando a narração ancora uma data, um ano ou um lugar específico."),
+    seLiberado("lower-third", "- lower-third + AUTORIDADE: quando cita uma fonte, um documento oficial, um órgão ou um especialista."),
+    seLiberado("lower-third", "- lower-third + EMOCIONAL: quando nomeia uma pessoa envolvida na história."),
+    seLiberado("overlay-dado", "- overlay-dado: quando aparece um número que sustenta o argumento (quantidade, distância, duração, custo)."),
+    seLiberado("insert-arquivo", "- insert-arquivo: quando a fala se refere a um registro concreto que o espectador precisa ver (foto, documento, manchete, mapa antigo)."),
+    seLiberado("split-evidencia", "- split-evidencia: quando a fala compara duas coisas ou confronta a versão oficial com a evidência. Metade do quadro segue com o vídeo, a outra metade mostra a evidência."),
+    seLiberado("graphic-fullscreen", "- graphic-fullscreen: cartão de virada de ato ou intertítulo cobrindo o quadro."),
+    seLiberado("cronologia", "- cronologia: quando a fala percorre um INTERVALO de datas e a ordem dos fatos é o argumento — 'entre 1995 e 2021', 'ao longo de três décadas'. Cobre o quadro inteiro por 8 segundos, então use no máximo uma vez por vídeo, no ato em que a linha do tempo esclarece mais."),
+    seLiberado("mesa-arquivo", "- mesa-arquivo: quando a fala enumera DOIS OU TRÊS registros concretos e diferentes no mesmo trecho — 'as pastas, as marcas no teto e a gravação'. Mostra os três juntos como fotos reveladas sobre a mesa. Se a fala cita um registro só, use insert-arquivo; a mesa com uma foto só não tem motivo para existir."),
     "",
     "Regras rígidas:",
     "1. O campo `trigger` tem que ser copiado PALAVRA POR PALAVRA da narração abaixo. Não parafraseie, não corrija, não traduza. Se o trecho não existir igual no texto, a inserção é descartada.",

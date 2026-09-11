@@ -11,6 +11,8 @@ import {
   editPlanPrompt,
   editPlanSystemPrompt,
   findPhrase,
+  getEditProfile,
+  layoutsPermitidos,
   insertionRegion,
   needsOpaquePlate,
   posicionarEventos,
@@ -109,7 +111,17 @@ export async function generateEditPlan(ctx: JobContext) {
   // conservador demais, não errado — a inserção sobe em vez de invadir.
   const burnedCaptions = FORMATS[project.format as VideoFormat].captions.required;
   const provider = getTextProvider();
-  const system = editPlanSystemPrompt();
+  // O perfil decide quais layouts existem NESTE formato e qual a orientação editorial do nicho.
+  // Cronologia e mesa de arquivo, por exemplo, não são propostas em Short: são horizontais por
+  // natureza e a inserção seria descartada no render, gastando uma das poucas do ato.
+  //
+  // Sem coluna no banco ainda de propósito: existe um perfil só, e uma coluna com um valor
+  // possível é escolha que não existe. Quando entrar o segundo, vira campo no projeto e este é o
+  // único lugar que muda.
+  const perfil = getEditProfile(null);
+  const permitidos = layoutsPermitidos(null, project.format as VideoFormat);
+  const system = editPlanSystemPrompt(perfil.orientacao);
+  await ctx.log(`Perfil: ${perfil.label} · ${permitidos.length} layout(s) para ${project.format}`);
   const insertions: EditInsertion[] = [];
   let cost = 0;
   let unresolved = 0;
@@ -148,6 +160,7 @@ export async function generateEditPlan(ctx: JobContext) {
         isFirstAct: i === 0,
         isLastAct: i === acts.length - 1,
         usedSoFar: insertions.filter((x) => x.trigger !== "(virada de ato)").map((x) => x.primary),
+        layouts: permitidos,
       }),
       EditPlanResponseSchema,
       { system, temperature: 0.6 },

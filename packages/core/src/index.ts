@@ -8,4 +8,5 @@ export * from "./retention";
 export * from "./visual-styles";
 export * from "./prompts/scenes";
 export * from "./edit-plan";
+export * from "./edit-profiles";
 export * from "./prompts/edit-plan";
