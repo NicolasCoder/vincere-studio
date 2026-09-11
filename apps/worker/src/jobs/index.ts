@@ -18,13 +18,14 @@ import { applyVisualLayer } from "./apply-visual-layer";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
-const notImplemented =
-  (sprint: string): JobHandler =>
-  async (ctx) => {
-    await ctx.log(`Job ${ctx.job.type} ainda não implementado (${sprint}).`);
-    throw new Error(`${ctx.job.type} chega na ${sprint}`);
-  };
-
+/**
+ * Todos os tipos de job têm handler real — não há mais stub de "chega na sprint N", e o
+ * `Record<JobType, ...>` impede esquecer um.
+ *
+ * O que o tipo NÃO garante é o outro lado: um job pode ter handler aqui e nenhum botão que o
+ * dispare. Foi o caso do APPLY_VISUAL_LAYER, inalcançável pela interface enquanto nove projetos
+ * saíam sem camada visual e nada indicava a etapa faltando.
+ */
 export const handlers: Record<JobType, JobHandler> = {
   DEMO: demo,
   GENERATE_IDEAS: generateIdeas,
