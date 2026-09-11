@@ -4,7 +4,7 @@ import { mkdir, rm, writeFile, copyFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, planSegments, passthroughRanges, type EditPlanData, type VideoFormat } from "@docupulse/core";
 import { profileFor } from "@docupulse/render";
-import { FFMPEG, absPath, probeDurationMs, projectDir, relPath, run, storageRoot } from "@docupulse/providers";
+import { FFMPEG, FFPROBE, absPath, probeDurationMs, projectDir, relPath, run, storageRoot } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /** Raiz do projeto Remotion. storage/ e editor-ia/ são irmãos na raiz do repo. */
@@ -131,6 +131,11 @@ export async function applyVisualLayer(ctx: JobContext) {
         insertions,
         burnedCaptions: format.captions.required,
         durationInFrames: Math.round((durMs / 1000) * profile.fps),
+        // Resolução do perfil, não a da composição. Sem isto o Remotion devolve 1920×1080 fixo e
+        // um projeto vertical sai deitado — o concat então mistura resoluções e a duração final
+        // vira qualquer coisa.
+        width: profile.width,
+        height: profile.height,
       };
       const propsFile = path.join(work, `props-${i}.json`);
       await writeFile(propsFile, JSON.stringify(props), "utf8");
@@ -160,6 +165,21 @@ export async function applyVisualLayer(ctx: JobContext) {
     //    o concat pode copiar sem reencodar de novo.
     await ctx.progress({ percent: 92, message: "Costurando o vídeo final" });
     partes.sort((a, b) => a.ordem - b.ordem);
+
+    // Concat por cópia exige resolução idêntica em todas as partes. Quando não é, o arquivo sai
+    // gerado e abre normalmente — só a duração denuncia, muito depois. Conferir aqui transforma
+    // corrupção silenciosa em erro com nome: foi assim que a composição travada em 1920×1080
+    // quebrou o primeiro Short que passou pela camada.
+    const resolucoes = new Map<string, string[]>();
+    for (const p of partes) {
+      const r = (await run(FFPROBE, ["-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height", "-of", "csv=p=0", p.file])).trim();
+      if (!resolucoes.has(r)) resolucoes.set(r, []);
+      resolucoes.get(r)!.push(path.basename(p.file));
+    }
+    if (resolucoes.size > 1) {
+      const detalhe = [...resolucoes.entries()].map(([r, fs]) => `${r}: ${fs.length} parte(s) (${fs[0]}…)`).join(" · ");
+      throw new Error(`Partes com resoluções diferentes, o concat sairia quebrado — ${detalhe}`);
+    }
     const lista = path.join(work, "concat.txt");
     await writeFile(lista, partes.map((p) => `file '${p.file.replace(/\\/g, "/")}'`).join("\n"), "utf8");
 

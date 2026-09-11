@@ -27,11 +27,22 @@ export type TrechoProps = {
   burnedCaptions: boolean;
   /** Duração do trecho — o worker sabe, a composição não teria como adivinhar. */
   durationInFrames: number;
+  /** Resolução do master. Sem isto a composição fica presa em 16:9. */
+  width?: number;
+  height?: number;
 };
 
-/** O worker corta segmentos de tamanhos diferentes; a composição herda a duração dos props. */
+/**
+ * O worker corta segmentos de tamanhos diferentes; a composição herda duração E resolução.
+ *
+ * A resolução não é detalhe: a composição era fixa em 1920×1080, então um projeto vertical
+ * entrava 1080×1920 e saía deitado. Na hora de costurar, partes com resoluções diferentes
+ * quebram o concat em silêncio — num Short de 80s a saída veio com 162s.
+ */
 export const calculateTrechoMetadata: CalculateMetadataFunction<TrechoProps> = ({ props }) => ({
   durationInFrames: Math.max(1, Math.round(props.durationInFrames)),
+  width: props.width && props.width > 0 ? Math.round(props.width) : undefined,
+  height: props.height && props.height > 0 ? Math.round(props.height) : undefined,
 });
 
 const SUBSTRATO_ORDEM = Object.keys(SUBSTRATOS) as SubstratoKind[];
