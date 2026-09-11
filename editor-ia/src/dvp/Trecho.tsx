@@ -5,10 +5,18 @@ import { OverlayDado } from "./OverlayDado";
 import { Intertitulo } from "./Intertitulo";
 import { InsertArquivo, SUBSTRATOS, type SubstratoKind } from "./InsertArquivo";
 import { Cronologia, type EventoCronologia } from "./Cronologia";
+import { MesaArquivo, type FotoMesa } from "./MesaArquivo";
 
 export type TrechoInsertion = {
   id: string;
-  layout: "lower-third" | "overlay-dado" | "graphic-fullscreen" | "insert-arquivo" | "split-evidencia" | "cronologia";
+  layout:
+    | "lower-third"
+    | "overlay-dado"
+    | "graphic-fullscreen"
+    | "insert-arquivo"
+    | "split-evidencia"
+    | "cronologia"
+    | "mesa-arquivo";
   lowerThirdStyle: LowerThirdStyle | null;
   primary: string;
   secondary: string | null;
@@ -21,6 +29,8 @@ export type TrechoInsertion = {
   evidencePath?: string | null;
   /** Só em cronologia: os eventos do eixo, com a posição já calculada pelas datas. */
   eventos?: EventoCronologia[] | null;
+  /** Só em mesa-arquivo: as fotos já resolvidas para caminhos em public/. */
+  fotos?: FotoMesa[] | null;
 };
 
 export type TrechoProps = {
@@ -73,7 +83,9 @@ export const Trecho: React.FC<TrechoProps> = ({ master, insertions, burnedCaptio
         const substrato = SUBSTRATO_ORDEM[idx % SUBSTRATO_ORDEM.length];
         return (
           <Sequence key={ins.id} name={`${ins.layout} · ${ins.primary}`} from={from} durationInFrames={durationInFrames} premountFor={fps}>
-            {ins.layout === "cronologia" && ins.eventos?.length ? (
+            {ins.layout === "mesa-arquivo" && ins.fotos?.length ? (
+              <MesaArquivo titulo={ins.primary} carimbo={ins.secondary ?? undefined} fotos={ins.fotos} />
+            ) : ins.layout === "cronologia" && ins.eventos?.length ? (
               <Cronologia
                 titulo={ins.primary}
                 subtitulo={ins.secondary ?? undefined}

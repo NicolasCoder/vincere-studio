@@ -16,6 +16,7 @@ const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" 
   "split-evidencia": "warning",
   "graphic-fullscreen": "neutral",
   cronologia: "violet",
+  "mesa-arquivo": "success",
 };
 
 export default async function EditPlanPage({

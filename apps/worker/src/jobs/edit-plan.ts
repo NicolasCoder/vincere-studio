@@ -191,6 +191,12 @@ export async function generateEditPlan(ctx: JobContext) {
         // espaçamento igual — e eixo com espaçamento igual apaga o que a cronologia conta.
         eventos:
           raw.layout === "cronologia" && raw.eventos?.length ? posicionarEventos(raw.eventos) : undefined,
+        // Cada foto da mesa reusa o mesmo compositor do insert-arquivo, então a cláusula negativa
+        // e a assinatura visual do canal valem sem precisar repetir regra no prompt.
+        mesa:
+          raw.layout === "mesa-arquivo" && raw.mesa?.length
+            ? raw.mesa.slice(0, 3).map((m) => ({ prompt: composeEvidencePrompt(m.evidence), legenda: m.legenda }))
+            : undefined,
         resolved: ok,
       });
     });

@@ -12,7 +12,10 @@ import { EDIT_LAYOUTS, LOWER_THIRD_STYLES } from "../edit-plan";
 // v5: layout `cronologia`. O modelo devolve os eventos com a data em formato ordenável e o
 // código calcula a posição no eixo — pedir a posição ao modelo daria espaçamento igual, que é
 // exatamente o que a cronologia não pode ser.
-export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v5";
+// v6: layout `mesa-arquivo`, para quando a fala enumera dois ou três registros no mesmo trecho.
+// Cada foto reusa o mesmo EvidenceSchema do insert-arquivo, então as regras de "assunto não pode
+// ser feito de escrita" valem sem precisar repeti-las.
+export const EDIT_PLAN_PROMPT_VERSION = "edit-plan.v6";
 
 /** Enquadramentos aceitos na evidência — fechado para o modelo não inventar jargão de lente. */
 export const EVIDENCE_FRAMINGS = ["close-up", "medium shot", "wide shot", "overhead shot"] as const;
@@ -94,6 +97,15 @@ export const InsertionSchema = z.object({
     )
     .nullable()
     .describe("SÓ quando layout = cronologia. De 3 a 6 eventos em ordem cronológica. Nos demais layouts, null."),
+  mesa: z
+    .array(
+      z.object({
+        legenda: z.string().describe("Legenda sob a foto, até 4 palavras, em minúsculas. Nomeia o objeto, não explica."),
+        evidence: EvidenceSchema,
+      }),
+    )
+    .nullable()
+    .describe("SÓ quando layout = mesa-arquivo. Exatamente 2 ou 3 registros DIFERENTES citados no mesmo trecho. Nos demais layouts, null."),
 });
 export const EditPlanResponseSchema = z.object({ insertions: z.array(InsertionSchema) });
 
@@ -146,13 +158,14 @@ export function editPlanPrompt(opts: {
     "- split-evidencia: quando a fala compara duas coisas ou confronta a versão oficial com a evidência.",
     "- graphic-fullscreen: cartão de virada de ato ou intertítulo cobrindo o quadro.",
     "- cronologia: quando a fala percorre um INTERVALO de datas e a ordem dos fatos é o argumento — 'entre 1995 e 2021', 'ao longo de três décadas'. Cobre o quadro inteiro por 8 segundos, então use no máximo uma vez por vídeo, no ato em que a linha do tempo esclarece mais.",
+    "- mesa-arquivo: quando a fala enumera DOIS OU TRÊS registros concretos e diferentes no mesmo trecho — 'as pastas, as marcas no teto e a gravação'. Mostra os três juntos como fotos reveladas sobre a mesa. Se a fala cita um registro só, use insert-arquivo; a mesa com uma foto só não tem motivo para existir.",
     "",
     "Regras rígidas:",
     "1. O campo `trigger` tem que ser copiado PALAVRA POR PALAVRA da narração abaixo. Não parafraseie, não corrija, não traduza. Se o trecho não existir igual no texto, a inserção é descartada.",
     "2. Uma inserção por ideia. Não repita a mesma informação em dois momentos.",
     "3. `primary` é texto de tela: no máximo ~6 palavras. Não repita a frase que está sendo narrada — complemente.",
     "4. Não invente fato, número, nome ou data que não esteja na narração.",
-    "5. Só proponha `insert-arquivo` ou `split-evidencia` quando a narração descrever algo visualmente concreto e específico. Nesses dois casos, preencha `evidence` — a imagem será gerada a partir dos campos.",
+    "5. Só proponha `insert-arquivo`, `split-evidencia` ou `mesa-arquivo` quando a narração descrever algo visualmente concreto e específico. Nos dois primeiros preencha `evidence`; em `mesa-arquivo` preencha `mesa` com 2 ou 3 registros. A imagem é gerada a partir desses campos.",
     "6. Em `evidence.subject`, o assunto não pode ser feito de escrita. Nada de documento com texto datilografado, carimbo, manchete, tarja cobrindo linhas, tela com números ou placa. A imagem sairia com rabisco ilegível e denunciaria a montagem.",
     "7. Quando a fala citar um documento, fotografe o OBJETO, não a informação: pasta fechada sobre a mesa, pilha de papéis vista pela borda, envelope lacrado, papel virado para baixo, gaveta de arquivo aberta. Se precisar da folha à mostra, descreva-a em branco ou fora de foco a ponto de nada ser resolvível.",
     "8. Não invente registro oficial como se fosse autêntico (nada de 'documento ultrassecreto', 'relatório do FBI') nem descreva pessoa real identificável. A imagem sugere o contexto; ela não é prova.",

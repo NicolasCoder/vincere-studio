@@ -24,6 +24,7 @@ export const EDIT_LAYOUTS = [
   "split-evidencia",
   "graphic-fullscreen",
   "cronologia",
+  "mesa-arquivo",
 ] as const;
 export type EditLayout = (typeof EDIT_LAYOUTS)[number];
 
@@ -40,7 +41,19 @@ export const LAYOUT_META: Record<EditLayout, { label: string; description: strin
   // Mais longa que os outros de propósito: a linha se desenha, os pontos entram em sequência e o
   // espectador precisa LER. Abaixo de 7s vira piscada e ninguém termina o último rótulo.
   cronologia: { label: "Cronologia", description: "Linha do tempo animada sobre papel, quando a fala cobre um intervalo de datas", defaultMs: 8000 },
+  // Cada foto entra escalonada e precisa ser lida; com menos de 6s a última mal assenta.
+  "mesa-arquivo": { label: "Mesa de arquivo", description: "Duas ou três evidências como fotos reveladas sobre papel de dossiê", defaultMs: 7000 },
 };
+
+/** Uma foto sobre a mesa de arquivo: o prompt que a gera e a legenda que vai sob ela. */
+export interface FotoMesaArquivo {
+  /** Prompt pronto da evidência — é por ele que a imagem gerada é encontrada. */
+  prompt: string;
+  /** Legenda curta sob a foto. */
+  legenda: string;
+  /** Caminho relativo da imagem já gerada, quando existir. */
+  path?: string;
+}
 
 /** Evento de uma cronologia. `t` (0 a 1) é calculado pelo código a partir das datas. */
 export interface EventoCronologia {
@@ -113,6 +126,8 @@ export interface EditInsertion {
   evidencePath?: string;
   /** Só em cronologia: os eventos do eixo, já com a posição calculada pelas datas. */
   eventos?: EventoCronologia[];
+  /** Só em mesa-arquivo: as fotos que vão sobre a mesa. */
+  mesa?: FotoMesaArquivo[];
   /**
    * false quando o trigger não casou com nenhuma palavra do áudio alinhado e o tempo
    * caiu num fallback. Inserção não resolvida NÃO deve ser renderizada sem revisão.

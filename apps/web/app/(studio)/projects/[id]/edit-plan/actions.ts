@@ -40,19 +40,28 @@ export async function generateEvidences(projectId: string, formData: FormData) {
   const plan = await prisma.editPlan.findFirst({ where: { projectId }, orderBy: { version: "desc" } });
   if (!plan) redirect(`/projects/${projectId}/edit-plan`);
 
-  const data = JSON.parse(plan.data) as { insertions: { id: string; evidencePrompt?: string }[] };
-  const pendentes = data.insertions.filter((i) => i.evidencePrompt);
+  const data = JSON.parse(plan.data) as {
+    insertions: { id: string; evidencePrompt?: string; mesa?: { prompt: string }[] }[];
+  };
+  // A mesa de arquivo tem 2 ou 3 prompts por inserção, não um. Sem juntá-los aqui, o botão
+  // geraria só as evidências únicas e a mesa apareceria vazia no render — sem erro nenhum,
+  // que é a pior forma de falhar.
+  const prompts = [
+    ...data.insertions.flatMap((i) => (i.evidencePrompt ? [i.evidencePrompt] : [])),
+    ...data.insertions.flatMap((i) => (i.mesa ?? []).map((m) => m.prompt)),
+  ];
+  const pendentes = [...new Set(prompts.map((p) => p.trim()).filter(Boolean))];
   if (!pendentes.length) redirect(`/projects/${projectId}/edit-plan?evid=nenhuma`);
 
   // Um job por evidência: assim uma falha isolada não derruba o lote inteiro, e o progresso
   // aparece imagem a imagem em vez de tudo no fim.
   const jobs = await Promise.all(
-    pendentes.map((i) =>
+    pendentes.map((prompt) =>
       prisma.job.create({
         data: {
           type: "GENERATE_IMAGES",
           projectId,
-          payload: JSON.stringify({ projectId, prompt: i.evidencePrompt, engine, aspect: "16:9", count: 1 }),
+          payload: JSON.stringify({ projectId, prompt, engine, aspect: "16:9", count: 1 }),
         },
       }),
     ),

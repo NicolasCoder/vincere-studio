@@ -134,6 +134,17 @@ export async function applyVisualLayer(ctx: JobContext) {
           onLight: ins.backdrop === "light",
           evidencePath,
           eventos: ins.eventos ?? null,
+          // As fotos da mesa passam pelo mesmo caminho da evidência única: casa pelo texto do
+          // prompt e copia para o public/, porque é a única raiz que o staticFile enxerga.
+          fotos: await Promise.all(
+            (ins.mesa ?? []).map(async (m, k) => {
+              const rel = evidencePorPrompt.get(m.prompt.trim());
+              if (!rel || !existsSync(absPath(rel))) return null;
+              const dest = path.join(pub, `mesa-${ins.id}-${k}${path.extname(rel)}`);
+              await copyFile(absPath(rel), dest);
+              return { src: `tmp/${ctx.job.id}/${path.basename(dest)}`, legenda: m.legenda };
+            }),
+          ).then((l) => l.filter((x) => x !== null)),
         });
       }
 
