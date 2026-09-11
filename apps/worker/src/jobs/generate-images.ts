@@ -1,16 +1,7 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import {
-  ProviderError,
-  checkBudget,
-  estimateImageCostUsd,
-  generateImageGemini,
-  generateImagePollinations,
-  projectDir,
-  recordImageUsage,
-  relPath,
-} from "@docupulse/providers";
+import { ProviderError, gerarImagem, motorImagem, projectDir, relPath } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 const MAX_COUNT = 8;
@@ -56,7 +47,8 @@ export async function generateImages(ctx: JobContext) {
   const prompt = String(ctx.payload.prompt ?? "").trim();
   if (!prompt) throw new Error("Descreva o que você quer gerar.");
 
-  const engine = ctx.payload.engine === "GEMINI" ? "GEMINI" : "POLLINATIONS";
+  const motor = motorImagem(String(ctx.payload.engine ?? "POLLINATIONS"));
+  const engine = motor.id;
   const aspect = String(ctx.payload.aspect ?? "16:9");
   const negativePrompt = ctx.payload.negativePrompt ? String(ctx.payload.negativePrompt) : undefined;
   const count = Math.max(1, Math.min(MAX_COUNT, Number(ctx.payload.count ?? 1)));
@@ -72,27 +64,18 @@ export async function generateImages(ctx: JobContext) {
     if (await ctx.isCancelled()) return { cancelled: true, made };
     await ctx.progress({ percent: (i / count) * 95, message: `Imagem ${i + 1} de ${count}` });
 
-    // Espaça as chamadas do motor grátis dentro do lote: disparar em rajada é o que dispara o 429.
+    // Espaça as chamadas do Pollinations dentro do lote: disparar em rajada é o que dispara o 429.
     if (i > 0 && engine === "POLLINATIONS") await dorme(2500);
 
     const input = { prompt, aspectRatio: aspect, negativePrompt };
     try {
-      let result: Awaited<ReturnType<typeof generateImageGemini>>;
-      let costUsd = 0;
-      let model: string | null = null;
-
-      if (engine === "POLLINATIONS") {
-        result = await comRetentativa(() => generateImagePollinations(input), ctx, `Imagem ${i + 1}`);
-        model = "pollinations";
-      } else {
-        costUsd = estimateImageCostUsd();
-        // Estoura o teto? Lança antes de chamar a API paga — não gasta nada.
-        await checkBudget(costUsd);
-        result = await generateImageGemini(input);
-        await recordImageUsage(projectId, "GEMINI_IMAGE", costUsd);
-        spent += costUsd;
-        model = process.env.GEMINI_IMAGE_MODEL ?? null;
-      }
+      // A retentativa com espera crescente vale para qualquer motor: o 429 do grátis e o do pago
+      // querem a mesma coisa — esperar. O orçamento é conferido dentro de gerarImagem, antes da
+      // chamada paga, então repetir não gasta nada a mais do que uma tentativa custaria.
+      const result = await comRetentativa(() => gerarImagem(engine, input, { projectId }), ctx, `Imagem ${i + 1}`);
+      const costUsd = result.custoUsd;
+      spent += costUsd;
+      const model = engine === "GEMINI" ? (process.env.GEMINI_IMAGE_MODEL ?? null) : motor.medidor;
 
       const ext = result.mimeType.includes("png") ? ".png" : ".jpg";
       const file = path.join(dir, `img-${Date.now()}-${i + 1}${ext}`);

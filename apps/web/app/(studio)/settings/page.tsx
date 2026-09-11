@@ -17,7 +17,9 @@ const PROVIDERS = [
   ["PEXELS_API_KEY", "Pexels (fotos e vídeos de acervo)", "pexels.com/api — gratuito"],
   ["PIXABAY_API_KEY", "Pixabay (fotos, vídeos, música)", "pixabay.com/api — gratuito"],
   ["ELEVENLABS_API_KEY", "ElevenLabs (voz premium)", "elevenlabs.io → perfil → API Keys · 10k créditos/mês grátis"],
-  ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "cota diária gratuita"],
+  ["CLOUDFLARE_ACCOUNT_ID", "Cloudflare — ID da conta", "dash.cloudflare.com → a conta → o ID aparece na URL"],
+  ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "token com permissão Workers AI · cota diária gratuita, sem cartão"],
+  ["KIE_API_KEY", "kie.ai (imagens pagas, muitos modelos)", "kie.ai → Chaves API · só funciona com teto de orçamento acima de US$ 0"],
 ];
 
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string }> }) {

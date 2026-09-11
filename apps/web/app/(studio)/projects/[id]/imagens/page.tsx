@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { prisma } from "@docupulse/db";
-import { getBudgetStatus } from "@docupulse/providers";
+import { getBudgetStatus, motoresDisponiveis } from "@docupulse/providers";
 import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
@@ -69,13 +69,16 @@ export default async function ImagensPage({
               className="field w-full px-3 py-2 text-sm"
             />
             <div className="flex flex-wrap items-center gap-2">
+              {/* Só os motores com chave presente: oferecer o que não está configurado só produz
+                  um job que falha. Os grátis vêm primeiro — é neles que a produção roda. */}
               <select name="engine" defaultValue="POLLINATIONS" className="field px-3 py-2 text-sm">
-                <option value="POLLINATIONS" className="bg-surface-low">
-                  Pollinations — grátis
-                </option>
-                <option value="GEMINI" className="bg-surface-low">
-                  Gemini / Nano Banana — pago
-                </option>
+                {motoresDisponiveis()
+                  .sort((a, b) => Number(a.pago) - Number(b.pago))
+                  .map((m) => (
+                    <option key={m.id} value={m.id} className="bg-surface-low">
+                      {m.label} — {m.pago ? "pago" : "grátis"}
+                    </option>
+                  ))}
               </select>
               <select name="aspect" defaultValue="16:9" className="field px-3 py-2 text-sm">
                 {ASPECTS.map((a) => (
