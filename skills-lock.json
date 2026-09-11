@@ -1,6 +1,12 @@
 {
   "version": 1,
   "skills": {
+    "diagram-design": {
+      "source": "cathrynlavery/diagram-design",
+      "sourceType": "github",
+      "skillPath": "skills/diagram-design/SKILL.md",
+      "computedHash": "8660190e26f771369f22a031cbe0391d211287740b7b5ee14d13509170a13c63"
+    },
     "mcp-builder": {
       "source": "anthropics/skills",
       "sourceType": "github",
