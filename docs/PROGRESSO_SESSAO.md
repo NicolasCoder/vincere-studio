@@ -2,7 +2,98 @@
 
 Registro do que foi feito, decidido e ainda falta, pra não perder contexto entre sessões.
 
-## Concluído nesta sessão
+---
+
+## Sessão 11/09/2026 — exposição, verificação de layouts e orçamento real
+
+Tema da sessão: **medir antes de concluir**. Cinco defeitos entraram em produção passando
+por typecheck, e nenhum foi encontrado lendo código — todos apareceram ao abrir os arquivos
+e conferir números.
+
+### Piso de exposição por cena (`packages/render/src/exposure.ts`)
+
+Um frame preto "fora de contexto" reportado aos 0:29 não era da camada visual: era B-roll do
+próprio master, uma estrada noturna segurada por 24,6s. Medindo o projeto inteiro,
+**28 das 61 cenas** estavam abaixo de luma 35 e várias abaixo de 10 — o estilo pede noite e
+arquivo, e tanto o acervo quanto os geradores de imagem obedecem demais.
+
+O piso só age abaixo do limiar e levanta só até ele; cena bem exposta passa intocada. Cena que
+bate no teto do gamma e continua escura é **relatada** como "vale regerar a mídia" em vez de
+maquiada, porque não há informação para recuperar.
+
+Duas coisas tiveram que ser descobertas medindo, porque a teoria errou as duas:
+
+- **Range quebra comparação.** JPEG chega como `yuvj420p` (0–255) e MP4 como range limitado
+  (16–235); um vídeo em Y=24 equivale a ~9 em range cheio. Toda medida passa por
+  `scale=out_range=full,format=gray` antes do `signalstats`.
+- **Gamma não é previsível por fórmula.** A média de `pow()` não é `pow()` da média: o mesmo
+  gamma levou um MP4 de luma 8,8 para 74 e um JPEG de luma 6,7 para 30. O que funciona é
+  aplicar, medir o que saiu e resolver o expoente efetivo num passo — as cenas passaram a cair
+  em 48–52 em vez de 29–75.
+
+### Verificação de layouts (`editor-ia/scripts/verificar-layouts.mjs`)
+
+Uma composição `Banco` desenha qualquer layout em qualquer formato via props (dimensões pelo
+`calculateMetadata`), então **uma** composição cobre os 14 casos. Com `sobreMaster: false` ela
+sai sem fundo e com alfa — é isso que torna corte **mensurável**: com fundo, "o texto está
+saindo do quadro" é opinião sobre pixels; sem fundo, a caixa do alfa cabe ou não cabe.
+
+Asserções: dimensões, quadro não chapado, faixa morta no miolo, cobertura mínima e borda.
+O que é olho humano fica na folha de contato, separado de propósito.
+
+Rodar com: `cd editor-ia && npm run verificar-layouts`
+
+### Orçamento: custo estimado ≠ dinheiro gasto
+
+Duas falhas que contrariavam a regra de produzir no gratuito:
+
+1. **Voz paga não passava pelo teto.** `checkBudget` cobria imagem; a voz calculava o custo e
+   registrava *depois* de gastar. A trava entrou no **provedor**, não no job — com ela no
+   chamador, cada caminho novo precisa lembrar de chamar, e um dia não lembra.
+2. **Gasto imaginário consumindo o teto.** `Usage.costUsd` sempre guardou preço de tabela e o
+   teto somava tudo, inclusive free tier. Havia **US$ 1,4532** de "gasto" no mês, dos quais
+   US$ 1,14 eram tokens de texto do Gemini que nunca custaram nada — 14% de um teto de US$ 10.
+   Com `Usage.billable` e o backfill (1198 linhas), o gasto real caiu para **US$ 0,2800**.
+
+Settings mostra os dois números lado a lado.
+
+### Zona da legenda queimada estava errada em 9:16
+
+Quando o tremor da legenda vertical foi corrigido, a legenda do Short foi para o **meio** do
+quadro (alinhamento 8, MarginV 47%). `captionSafeZone` em `packages/core` acompanhou — **mas
+ela só alimenta o prompt**. Quem posiciona de verdade é o token no `editor-ia`, que continuou
+devolvendo 82% (o rodapé, que só existe no formato longo).
+
+Medido: lower third vertical em y=1008..1546 contra a faixa em y=902..1130. Colidia, em
+silêncio. Junto veio o **mesmo bug do OverlayDado** — tudo dimensionado por `height`, que em
+9:16 é 1920, gerando fonte de 100px e um bloco de 538px de altura.
+
+Depois: y=1520..1738 com 218px, e o horizontal idêntico. No split de evidência o texto passou a
+assentar na borda **externa** do painel.
+
+### Outros
+
+- **YouTube reconectado com `force-ssl`** — escopo confirmado no banco. Legendas destravadas
+  para as **próximas** publicações; os 4 vídeos já no ar seguem sem faixa.
+- **Baseline das migrations** criado (ver gotcha atualizado abaixo).
+- **Narração gratuita**: 30 vozes no Gemini TTS + 4 pt-BR no Edge TTS = **34**, não uma só.
+- **Auditoria de pontas soltas**: 16/16 jobs têm gatilho na interface (nenhum órfão), 3 TODOs
+  no código inteiro, typecheck limpo nos 7 pacotes.
+
+### Correções de rumo (registradas para não repetir)
+
+- Afirmei que `fitScenesToVoice` estava esticando as cenas. **Estava errado** — o payload do job
+  mostrou `density: "sparse"`, ou seja, o botão *Planejar cenas (Flow)*, que pede 11,25s por cena
+  de propósito. A conta batia exatamente nos seis atos.
+- Ao inspecionar a conexão do YouTube, a regra de ocultar segredos era estreita demais (checava
+  "token"/"secret" no nome da chave, e a linha se chama `youtube_oauth`): **o access token
+  apareceu inteiro**. Expira em 1h; do refresh token saíram ~11 caracteres. Para zerar:
+  desconectar e reconectar em Settings.
+- O primeiro teste de layouts passava "sem falhas" por **nunca ter rodado** (ver gotcha do
+  `cropdetect` abaixo), e a primeira versão acusava `insert-arquivo` e `split-evidencia`, que são
+  full-bleed por desenho. Teste que acusa o comportamento correto ensina a ignorar o resultado.
+
+## Concluído em sessões anteriores
 
 - **Quadro de Produção (Kanban)** em `/projects`: projetos agrupados por etapa do pipeline (Ideação → Roteiro → Mídia → Render → Publicado).
 - **Biblioteca de Referências** (`/references`): salvar canais concorrentes/inspiração com nome/avatar extraídos automaticamente, nicho e notas. Model `ReferenceChannel` no Prisma.
@@ -95,17 +186,65 @@ O app publica direto no seu canal via OAuth do Google (login e permissão aconte
 
 O app nunca pede nem armazena sua senha do Google em nenhum momento — a autenticação inteira acontece na tela oficial do Google.
 
+## Pendente após 11/09/2026 (ordem de risco)
+
+1. **Unificar as duas zonas seguras** — ver "Duplicação que já causou bug" abaixo. É a correção
+   estrutural com maior retorno.
+2. **Testes no monorepo** — `apps/*` e `packages/*` seguem com zero. Só o `editor-ia` tem
+   verificação.
+3. **Escolher tipografia/cor da legenda** — pedido pelo usuário, não existe.
+4. **Variantes verticais de `cronologia` e `mesa-arquivo`** — hoje o perfil DVP libera só 5 dos
+   7 layouts em 9:16. A folha de contato mostra o título da cronologia colidindo com os rótulos
+   dos eventos em vertical.
+5. **Legendas retroativas** nos 4 vídeos já publicados — hoje `captions.insert` só roda dentro
+   do job de publicação.
+6. **MesaArquivo** com o que o preview do template ensinou: fundo escuro com o papel como
+   objeto (hoje está invertido), fotos sobrepostas em vez de enfileiradas, cartão de nome em
+   papel rasgado.
+7. **Pasta inbox do Flow** (soltar zip → importar sozinho).
+8. **`tsconfig.tsbuildinfo` deveria sair do controle de versão** — é artefato de build e suja o
+   working tree a cada typecheck.
+
+Decisão pendente do usuário: o preview do template VideoHive (29MB) em `Edição/Assets/` **não
+foi commitado** — `.git` está em 50MB e vídeo não ganha nada com delta, então versionar é
+praticamente irreversível. Opções: ignorar, versionar, ou deixar sem rastrear.
+
 ## Backlog de melhorias identificado (priorizado)
 
 1. **Fechar o ciclo de retenção real**: hoje o roteiro já calcula uma curva de retenção prevista; falta puxar métricas reais do YouTube publicadas e comparar, pra calibrar os próximos roteiros.
 2. **Automação do Google Flow via navegador**: **desbloqueado nesta sessão** — a extensão Claude in Chrome apareceu conectada (Chrome real do usuário, já logado no Google) e foi usada com sucesso pra navegar no app e tirar prints. Ainda não testamos gerar imagem/vídeo de verdade no labs.google/flow com ela, só confirmamos que a conexão funciona. Importante: 120+ cenas (como no vídeo longo atual) é pesado demais pra pilotar via navegador — o teste inicial deve ser com poucas cenas (ex.: 10-15, ou um Short inteiro). Automação de verdade em background (sem alguém pilotando ao vivo) exigiria um robô tipo Playwright guardando a sessão logada, o que tem risco real de ToS/bloqueio — só evoluir pra isso com decisão consciente do usuário.
 3. **Teleprompter desabilitado** no roteiro: modo leitura em tela cheia pro narrador, mencionado na UI mas nunca ligado.
-4. **Sem testes automatizados**: vários bugs desta sessão (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. Nem que seja um smoke test simples (abrir cada página, checar 200 OK) ajudaria a pegar regressão mais cedo.
+4. **Sem testes automatizados**: vários bugs (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. **Parcialmente atacado em 11/09/2026**: existe `editor-ia/scripts/verificar-layouts.mjs`, que renderiza os 7 layouts nos 2 formatos e afere o resultado. Continua valendo para o resto — o monorepo (`apps/*`, `packages/*`) segue com **zero** teste, e um smoke test de páginas (200 OK) ainda não existe.
 5. **Novos "formatos de vídeo" (motor de render alternativo)**: hoje só existe um estilo real implementado — documentário dark (B-roll + texto + legenda). Ideias levantadas pelo usuário: vídeo com boneco stickman, personagem 3D, outros estilos de edição inteiramente diferentes. Isso NÃO é uma "Skill" (Skills guarda texto reaproveitável — ganchos, estrutura de ato, CTA, prompt de cena — dentro do estilo que já existe); é um motor de renderização novo, provavelmente via uma ferramenta de composição tipo Remotion ou geração de vídeo com IA de personagem, selecionável como uma opção nova de `visualStyle`. Trabalho pesado, tratar como feature própria quando o usuário quiser expandir pra outros formatos.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
 
-- **Nunca rodar `prisma migrate dev`** neste projeto — não há pasta `prisma/migrations`, e ele tenta resetar o banco inteiro. Sempre usar `prisma db push`.
+### Armadilhas de medição no ffmpeg (11/09/2026) — todas falham em silêncio
+
+- **`cropdetect` descarta os 2 primeiros frames por padrão.** Num still de um frame ele nunca
+  avalia e não imprime nada — a verificação "passa" por nunca ter rodado. Precisa de `skip=0`.
+- **`signalstats` não emite desvio padrão**, só MIN/LOW/AVG/HIGH/MAX. Nenhum percentil separa
+  "quadro chapado" de "quadro escuro com texto branco" (YMAX chega a 255 com um pixel). Para
+  desvio: `scale=64:36,format=gray -f rawvideo -` e calcular em JS.
+- **Range**: JPEG é `yuvj420p` (0–255), MP4 é limitado (16–235). Sempre normalizar antes de
+  comparar.
+- **`eq=contrast` trabalha contra `eq=gamma` em cena escura** — contraste afasta do meio-cinza,
+  ou seja escurece o pixel escuro. Um `contrast=1.06` inofensivo derrubou o resultado de ~50
+  para 39.
+- **Operação de cor roda em `format=gbrp`, não em YUV** — mesma causa do bug magenta da
+  thumbnail.
+- **`vstack` recusa linhas de larguras diferentes** — folha de contato com última linha
+  incompleta precisa de células vazias de preenchimento.
+
+### Duplicação que já causou bug (atenção)
+
+`captionSafeZone` (`packages/core/src/edit-plan.ts`) e `zonaProibida`
+(`editor-ia/src/dvp/tokens.ts`) são **a mesma verdade escrita em dois pacotes**, sem nada
+ligando uma à outra. Elas já divergiram em silêncio uma vez (a legenda vertical). O core
+alimenta o prompt; o editor-ia posiciona de verdade. **Ao mexer numa, mexer na outra.**
+Unificar é a correção estrutural mais valiosa pendente.
+
+- ~~**Nunca rodar `prisma migrate dev`**~~ — **deixou de valer em 11/09/2026**. O baseline foi criado (`prisma/migrations/0_init`, gerado por `migrate diff` a partir do schema e marcado como aplicado), e `migrate status` responde "Database schema is up to date!". `migrate dev` agora funciona normalmente. O aviso antigo era real: sem migrations, o Prisma pedia reset do banco inteiro, o que apagaria todos os projetos.
 - **Lock de arquivo do Prisma no Windows**: qualquer processo Node com `@prisma/client` carregado (web, worker, ou scripts avulsos) trava o `query_engine-windows.dll.node`. Antes de rodar `db push`/`generate`, matar todos os processos node relevantes.
 - **`tsx watch` reinicia o worker a cada salvamento** de arquivo em `apps/worker/src` — é esperado e seguro (jobs retomam sozinhos), mas por isso mudanças no worker nunca devem ser feitas enquanto um job pesado (ex.: RENDER_VIDEO) está rodando.
 - **Next.js dev sem restart por dias acumula memória** — reiniciar o `pnpm dev` periodicamente (ou usar `--turbopack`, já aplicado) evita a maior parte da lentidão sentida.
