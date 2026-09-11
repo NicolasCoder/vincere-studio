@@ -117,7 +117,7 @@ Retorne:
 }
 
 /** Gera (ou regenera) título/descrição/tags/capítulos otimizados pra publicação, a partir do roteiro já gerado. */
-export async function generateSeoMetadata(projectId: string, _formData?: FormData) {
+export async function generateSeoMetadata(projectId: string, _formData?: FormData): Promise<void> {
   const project = await prisma.project.findUnique({
     where: { id: projectId },
     include: {
