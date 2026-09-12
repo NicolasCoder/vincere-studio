@@ -7,6 +7,7 @@ import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
 import { Banco, calculateBancoMetadata } from "./dvp/Banco";
+import { Clipe, calculateClipeMetadata } from "./clipe/Clipe";
 
 const base: ProvaProps = {
   frame: "frame-escuro-0014.jpg",
@@ -141,6 +142,47 @@ export const RemotionRoot: React.FC = () => {
           primary: "Pastas seladas por treze anos",
           secondary: "Delegacia do Condado de Mercer",
           ladoDireito: true,
+        }}
+      />
+
+      {/*
+        Clipe: formato "reação/meme" — marca e título fixos o vídeo inteiro, clipe do usuário
+        encaixado no meio, legenda karaokê embaixo. Paralela ao Trecho (DVP), não uma variação
+        dele — ver editor-ia/src/clipe/Clipe.tsx. defaultProps abaixo são só para abrir no Studio;
+        em produção tudo vem da transcrição real do clipe enviado.
+      */}
+      <Composition
+        id="Clipe"
+        component={Clipe}
+        width={1080}
+        height={1920}
+        fps={30}
+        durationInFrames={15 * 30}
+        calculateMetadata={calculateClipeMetadata}
+        defaultProps={{
+          master: "masters/trecho-rodovia44.mp4",
+          titulo: "TÍTULO CHAMATIVO ENTRA AQUI 😂",
+          handle: "@seucanal",
+          logoPath: null,
+          corTexto: "#F8FAFC",
+          corAtiva: "#22D3EE",
+          corBrilho: "#F0ABFC",
+          corSublinhado: "#F0ABFC",
+          words: [
+            { text: "ISSO", startMs: 0, endMs: 400 },
+            { text: "AQUI", startMs: 400, endMs: 750 },
+            { text: "É", startMs: 750, endMs: 900 },
+            { text: "SÓ", startMs: 1200, endMs: 1500 },
+            { text: "UM", startMs: 1500, endMs: 1650 },
+            { text: "TESTE.", startMs: 1650, endMs: 2100 },
+            { text: "MAS", startMs: 2600, endMs: 2900 },
+            { text: "OLHA", startMs: 2900, endMs: 3200 },
+            { text: "SÓ", startMs: 3200, endMs: 3500, emphasis: true },
+            { text: "ISSO", startMs: 3900, endMs: 4200 },
+            { text: "AQUI", startMs: 4200, endMs: 4500 },
+            { text: "AGORA.", startMs: 4500, endMs: 5100, emphasis: true },
+          ],
+          durationInFrames: 15 * 30,
         }}
       />
 

@@ -3,6 +3,7 @@ import { Readable } from "node:stream";
 import { prisma } from "@docupulse/db";
 import { absPath, getAuthenticatedYoutubeClient } from "@docupulse/providers";
 import { ACT_GAP_MS, buildSrt, type FaixaLegenda } from "@docupulse/render";
+import { cleanupAfterPublish } from "./cleanup-after-publish";
 import type { JobContext } from "../queue";
 
 /**
@@ -171,5 +172,13 @@ export async function publishYoutube(ctx: JobContext) {
 
   await prisma.publication.update({ where: { id: pub.id }, data: { platform: "YOUTUBE", videoId, url, publishedAt: new Date() } });
   await ctx.log(`Publicado com sucesso (${privacyStatus}): ${url}`);
+
+  // Só libera espaço quando é publicação de verdade (public/unlisted) — "private" costuma ser
+  // revisão antes de publicar, e apagar o material ali impediria rerenderizar ou reaplicar a
+  // camada visual antes da publicação real.
+  if (privacyStatus !== "private") {
+    await cleanupAfterPublish(projectId, videoPath, (line) => ctx.log(line));
+  }
+
   return { videoId, url, privacyStatus };
 }
