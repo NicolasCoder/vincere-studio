@@ -1,7 +1,9 @@
 import { Video } from "@remotion/media";
-import { AbsoluteFill, staticFile, type CalculateMetadataFunction } from "remotion";
+import { fitText } from "@remotion/layout-utils";
+import { AbsoluteFill, staticFile, useVideoConfig, type CalculateMetadataFunction } from "remotion";
 import { BrandChrome } from "./BrandChrome";
 import { KaraokeCaptions, type CaptionWord } from "./KaraokeCaptions";
+import { fonteClipe } from "./fonts";
 
 export type ClipeProps = {
   /** Caminho em public/ do clipe enviado pelo usuário. */
@@ -44,8 +46,25 @@ export const Clipe: React.FC<ClipeProps> = ({
   corBrilho,
   corSublinhado,
 }) => {
+  const { width } = useVideoConfig();
+  // O título é digitado por quem sobe o clipe — sem limite, uma frase longa estouraria a caixa.
+  // fitText acha o tamanho que cabe na largura disponível (88% do quadro, os mesmos 6% de
+  // padding de cada lado); 52 é o teto de antes, pra título curto não crescer artificialmente.
+  const { fontSize: tituloFontSize } = fitText({
+    text: titulo,
+    withinWidth: width * 0.88,
+    fontFamily: fonteClipe,
+    fontWeight: 800,
+  });
+
   return (
-    <AbsoluteFill style={{ backgroundColor: "#0B0B0F" }}>
+    <AbsoluteFill
+      style={{
+        backgroundColor: "#0B0B0F",
+        translate: "0px -0.1px",
+        scale: 1.031,
+      }}
+    >
       <div style={{ display: "flex", flexDirection: "column", height: "100%" }}>
         <div style={{ height: "9%" }} />
 
@@ -53,9 +72,9 @@ export const Clipe: React.FC<ClipeProps> = ({
           style={{
             padding: "0 6%",
             textAlign: "center",
-            fontFamily: "Segoe UI, sans-serif",
+            fontFamily: fonteClipe,
             fontWeight: 800,
-            fontSize: 52,
+            fontSize: Math.min(tituloFontSize, 52),
             lineHeight: 1.2,
             color: "#FFFFFF",
             textShadow: "0 2px 6px rgba(0,0,0,0.7)",
@@ -66,7 +85,15 @@ export const Clipe: React.FC<ClipeProps> = ({
 
         <div style={{ flex: 1, display: "flex", alignItems: "center", justifyContent: "center", padding: "3% 0" }}>
           <div style={{ maxWidth: "94%", maxHeight: "100%", boxShadow: "0 8px 40px rgba(0,0,0,0.6)" }}>
-            <Video src={staticFile(master)} style={{ maxWidth: "100%", maxHeight: "100%", display: "block" }} />
+            <Video
+              src={staticFile(master)}
+              style={{
+                maxWidth: "100%",
+                maxHeight: "100%",
+                display: "block",
+                scale: 1.046,
+              }}
+            />
           </div>
         </div>
 

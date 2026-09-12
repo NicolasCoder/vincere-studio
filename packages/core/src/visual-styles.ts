@@ -84,7 +84,18 @@ export const VISUAL_STYLES: Record<string, VisualStyle> = {
 export const visualStyleList = Object.values(VISUAL_STYLES);
 export const getVisualStyle = (id?: string | null) => VISUAL_STYLES[id ?? ""] ?? VISUAL_STYLES.DARK_DOC;
 
+/**
+ * "Vertical 9:16 composition" sozinho não impede o modelo de devolver a cena deitada — ele
+ * obedece o enquadramento do assunto, não necessariamente a moldura do frame. Aconteceu em
+ * produção: imagens do Modo Flow (o usuário gera à mão, colando este texto, sem parâmetro de
+ * API nenhum por trás) saíram no formato paisagem para um projeto Short. A correção só pode
+ * morar no texto aqui — o Flow não recebe altura/largura, só o prompt.
+ */
 export function composeImagePrompt(style: VisualStyle, scene: string, ratio: "16:9" | "9:16") {
-  const aspect = ratio === "9:16" ? "vertical 9:16 composition, subject centered for mobile" : "wide 16:9 cinematic composition";
-  return `${style.prefix} ${scene}, ${aspect}, ${style.suffix}. Negative: ${style.negative}`;
+  const aspect =
+    ratio === "9:16"
+      ? "vertical 9:16 portrait frame, taller than wide, full-bleed upright composition as if shot on a phone held vertically"
+      : "horizontal 16:9 widescreen frame, wider than tall, cinematic letterboxed composition";
+  const negativeAspect = ratio === "9:16" ? "landscape orientation, horizontal composition, sideways framing, wider than tall" : "portrait orientation, vertical composition, taller than wide";
+  return `${style.prefix} ${scene}, ${aspect}, ${style.suffix}. Negative: ${style.negative}, ${negativeAspect}`;
 }

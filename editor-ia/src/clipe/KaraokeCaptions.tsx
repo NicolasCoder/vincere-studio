@@ -1,4 +1,8 @@
 import { AbsoluteFill, Sequence, interpolate, useCurrentFrame, useVideoConfig } from "remotion";
+import { Audio } from "@remotion/media";
+import { uiSwitch } from "@remotion/sfx";
+import { Underline } from "@remotion/rough-notation";
+import { fonteClipe } from "./fonts";
 
 export type CaptionWord = {
   text: string;
@@ -56,9 +60,18 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
   const { fps } = useVideoConfig();
   const toFrames = (ms: number) => Math.round((ms / 1000) * fps);
   const chunks = chunkWords(words, porLinha);
+  // Som curto só nas palavras marcadas — um <Sequence> próprio por palavra, em frame absoluto,
+  // porque as linhas de texto (abaixo) são relativas ao chunk, não à composição inteira.
+  const palavrasComSom = words.filter((w) => w.emphasis);
 
   return (
-    <AbsoluteFill style={{ alignItems: "center", justifyContent: "center" }}>
+    <AbsoluteFill
+      style={{
+        alignItems: "center",
+        justifyContent: "center",
+        translate: "241.5px -77.4px",
+      }}
+    >
       {chunks.map((chunk, idx) => {
         const from = toFrames(chunk[0].startMs);
         const durationInFrames = Math.max(1, toFrames(chunk[chunk.length - 1].endMs) - from);
@@ -68,6 +81,12 @@ export const KaraokeCaptions: React.FC<KaraokeCaptionsProps> = ({
           </Sequence>
         );
       })}
+
+      {palavrasComSom.map((w, idx) => (
+        <Sequence key={`sfx-${idx}`} from={toFrames(w.startMs)} durationInFrames={Math.round(fps * 0.6)} layout="none">
+          <Audio src={uiSwitch} volume={0.5} />
+        </Sequence>
+      ))}
     </AbsoluteFill>
   );
 };
@@ -91,7 +110,7 @@ const Linha: React.FC<{
         justifyContent: "center",
         gap: "0.35em",
         maxWidth: "88%",
-        fontFamily: "Segoe UI, sans-serif",
+        fontFamily: fonteClipe,
         fontWeight: 800,
         fontSize: 64,
         lineHeight: 1.15,
@@ -114,21 +133,24 @@ const Linha: React.FC<{
         } as const;
 
         if (w.emphasis) {
+          // Traço desenhado de verdade (rough-notation), não um text-decoration ligado/desligado —
+          // começa a desenhar no instante em que a palavra vira ativa e fica riscado depois.
+          const desenhado = interpolate(nowMs - w.startMs, [0, 150], [0, 1], {
+            extrapolateLeft: "clamp",
+            extrapolateRight: "clamp",
+          });
           return (
-            <span
-              key={k}
-              style={{
-                ...base,
-                color: ativo ? corAtiva : corBrilho,
-                textShadow: `0 0 12px ${corBrilho}, 0 0 24px ${corBrilho}, 0 2px 4px rgba(0,0,0,0.7)`,
-                textDecoration: "underline",
-                textDecorationColor: corSublinhado,
-                textDecorationThickness: "4px",
-                textUnderlineOffset: "8px",
-              }}
-            >
-              {w.text}
-            </span>
+            <Underline key={k} color={corSublinhado} strokeWidth={4} padding={{ top: 2 }} progress={desenhado}>
+              <span
+                style={{
+                  ...base,
+                  color: ativo ? corAtiva : corBrilho,
+                  textShadow: `0 0 12px ${corBrilho}, 0 0 24px ${corBrilho}, 0 2px 4px rgba(0,0,0,0.7)`,
+                }}
+              >
+                {w.text}
+              </span>
+            </Underline>
           );
         }
         return (

@@ -1,4 +1,5 @@
 import { AbsoluteFill, Img, staticFile } from "remotion";
+import { fonteClipe } from "./fonts";
 
 export type BrandChromeProps = {
   handle: string;
@@ -36,7 +37,7 @@ export const BrandChrome: React.FC<BrandChromeProps> = ({ handle, logoPath, prim
         )}
         <span
           style={{
-            fontFamily: "Segoe UI, sans-serif",
+            fontFamily: fonteClipe,
             fontWeight: 800,
             fontSize: 26,
             color: "#FFFFFF",
