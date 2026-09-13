@@ -198,7 +198,7 @@ export default async function EditPlanPage({
                 Aplicar camada no vídeo
               </Button>
             </form>
-            <OpenRemotionStudio />
+            <OpenRemotionStudio projectId={project.id} />
           </div>
         </Card>
 

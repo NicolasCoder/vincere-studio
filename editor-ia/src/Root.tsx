@@ -5,6 +5,7 @@ import { MesaArquivo } from "./dvp/MesaArquivo";
 import { SplitEvidencia } from "./dvp/SplitEvidencia";
 import { Prova, type ProvaProps } from "./dvp/Prova";
 import { Trecho, calculateTrechoMetadata } from "./dvp/Trecho";
+import { Revisao, calculateRevisaoMetadata } from "./dvp/Revisao";
 import { TRECHO_INSERTIONS } from "./dvp/trecho-data";
 import { Banco, calculateBancoMetadata } from "./dvp/Banco";
 import { Clipe, calculateClipeMetadata } from "./clipe/Clipe";
@@ -47,6 +48,23 @@ export const RemotionRoot: React.FC = () => {
           burnedCaptions: false,
           durationInFrames: 45 * 30,
         }}
+      />
+
+      {/*
+        Revisao: abre AQUI o projeto que está sendo editado na ferramenta agora — busca
+        public/tmp/current/props.json (escrito por apps/web/app/api/projects/[id]/remotion-props)
+        toda vez que a composição é carregada. Sem isso, "Abrir Remotion Studio" mostrava sempre
+        a última composição que alguém tinha aberto, sem ligação com o projeto da tela.
+      */}
+      <Composition
+        id="Revisao"
+        component={Revisao}
+        width={1920}
+        height={1080}
+        fps={30}
+        durationInFrames={30}
+        calculateMetadata={calculateRevisaoMetadata}
+        defaultProps={{}}
       />
 
       {/*
