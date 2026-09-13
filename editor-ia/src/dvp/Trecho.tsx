@@ -73,7 +73,13 @@ export const Trecho: React.FC<TrechoProps> = ({ master, insertions, burnedCaptio
   const toFrames = (ms: number) => Math.round((ms / 1000) * fps);
 
   return (
-    <AbsoluteFill name="Trecho" style={{ backgroundColor: "black" }}>
+    <AbsoluteFill
+      name="Trecho"
+      style={{
+        backgroundColor: "black",
+        scale: 1.002,
+      }}
+    >
       <Video src={staticFile(master)} />
 
       {insertions.map((ins, idx) => {

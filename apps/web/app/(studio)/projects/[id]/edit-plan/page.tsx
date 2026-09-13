@@ -4,39 +4,28 @@ import { prisma } from "@docupulse/db";
 import {
   EDIT_PLAN_PROMPT_VERSION,
   INTENSIDADES,
-  LAYOUT_META,
   eixosDe,
   needsOpaquePlate,
   segundosPorInsercao,
-  type EditLayout,
   type EditPlanData,
   type Intensidade,
   type VideoFormat,
 } from "@docupulse/core";
 import { motoresDisponiveis } from "@docupulse/providers";
-import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
+import { Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
 import { OpenRemotionStudio } from "@/components/OpenRemotionStudio";
 import { getUsageSummary, fmtMs } from "@/lib/data";
-import { applyVisualLayer, generateEditPlan, generateEvidences, setIntensidade } from "./actions";
+import { applyVisualLayer, editarInsercao, generateEditPlan, generateEvidences, setIntensidade } from "./actions";
+import { EditarInsercao } from "./EditarInsercao";
 
 const INTENSIDADE_LABEL: Record<Intensidade, string> = {
   calmo: "Calmo",
   equilibrado: "Equilibrado",
   dinamico: "Dinâmico",
   "muito-dinamico": "Muito dinâmico",
-};
-
-const LAYOUT_TONE: Record<EditLayout, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
-  "lower-third": "cyan",
-  "overlay-dado": "violet",
-  "insert-arquivo": "success",
-  "split-evidencia": "warning",
-  "graphic-fullscreen": "neutral",
-  cronologia: "violet",
-  "mesa-arquivo": "success",
 };
 
 export default async function EditPlanPage({
@@ -337,41 +326,7 @@ export default async function EditPlanPage({
               </h3>
               <div className="mt-3 grid grid-cols-1 gap-3">
                 {list.map((ins) => (
-                  <div
-                    key={ins.id}
-                    className={`rounded border p-3 ${ins.resolved ? "border-line bg-void/40" : "border-warning/40 bg-warning/5"}`}
-                  >
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Badge tone={LAYOUT_TONE[ins.layout]}>{LAYOUT_META[ins.layout].label}</Badge>
-                      {ins.lowerThirdStyle && <Badge tone="neutral">{ins.lowerThirdStyle}</Badge>}
-                      <span className="font-mono text-[11px] text-muted">
-                        {fmtMs(ins.startMs)} – {fmtMs(ins.endMs)}
-                      </span>
-                      {!ins.resolved && (
-                        <Badge tone="warning">
-                          <Icon name="error_outline" className="mr-1 align-middle text-[13px]" />
-                          tempo não confirmado
-                        </Badge>
-                      )}
-                      {ins.backdrop && (
-                        <Badge tone={ins.backdrop === "light" ? "warning" : "neutral"}>
-                          <Icon name="contrast" className="mr-1 align-middle text-[13px]" />
-                          fundo {ins.backdrop === "light" ? "claro" : "escuro"} · luma {ins.backdropLuma}
-                        </Badge>
-                      )}
-                    </div>
-                    <div className="mt-1.5 font-display text-sm font-semibold">{ins.primary}</div>
-                    {ins.secondary && <div className="text-[12px] text-fg-secondary">{ins.secondary}</div>}
-                    <p className="mt-2 text-[11px] text-muted">
-                      <span className="text-fg-secondary">gatilho:</span> “{ins.trigger}”
-                    </p>
-                    {ins.note && <p className="mt-1 text-[11px] italic text-muted">{ins.note}</p>}
-                    {ins.evidencePrompt && (
-                      <p className="mt-2 rounded border border-line bg-void/40 p-2 text-[10px] text-fg-secondary">
-                        <span className="text-primary-bright">evidência a gerar:</span> {ins.evidencePrompt}
-                      </p>
-                    )}
-                  </div>
+                  <EditarInsercao key={ins.id} insertion={ins} action={editarInsercao.bind(null, project.id, ins.id)} />
                 ))}
               </div>
             </Card>
