@@ -18,6 +18,7 @@ import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
+import { OpenRemotionStudio } from "@/components/OpenRemotionStudio";
 import { getUsageSummary, fmtMs } from "@/lib/data";
 import { applyVisualLayer, generateEditPlan, generateEvidences, setIntensidade } from "./actions";
 
@@ -197,6 +198,7 @@ export default async function EditPlanPage({
                 Aplicar camada no vídeo
               </Button>
             </form>
+            <OpenRemotionStudio />
           </div>
         </Card>
 
@@ -218,6 +220,14 @@ export default async function EditPlanPage({
               É esta versão que o Passo 5 publica quando é mais nova que o master. O master continua intocado.
             </p>
             <video controls preload="metadata" src={`/api/media/${camada.output}`} className="mt-3 w-full max-h-[420px] bg-black" />
+            {/* Sem isto, o único jeito de sair desta página depois de aplicar a camada era o botão
+                voltar do navegador — não existe stepper aqui porque o Plano de Edição não é uma
+                etapa fixa (repare que não está em STAGE_META), é um desvio entre Render e Publicação. */}
+            <Link href={`/projects/${project.id}/published`} className="mt-3 block">
+              <Button icon="send" variant="primary" iconRight="arrow_forward" className="w-full">
+                Continuar para Publicação
+              </Button>
+            </Link>
           </Card>
         )}
 

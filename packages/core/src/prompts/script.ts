@@ -14,7 +14,13 @@ export const OutlineSchema = z.object({
     z.object({
       act: z.number().describe("Número do ato, começando em 1"),
       kind: z.enum(BLOCK_KINDS).describe("Função narrativa do ato"),
-      title: z.string().describe("Título curto do ato, ex.: 'O Gancho Fatal'"),
+      title: z
+        .string()
+        .describe(
+          "Título curto e concreto sobre o CONTEÚDO real do ato, ex.: 'O Gancho Fatal', 'O Documento Que Ninguém Viu'. " +
+            "Nunca repita a função narrativa do ato (como 'Revelação', 'CTA', 'Revelação & CTA') como se fosse o título — " +
+            "isso aparece na tela do vídeo final, o espectador não pode ver um rótulo de estrutura.",
+        ),
       goal: z.string().describe("O que este ato precisa provocar no espectador"),
       keyFacts: z.array(z.string()).describe("2 a 4 fatos, datas ou lugares concretos que o ato vai usar"),
       durationSec: z.number().describe("Duração alvo do ato em segundos"),
@@ -81,7 +87,9 @@ export function outlinePrompt(c: ScriptContext) {
     `Nicho: ${c.niche}. ${c.tone ? `Tom: ${c.tone}.` : ""} ${c.audience ? `Público: ${c.audience}.` : ""}`,
     c.hooks.length ? `Dispositivos de retenção obrigatórios: ${c.hooks.join(", ")}.` : "",
     `Duração total: ${total} segundos. Divida em exatamente ${f.structure.acts} atos cuja soma de durationSec seja ${total}.`,
-    `Use estas funções de ato, nesta ordem: ${f.structure.blockLabels.map((l, i) => `${i + 1}) ${l}`).join("; ")}.`,
+    `Use estas funções narrativas de ato, nesta ordem — é o PAPEL de cada ato na história, um rótulo interno de estrutura ` +
+      `que NUNCA deve virar o "title" do ato (o title é o intertítulo que aparece na tela, precisa ser conteúdo concreto): ` +
+      `${f.structure.blockLabels.map((l, i) => `${i + 1}) ${l}`).join("; ")}.`,
     `O Ato 1 é o gancho e deve durar ${f.structure.hookSeconds} segundos.`,
     c.format === "SHORT_9_16" ? "Como é um vídeo curto, os atos são batidas de poucos segundos e o último termina com uma chamada para ação natural." : "",
     "Retorne apenas o JSON.",
