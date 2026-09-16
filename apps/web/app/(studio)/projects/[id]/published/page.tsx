@@ -5,13 +5,18 @@ import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration, parseJson } from "@/lib/data";
 import { getYoutubeConnection } from "@docupulse/providers";
 import { partirManchete } from "@docupulse/render";
-import { generateSeoMetadata, publishToYoutube, scheduleYoutubePublication } from "./actions";
+import { prisma } from "@docupulse/db";
+import { cancelScheduledPublication, generateSeoMetadata, publishToYoutube, scheduleYoutubePublication } from "./actions";
 import { ThumbnailStudio } from "./ThumbnailStudio";
 
 export default async function PublishedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
   const { id } = await params;
   const { blocked, job } = await searchParams;
-  const [{ project, header, busy }, youtubeConnection] = await Promise.all([loadProjectShell(id, "PUBLISH", blocked, job), getYoutubeConnection()]);
+  const [{ project, header, busy }, youtubeConnection, calendar] = await Promise.all([
+    loadProjectShell(id, "PUBLISH", blocked, job),
+    getYoutubeConnection(),
+    prisma.publication.findMany({ where: { scheduledAt: { not: null }, publishedAt: null }, include: { project: { select: { id: true, title: true } } }, orderBy: { scheduledAt: "asc" }, take: 8 }),
+  ]);
   const pub = project.publications[0];
   const master = project.renderJobs[0];
   const stats = parseJson<{ views?: number; ctr?: number; avgViewDuration?: number }>(pub?.stats, {});
@@ -32,7 +37,7 @@ export default async function PublishedPage({ params, searchParams }: { params: 
           <div>
             <div className="flex items-center gap-2">
               {isScheduled ? (
-                <Badge tone="violet" pill dot>Programado para {new Date(pub.scheduledAt).toLocaleString("pt-BR")}</Badge>
+                <Badge tone="violet" pill dot>Programado para {new Date(pub!.scheduledAt!).toLocaleString("pt-BR")}</Badge>
               ) : isPrivateUpload ? (
                 <Badge tone="cyan" pill dot>Enviado como privado · pronto para programar</Badge>
               ) : isPublished ? (
@@ -55,7 +60,14 @@ export default async function PublishedPage({ params, searchParams }: { params: 
               <Button icon="download" disabled title="Renderize o vídeo no Passo 4 primeiro">Baixar Master</Button>
             )}
             {isScheduled ? (
-              <Button variant="primary" icon="schedule" disabled>Postagem programada</Button>
+              <div className="flex flex-col gap-2 rounded border border-primary/30 bg-primary/5 p-2">
+                <div className="font-mono text-[11px] text-primary-bright">Programado: {new Date(pub!.scheduledAt!).toLocaleString("pt-BR")}</div>
+                <form action={scheduleYoutubePublication.bind(null, project.id)} className="flex flex-col gap-1.5">
+                  <input type="datetime-local" name="publishAt" required className="field px-2 py-1.5 text-xs" />
+                  <Button type="submit" icon="event_repeat" disabled={busy}>Reprogramar</Button>
+                </form>
+                <form action={cancelScheduledPublication.bind(null, project.id)}><Button type="submit" variant="ghost" icon="event_busy" className="w-full" disabled={busy}>Cancelar programação</Button></form>
+              </div>
             ) : isPublished ? (
               <Button variant="primary" icon="check_circle" disabled>Publicado no YouTube</Button>
             ) : youtubeConnection ? (
@@ -105,7 +117,7 @@ export default async function PublishedPage({ params, searchParams }: { params: 
               <div className="grid grid-cols-1 divide-y divide-line border-t border-line text-xs sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div className="p-3"><div className="label-mono text-muted">URL oficial</div><div className="mt-1 truncate font-mono text-primary-bright">{pub?.url ?? "—"}</div></div>
                 <div className="p-3"><div className="label-mono text-muted">Video ID</div><div className="mt-1 font-mono">{pub?.videoId ?? "—"}</div></div>
-                <div className="p-3"><div className="label-mono text-muted">{isScheduled ? "Programado para" : isPrivateUpload ? "Situação" : "Publicado em"}</div><div className="mt-1 font-mono">{isScheduled ? new Date(pub.scheduledAt).toLocaleString("pt-BR") : isPrivateUpload ? "Privado no YouTube" : pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
+                <div className="p-3"><div className="label-mono text-muted">{isScheduled ? "Programado para" : isPrivateUpload ? "Situação" : "Publicado em"}</div><div className="mt-1 font-mono">{isScheduled ? new Date(pub!.scheduledAt!).toLocaleString("pt-BR") : isPrivateUpload ? "Privado no YouTube" : pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
               </div>
             </Card>
             <ThumbnailStudio projectId={project.id} tituloInicial={manchete.titulo} subInicial={manchete.sub} />
@@ -116,6 +128,13 @@ export default async function PublishedPage({ params, searchParams }: { params: 
             </div>
           </div>
           <aside className="space-y-4">
+            <Card className="p-4">
+              <h3 className="font-display font-semibold"><Icon name="calendar_month" className="mr-1 align-middle text-primary-bright" />Calendário de postagens</h3>
+              <div className="mt-3 space-y-2">
+                {calendar.length === 0 && <p className="text-xs text-muted">Nenhuma postagem futura.</p>}
+                {calendar.map((item) => <Link key={item.id} href={`/projects/${item.project.id}/published`} className="block rounded border border-line bg-void/40 p-2"><div className="truncate text-xs font-medium">{item.project.title}</div><div className="mt-1 font-mono text-[10px] text-primary-bright">{item.scheduledAt ? new Date(item.scheduledAt).toLocaleString("pt-BR") : ""}</div></Link>)}
+              </div>
+            </Card>
             <Card className="p-4">
               <div className="flex items-center justify-between">
                 <h3 className="font-display font-semibold"><Icon name="auto_awesome" className="mr-1 align-middle text-primary-bright" />SEO & Metadados</h3>

@@ -3,7 +3,7 @@ import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { captionPresetFor, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
-import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
+import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
@@ -179,6 +179,11 @@ export async function renderVideo(ctx: JobContext) {
     },
   });
   const durationMs = await probeDurationMs(outFile);
+  const qualityAudit = await auditRenderedVideo(outFile);
+  await appendLog(`Auditoria: ${qualityAudit.blackSegments} trecho(s) preto(s), maior ${qualityAudit.longestBlackSec.toFixed(1)}s · ${qualityAudit.silenceSegments} silêncio(s), maior ${qualityAudit.longestSilenceSec.toFixed(1)}s`);
+  if (qualityAudit.longestBlackSec >= 1 || qualityAudit.longestSilenceSec >= 3) {
+    await appendLog("⚠ Revisão recomendada: o master contém quadro preto >=1s ou silêncio >=3s.");
+  }
 
   if (renderJob) {
     await prisma.renderJob.update({ where: { id: renderJob.id }, data: { progress: 100, outputPath: relPath(outFile), finishedAt: new Date() } });
@@ -196,5 +201,5 @@ export async function renderVideo(ctx: JobContext) {
   // Provas também acumulam: cada ajuste gera uma, e são dezenas de MB cada.
   await pruneOldRenders(outDir, outFile, appendLog);
 
-  return { outputPath: relPath(outFile), durationMs, encoder: res.encoder, renderJobId: renderJob?.id ?? null, preview: prova };
+  return { outputPath: relPath(outFile), durationMs, encoder: res.encoder, renderJobId: renderJob?.id ?? null, preview: prova, qualityAudit };
 }

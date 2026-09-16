@@ -3,7 +3,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@docupulse/db";
-import { absPath, getTextProvider, projectDir, recordUsage, relPath } from "@docupulse/providers";
+import { absPath, getAuthenticatedYoutubeClient, getTextProvider, projectDir, recordUsage, relPath } from "@docupulse/providers";
 import { quadroDe, renderizarThumbnail } from "@docupulse/render";
 import { z } from "zod";
 
@@ -44,6 +44,18 @@ export async function scheduleYoutubePublication(projectId: string, formData: Fo
     },
   });
   redirect(`/projects/${projectId}/published?job=${job.id}`);
+}
+
+export async function cancelScheduledPublication(projectId: string) {
+  const pub = await prisma.publication.findFirst({ where: { projectId } });
+  if (!pub?.videoId || !pub.scheduledAt) throw new Error("Este projeto não possui postagem programada.");
+  const { youtube } = await getAuthenticatedYoutubeClient();
+  await youtube.videos.update({
+    part: ["status"],
+    requestBody: { id: pub.videoId, status: { privacyStatus: "private", selfDeclaredMadeForKids: false } },
+  });
+  await prisma.publication.update({ where: { id: pub.id }, data: { scheduledAt: null, publishedAt: null, privacyStatus: "private" } });
+  revalidatePath(`/projects/${projectId}/published`);
 }
 
 /**

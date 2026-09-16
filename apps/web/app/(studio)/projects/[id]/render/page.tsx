@@ -1,6 +1,9 @@
 import Link from "next/link";
+import { createHash } from "node:crypto";
+import { readFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { CAPTION_PRESETS, FORMATS, type VideoFormat } from "@docupulse/core";
+import { absPath } from "@docupulse/providers";
 import { profileFor } from "@docupulse/render";
 import { Badge, Button, Card, Chip, Icon, Progress } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
@@ -42,6 +45,21 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const mediaCounts = new Map<string, number>();
   for (const scene of scenes) if (scene.filePath) mediaCounts.set(scene.filePath, (mediaCounts.get(scene.filePath) ?? 0) + 1);
   const repeatedMedia = [...mediaCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  const contentHashes = await Promise.all([...mediaCounts.keys()].map(async (filePath) => {
+    try {
+      return createHash("sha256").update(await readFile(absPath(filePath))).digest("hex");
+    } catch {
+      return null;
+    }
+  }));
+  const hashCounts = new Map<string, number>();
+  for (const hash of contentHashes) if (hash) hashCounts.set(hash, (hashCounts.get(hash) ?? 0) + 1);
+  const duplicateContent = [...hashCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  let predictedRetention: number | null = null;
+  try {
+    const metrics = JSON.parse(script?.metrics ?? "{}") as { predicted?: number };
+    if (Number.isFinite(metrics.predicted)) predictedRetention = Number(metrics.predicted);
+  } catch {}
   const lowResolution = scenes.filter((scene) => {
     if (!scene.filePath || !scene.width || !scene.height) return false;
     const requiredScale = Math.max(defaultProfile.width / scene.width, defaultProfile.height / scene.height);
@@ -237,6 +255,8 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
                 <li className="flex gap-2"><Icon name={ready === scenes.length && scenes.length ? "check_circle" : "warning"} className={`text-[16px] ${ready === scenes.length && scenes.length ? "text-success" : "text-warning"}`} />Cenas com mídia ({ready}/{scenes.length}); as demais viram cartão de título</li>
                 <li className="flex gap-2"><Icon name={lowResolution === 0 ? "check_circle" : "warning"} className={`text-[16px] ${lowResolution === 0 ? "text-success" : "text-warning"}`} />{lowResolution === 0 ? "Resolução conhecida adequada" : `${lowResolution} cena(s) podem perder nitidez no enquadramento`}</li>
                 <li className="flex gap-2"><Icon name={repeatedMedia === 0 ? "check_circle" : "warning"} className={`text-[16px] ${repeatedMedia === 0 ? "text-success" : "text-warning"}`} />{repeatedMedia === 0 ? "Sem mídia repetida entre cenas" : `${repeatedMedia} repetição(ões) de mídia — revise a variedade visual`}</li>
+                <li className="flex gap-2"><Icon name={duplicateContent === 0 ? "check_circle" : "warning"} className={`text-[16px] ${duplicateContent === 0 ? "text-success" : "text-warning"}`} />{duplicateContent === 0 ? "Sem arquivos idênticos com nomes diferentes" : `${duplicateContent} arquivo(s) duplicado(s) por conteúdo`}</li>
+                {predictedRetention != null && <li className="flex gap-2"><Icon name={predictedRetention >= 75 ? "trending_up" : "warning"} className={`text-[16px] ${predictedRetention >= 75 ? "text-success" : "text-warning"}`} />Retenção prevista do roteiro: {predictedRetention}/100</li>}
                 {unknownResolution > 0 && <li className="flex gap-2"><Icon name="info" className="text-[16px] text-muted" />{unknownResolution} mídia(s) sem dimensão registrada; confira no render de prova</li>}
               </ul>
             </Card>

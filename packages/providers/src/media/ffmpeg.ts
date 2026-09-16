@@ -49,6 +49,24 @@ export async function probeMediaInfo(file: string): Promise<{ durationMs: number
   };
 }
 
+/** Auditoria rápida do master final: detecta pausas e quadros pretos longos. */
+export async function auditRenderedVideo(file: string): Promise<{ blackSegments: number; longestBlackSec: number; silenceSegments: number; longestSilenceSec: number }> {
+  const log = await run(FFMPEG, [
+    "-hide_banner", "-i", file,
+    "-vf", "blackdetect=d=0.5:pix_th=0.10",
+    "-af", "silencedetect=noise=-45dB:d=2",
+    "-f", "null", "-",
+  ]).catch((err) => String(err));
+  const black = [...log.matchAll(/black_duration:([\d.]+)/g)].map((m) => Number(m[1])).filter(Number.isFinite);
+  const silence = [...log.matchAll(/silence_duration: ([\d.]+)/g)].map((m) => Number(m[1])).filter(Number.isFinite);
+  return {
+    blackSegments: black.length,
+    longestBlackSec: black.length ? Math.max(...black) : 0,
+    silenceSegments: silence.length,
+    longestSilenceSec: silence.length ? Math.max(...silence) : 0,
+  };
+}
+
 /** Grava PCM 16-bit mono como WAV. */
 export async function pcmToWav(pcm: Buffer, file: string, sampleRate = 24000) {
   const header = Buffer.alloc(44);

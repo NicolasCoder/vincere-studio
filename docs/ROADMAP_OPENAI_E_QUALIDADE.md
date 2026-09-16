@@ -35,13 +35,15 @@ Registrado em 16/09/2026 para retomada no próximo ciclo.
 
 ## Próximas melhorias locais priorizadas
 
-- [ ] Versões automáticas de 30, 45 e 60 segundos.
-- [ ] Capa vertical para Shorts/Reels/TikTok, mantendo thumbnail 16:9 para YouTube.
-- [ ] Detecção perceptual de imagens repetidas ou excessivamente parecidas.
-- [ ] Verificação automática de quadros pretos, silêncio excessivo e área segura das legendas.
-- [ ] Calendário global de postagens, com reagendamento e cancelamento.
+- [x] Presets de criação de Shorts com 30, 45, 60 e 90 segundos.
+- [x] Capa vertical para Shorts/Reels/TikTok, mantendo thumbnail 16:9 para YouTube.
+- [x] Detecção de arquivos de mídia idênticos mesmo com nomes/caminhos diferentes.
+- [ ] Detecção perceptual de imagens apenas parecidas (não idênticas).
+- [x] Verificação automática de quadros pretos e silêncio excessivo no master.
+- [ ] Verificação visual automatizada da área segura das legendas.
+- [x] Calendário de postagens na publicação, com reagendamento e cancelamento.
 - [ ] Mais movimento em stills (parallax/câmera dirigida) e efeitos sonoros sincronizados.
-- [ ] Pontuação de retenção e checklist editorial antes do render final.
+- [x] Pontuação de retenção e checklist editorial antes do render final.
 
 ## Regra de implementação
 

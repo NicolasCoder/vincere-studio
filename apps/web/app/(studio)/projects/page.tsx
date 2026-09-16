@@ -61,7 +61,7 @@ export default async function ProjectsPage({ searchParams }: { searchParams: Pro
 
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
               <Select label="Tom Narrativo" icon="theater_comedy" name="tone" options={["Misterioso & Investigativo", "Épico & Cinematográfico", "Sombrio & Perturbador", "Científico & Curioso", "Frenético & Imersivo"]} />
-              <Select label="Duração Estimada" icon="timer" name="targetDuration" options={[["900", "Long-form (12 – 15 min)"], ["1200", "Long-form (18 – 20 min)"], ["1500", "Long-form (25 min)"], ["60", "Short (60s)"], ["90", "Short (90s)"]]} />
+              <Select label="Duração Estimada" icon="timer" name="targetDuration" options={[["900", "Long-form (12 – 15 min)"], ["1200", "Long-form (18 – 20 min)"], ["1500", "Long-form (25 min)"], ["30", "Short rápido (30s)"], ["45", "Short retenção (45s)"], ["60", "Short completo (60s)"], ["90", "Short estendido (90s)"]]} />
               <Select label="Público-Alvo & Canal" icon="groups" name="audience" options={["Audiência Curiosa & Dark Channel", "Ciência & Tecnologia", "História & Arqueologia", "True Crime", "Finanças & Geopolítica"]} />
             </div>
 

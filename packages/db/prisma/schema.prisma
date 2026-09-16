@@ -26,6 +26,7 @@ model Project {
   visualStyle    String   @default("DARK_DOC") // ver @docupulse/core VISUAL_STYLES
   intensidade    String   @default("equilibrado") // calmo | equilibrado | dinamico | muito-dinamico (ver @docupulse/core INTENSIDADES)
   thumbnailPath      String?
+  verticalCoverPath  String?
   thumbnailUpdatedAt DateTime?
   voiceProfileId String?
   voiceProfile   VoiceProfile? @relation(fields: [voiceProfileId], references: [id])

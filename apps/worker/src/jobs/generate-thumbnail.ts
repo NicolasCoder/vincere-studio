@@ -54,7 +54,22 @@ export async function generateThumbnail(ctx: JobContext) {
     halo: ctx.payload.halo != null ? Number(ctx.payload.halo) : undefined,
   });
 
-  await prisma.project.update({ where: { id: projectId }, data: { thumbnailPath: relPath(out), thumbnailUpdatedAt: new Date() } });
+  let verticalCoverPath: string | null = null;
+  if (project.format === "SHORT_9_16") {
+    const vertical = path.join(outDir, `cover-vertical-${Date.now()}.jpg`);
+    await renderizarThumbnail(origem, vertical, {
+      titulo,
+      sub,
+      largura: 1080,
+      altura: 1920,
+      escuridao: ctx.payload.escuridao != null ? Number(ctx.payload.escuridao) : undefined,
+      halo: ctx.payload.halo != null ? Number(ctx.payload.halo) : undefined,
+    });
+    verticalCoverPath = relPath(vertical);
+    await ctx.log(`Capa vertical gerada: ${path.basename(vertical)}`);
+  }
+
+  await prisma.project.update({ where: { id: projectId }, data: { thumbnailPath: relPath(out), verticalCoverPath, thumbnailUpdatedAt: new Date() } });
   await ctx.log(`Thumbnail gerada (cena ${scene.id.slice(-6)}): ${path.basename(out)}`);
-  return { thumbnailPath: relPath(out) };
+  return { thumbnailPath: relPath(out), verticalCoverPath };
 }

@@ -24,6 +24,8 @@ export interface OpcoesThumb {
   /** Sobrepõe o tamanho calculado do título, em px. */
   tamanhoTitulo?: number;
   fonte?: string;
+  largura?: number;
+  altura?: number;
 }
 
 /**
@@ -99,6 +101,9 @@ export async function renderizarThumbnail(origem: string, saida: string, o: Opco
   const dir = path.dirname(saida);
   const base = path.basename(saida, path.extname(saida));
   const fonte = ffPath(o.fonte ?? fonteDisplay());
+  const largura = o.largura ?? THUMB_W;
+  const altura = o.altura ?? THUMB_H;
+  const vertical = altura > largura;
 
   const escuridao = entre(o.escuridao ?? 0.5, 0, 1);
   const halo = entre(o.halo ?? 0.8, 0, 1);
@@ -108,14 +113,17 @@ export async function renderizarThumbnail(origem: string, saida: string, o: Opco
 
   const arqTitulo = path.join(dir, `${base}-t.txt`);
   await writeFile(arqTitulo, o.titulo.toUpperCase(), "utf8");
-  const tam = o.tamanhoTitulo ?? tamanhoParaTitulo(o.titulo);
-  const t1 = `drawtext=fontfile='${fonte}':textfile='${ffPath(arqTitulo)}':fontcolor=white:fontsize=${tam}:x=(w-text_w)/2:y=h*0.58`;
+  const tamBase = tamanhoParaTitulo(o.titulo);
+  const tam = o.tamanhoTitulo ?? (vertical ? Math.round(tamBase * 1.05) : tamBase);
+  const t1 = `drawtext=fontfile='${fonte}':textfile='${ffPath(arqTitulo)}':fontcolor=white:fontsize=${tam}:x=(w-text_w)/2:y=h*${vertical ? "0.55" : "0.58"}`;
 
   let t2 = "";
   if (o.sub?.trim()) {
     const arqSub = path.join(dir, `${base}-s.txt`);
-    await writeFile(arqSub, espacar(o.sub.trim()), "utf8");
-    t2 = `,drawtext=fontfile='${fonte}':textfile='${ffPath(arqSub)}':fontcolor=white@0.92:fontsize=30:x=(w-text_w)/2:y=h*0.82`;
+    const subTexto = vertical ? o.sub.trim().toUpperCase() : espacar(o.sub.trim());
+    await writeFile(arqSub, subTexto, "utf8");
+    const subTam = vertical ? Math.max(24, Math.min(42, Math.floor(1650 / Math.max(1, o.sub.trim().length)))) : 30;
+    t2 = `,drawtext=fontfile='${fonte}':textfile='${ffPath(arqSub)}':fontcolor=white@0.92:fontsize=${subTam}:x=(w-text_w)/2:y=h*${vertical ? "0.74" : "0.82"}`;
   }
   const textos = `${t1}${t2}`;
 
@@ -128,10 +136,10 @@ export async function renderizarThumbnail(origem: string, saida: string, o: Opco
    * de croma, centrados em 128, e o resultado sai com um magenta que não existe na foto.
    */
   const filtro =
-    `[0:v]scale=${THUMB_W}:${THUMB_H}:force_original_aspect_ratio=increase,crop=${THUMB_W}:${THUMB_H},setsar=1,` +
+    `[0:v]scale=${largura}:${altura}:force_original_aspect_ratio=increase,crop=${largura}:${altura},setsar=1,` +
     `eq=contrast=${contraste}:saturation=${saturacao}:brightness=${brilho},` +
     `vignette=PI/3.5,format=gbrp[bg];` +
-    `color=c=black:s=${THUMB_W}x${THUMB_H},format=gbrp,${textos},gblur=sigma=24[glow];` +
+    `color=c=black:s=${largura}x${altura},format=gbrp,${textos},gblur=sigma=24[glow];` +
     `[bg][glow]blend=all_mode=screen:all_opacity=${halo.toFixed(2)},format=yuv420p[lit];` +
     `[lit]${textos}[out]`;
 

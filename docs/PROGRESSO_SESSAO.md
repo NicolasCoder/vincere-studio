@@ -371,3 +371,19 @@ Unificar é a correção estrutural mais valiosa pendente.
 - Páginas de render e publicação: HTTP 200.
 - Interface confirmou estado “Enviado como privado”, campo `datetime-local`, botão de
   programação e pré-voo sem dimensões desconhecidas.
+
+### Continuação — pacote de qualidade e operação
+
+- Novos presets de duração na criação: Shorts de 30, 45, 60 e 90 segundos.
+- `Project.verticalCoverPath` e migração `20260916052000_add_vertical_cover`.
+- O job de thumbnail mantém a peça 1280×720 do YouTube e, em projetos 9:16, gera também uma
+  capa 1080×1920. O ajuste de fonte do subtítulo é responsivo ao comprimento; a capa do projeto
+  de validação foi gerada duas vezes e inspecionada visualmente após corrigir clipping lateral.
+- Auditoria pós-render com `blackdetect` e `silencedetect`; avisos entram no log e o resultado
+  estruturado acompanha o job. No master real validado: zero trechos pretos e zero silêncios
+  acima dos limites.
+- Pré-voo agora calcula SHA-256 das mídias para encontrar conteúdo idêntico com nomes
+  diferentes e exibe a retenção prevista do roteiro.
+- Tela de publicação ganhou calendário das próximas postagens, reagendamento e cancelamento. O
+  cancelamento mantém o vídeo privado no YouTube, sem apagar o upload.
+- `pnpm typecheck` aprovado nos 7 pacotes após banco e Prisma regenerados.
