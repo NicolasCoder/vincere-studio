@@ -131,9 +131,19 @@ export function buildAss(
    *
    * 0,47 põe a linha única praticamente onde ela já estava, então o enquadramento não muda.
    */
-  const marginV = vertical ? Math.round(p.height * 0.47) : Math.round(p.height * 0.07);
-  const alignment = vertical ? 8 : 2;
-  const bord = vertical ? 4 : 2;
+  const posicao = estilo.posicao ?? (vertical ? "top" : "bottom");
+  // Sem posição explícita, mantém a coordenada histórica dos projetos antigos. Presets novos e
+  // o editor visual sempre gravam a posição, então usam margens semânticas fiéis à prévia.
+  const marginV = estilo.posicao == null
+    ? vertical ? Math.round(p.height * 0.47) : Math.round(p.height * 0.07)
+    : posicao === "top"
+      ? Math.round(p.height * 0.1)
+      : posicao === "center"
+        ? 0
+        : Math.round(p.height * (vertical ? 0.16 : 0.07));
+  const alignment = posicao === "top" ? 8 : posicao === "center" ? 5 : 2;
+  const bord = estilo.contorno ?? (vertical ? 4 : 2);
+  const shadow = estilo.sombra ?? (vertical ? 0 : 1);
   const header = `[Script Info]
 ScriptType: v4.00+
 PlayResX: ${p.width}
@@ -143,14 +153,15 @@ ScaledBorderAndShadow: yes
 
 [V4+ Styles]
 Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
-Style: Base,${estilo.fonte},${fontSize},${corAss(estilo.cor)},${corAss(estilo.corAtiva)},${corAss(estilo.corContorno)},&H80000000,${mode === "bold-center-animated" ? -1 : 0},0,0,0,100,100,0,0,1,${bord},${vertical ? 0 : 1},${alignment},60,60,${marginV},1
+Style: Base,${estilo.fonte},${fontSize},${corAss(estilo.cor)},${corAss(estilo.corAtiva)},${corAss(estilo.corContorno)},&H80000000,${mode === "bold-center-animated" ? -1 : 0},0,0,0,100,100,0,0,1,${bord},${shadow},${alignment},60,60,${marginV},1
 
 [Events]
 Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
 `;
   const lines: string[] = [];
   let offset = 0;
-  const perLine = mode === "bold-center-animated" ? 3 : 7;
+  const perLine = Math.max(2, Math.min(10, Math.round(estilo.palavrasPorLinha ?? (mode === "bold-center-animated" ? 3 : 7))));
+  const uppercase = estilo.maiusculas ?? mode === "bold-center-animated";
   for (const a of t.acts) {
     const words = a.words;
     for (let i = 0; i < words.length; ) {
@@ -172,8 +183,9 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
           const we = k === chunk.length - 1 ? end : offset + chunk[k + 1].startMs;
           // Maiúscula só nas palavras: passar toUpperCase na linha inteira maiúsculiza também as
           // tags de override. O libass tolera, mas depender dessa tolerância é frágil à toa.
+          const palavra = (text: string) => uppercase ? esc(text).toUpperCase() : esc(text);
           const text = chunk
-            .map((w, j) => (j === k ? `${ativo}${esc(w.text).toUpperCase()}${normal}` : esc(w.text).toUpperCase()))
+            .map((w, j) => (j === k ? `${ativo}${palavra(w.text)}${normal}` : palavra(w.text)))
             .join(" ");
           // Só a primeira palavra do trecho abre com fade: por palavra viraria piscada.
           const entrada = k === 0 ? "{\\fad(70,0)}" : "";

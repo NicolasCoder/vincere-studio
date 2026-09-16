@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createHash } from "node:crypto";
 import { readFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { CAPTION_PRESETS, FORMATS, type VideoFormat } from "@docupulse/core";
+import { FORMATS, type VideoFormat } from "@docupulse/core";
 import { absPath } from "@docupulse/providers";
 import { MOTION_PRESETS, normalizeMotion, profileFor } from "@docupulse/render";
 import { Badge, Button, Card, Chip, Icon, Progress } from "@docupulse/ui";
@@ -11,6 +11,7 @@ import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration } from "@/lib/data";
 import { advanceStage } from "../../actions";
 import { renderVideo, generateThumbnail, reviewRender, updateSceneReview } from "./actions";
+import { CaptionStyleEditor } from "./CaptionStyleEditor";
 
 const REVIEW_META: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "error"; icon: string }> = {
   PENDING: { label: "Aguardando revisão", tone: "neutral", icon: "rate_review" },
@@ -26,9 +27,9 @@ const STAGES = [
   ["Codificação", "H.264 via Intel QuickSync quando disponível, senão libx264 · MP4 faststart", 100],
 ] as const;
 
-export default async function RenderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
+export default async function RenderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; saved?: string }> }) {
   const { id } = await params;
-  const { blocked, job } = await searchParams;
+  const { blocked, job, saved } = await searchParams;
   const { project, header, busy } = await loadProjectShell(id, "RENDER", blocked, job);
   const format = FORMATS[project.format as VideoFormat];
   const renders = await prisma.renderJob.findMany({ where: { projectId: id }, orderBy: { startedAt: "desc" }, take: 5 });
@@ -91,7 +92,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
     <>
       {header}
       <main className="p-6">
-        <div className="flex items-start justify-between gap-6">
+        <div className="flex flex-col items-start justify-between gap-6 xl:flex-row">
           <div>
             <Badge tone="violet">Projeto #{project.id.slice(-6).toUpperCase()}</Badge>
             <h1 className="mt-2 max-w-3xl font-display text-3xl font-semibold leading-tight">{project.title}</h1>
@@ -102,20 +103,13 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               <Chip icon="subtitles" active={captioned > 0}>{captioned}/{blocks.length} com legendas</Chip>
             </div>
           </div>
-          <form action={renderVideo.bind(null, project.id)} className="flex w-72 flex-col gap-2">
+          <form action={renderVideo.bind(null, project.id)} className="flex w-full flex-col gap-2 xl:w-96">
             <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="music" defaultChecked className="accent-primary" /> Trilha ambiente (sua em storage/music ou gerada pelo app)</label>
             {/* Longo não queima legenda: os canais de referência não queimam, e o rodapé livre é
                 onde a camada visual DVP posiciona os lower thirds. O CC do YouTube cobre acessibilidade.
                 Short queima, porque é assistido sem som. */}
             <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="captions" defaultChecked={format.captions.required} className="accent-primary" /> Queimar legendas ({format.captions.style === "bold-center-animated" ? "karaokê central" : "rodapé discreto"}){!format.captions.required && <span className="text-muted"> — desligado no longo</span>}</label>
-            <label className="text-xs text-fg-secondary">
-              <span className="mb-1 block font-medium text-fg">Modelo de legenda</span>
-              <select name="captionPreset" defaultValue="auto" className="w-full rounded border border-line bg-void px-3 py-2 text-xs text-fg outline-none focus:border-primary">
-                {CAPTION_PRESETS.map((preset) => (
-                  <option key={preset.id} value={preset.id}>{preset.label} — {preset.description}</option>
-                ))}
-              </select>
-            </label>
+            <CaptionStyleEditor format={project.format as VideoFormat} savedPreset={project.captionPreset} savedStyleJson={project.captionStyle} />
             {/* Dois botões em vez de um seletor de perfil: 720p tem 44% dos pixels de 1080p, então o
                 render de revisão sai em ~metade do tempo. Para decidir se a qualidade serve, a
                 resolução é irrelevante — só o corte aprovado precisa ir em 1080p. */}
@@ -145,8 +139,9 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
         </div>
 
         {job && <div className="mt-4"><JobWatcher jobId={job} label="Renderizando com FFmpeg" /></div>}
+        {saved === "caption" && <Card className="mt-4 p-3 text-sm text-success"><Icon name="check_circle" className="mr-1 align-middle" />Modelo de legenda salvo neste projeto.</Card>}
 
-        <div className="mt-6 grid grid-cols-[1fr_22rem] gap-6">
+        <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-4">
             {prova?.outputPath && (
               <Card className="p-4" accent="violet">

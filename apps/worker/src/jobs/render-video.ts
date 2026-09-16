@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { captionPresetFor, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
+import { captionPresetFor, getVisualStyle, type CaptionMode, type EstiloLegenda, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
 import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, normalizeMotion, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
@@ -104,7 +104,18 @@ export async function renderVideo(ctx: JobContext) {
   const style = getVisualStyle(project.visualStyle);
   const profile = profileFor(project.format, ctx.payload.profile as string | undefined);
   const wantCaptions = ctx.payload.captions !== false;
-  const captionPreset = captionPresetFor(ctx.payload.captionPreset, project.format as VideoFormat, legendaDe(null));
+  const captionPreset = captionPresetFor(ctx.payload.captionPreset ?? project.captionPreset, project.format as VideoFormat, legendaDe(null));
+  let captionStyle: EstiloLegenda = captionPreset.style;
+  let captionMode: CaptionMode = captionPreset.mode;
+  try {
+    const saved = JSON.parse(String(ctx.payload.captionStyle ?? project.captionStyle ?? "{}")) as Partial<EstiloLegenda> & { mode?: CaptionMode };
+    if (saved && typeof saved === "object" && saved.fonte && saved.cor && saved.corAtiva && saved.corContorno) {
+      captionStyle = { ...captionPreset.style, ...saved, tamanhoRel: { ...captionPreset.style.tamanhoRel, ...(saved.tamanhoRel ?? {}) } };
+      if (saved.mode === "bold-center-animated" || saved.mode === "subtle-bottom") captionMode = saved.mode;
+    }
+  } catch {
+    await ctx.log("Modelo de legenda personalizado inválido; usando o preset selecionado.");
+  }
 
   const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: { include: { captions: true } }, scenes: { orderBy: { order: "asc" } } } } } });
   if (!script) throw new Error("Sem roteiro");
@@ -180,8 +191,8 @@ export async function renderVideo(ctx: JobContext) {
   const workDir = await projectDir(projectId, "renders/work");
   const cacheDir = prova ? undefined : await projectDir(projectId, "renders/cache");
   const outFile = path.join(outDir, `${prova ? "prova" : profile.id.toLowerCase()}-${Date.now()}.mp4`);
-  const captions = wantCaptions ? captionPreset.mode : "none";
-  await appendLog(`Legendas: ${wantCaptions ? captionPreset.label : "desativadas"}`);
+  const captions = wantCaptions ? captionMode : "none";
+  await appendLog(`Legendas: ${wantCaptions ? `${captionPreset.label} · ${captionStyle.fonte}` : "desativadas"}`);
 
   if (prova) {
     const janelaMs = Number(ctx.payload.janelaMs ?? 7000);
@@ -201,7 +212,7 @@ export async function renderVideo(ctx: JobContext) {
     cacheDir,
     outFile,
     transicoesPct: eixos.transicoes,
-    legenda: captionPreset.style,
+    legenda: captionStyle,
     onLog: appendLog,
     onProgress: async (p) => {
       await ctx.progress(p);

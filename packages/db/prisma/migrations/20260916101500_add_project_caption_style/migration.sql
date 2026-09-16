@@ -1,0 +1,2 @@
+ALTER TABLE "Project" ADD COLUMN "captionPreset" TEXT NOT NULL DEFAULT 'auto';
+ALTER TABLE "Project" ADD COLUMN "captionStyle" TEXT NOT NULL DEFAULT '{}';

@@ -398,3 +398,13 @@ Unificar é a correção estrutural mais valiosa pendente.
 - O novo render reaproveita cenas e atos inalterados. O cache incremental tem teto de 2 GB para proteger o disco.
 - Migração `20260916065000_add_render_review_and_scene_motion` aplicada e histórico existente renumerado por projeto.
 - `pnpm typecheck`: 7/7 pacotes aprovados. `pnpm build`: build de produção aprovado. As telas de render e publicação responderam HTTP 200 e exibiram revisão, editor por cena, motions e bloqueio de publicação sem aprovação.
+
+### Continuação — biblioteca e editor de legendas
+
+- A biblioteca passou a ter oito identidades prontas: documentário, impacto, neon, luxo, educação, gaming, bem-estar e notícias; continuam disponíveis o automático e o personalizado.
+- O Passo 4 ganhou prévia visual e controles de fonte, animação, três cores, posição, tamanho, palavras por bloco, contorno, sombra e caixa alta.
+- Contraste texto/contorno é calculado ao vivo e vídeos verticais recebem aviso ao usar a região inferior, disputada pela interface das redes sociais.
+- O modelo personalizado é salvo por projeto e reutilizado no render de prova e nas novas versões.
+- Projetos antigos permanecem no modo automático, com comportamento visual histórico preservado.
+- Migração `20260916101500_add_project_caption_style` aplicada ao banco local.
+- `pnpm typecheck` aprovado nos 7 pacotes e `pnpm build` aprovado. Teste direto do ASS confirmou fonte, cor ativa, posição superior e preservação de caixa do texto; a tela real respondeu HTTP 200 com todos os presets e controles.

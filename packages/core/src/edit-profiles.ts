@@ -91,6 +91,16 @@ export interface EstiloLegenda {
    * Os dois foram calibrados em vídeo publicado — não são o mesmo número por acaso.
    */
   tamanhoRel: { horizontal: number; vertical: number };
+  /** Posição do bloco. Ausente preserva a regra histórica de cada formato. */
+  posicao?: "top" | "center" | "bottom";
+  /** Quantidade máxima aproximada de palavras por bloco. */
+  palavrasPorLinha?: number;
+  /** Se o texto inteiro deve ser escrito em caixa alta. */
+  maiusculas?: boolean;
+  /** Espessura do contorno ASS em pixels relativos ao PlayRes. */
+  contorno?: number;
+  /** Sombra ASS. Zero deixa o estilo mais limpo. */
+  sombra?: number;
 }
 
 export interface EditProfile {

@@ -19,6 +19,10 @@ Registrado em 16/09/2026 para retomada no próximo ciclo.
 ## Melhorias locais — ciclo atual
 
 - [x] Modelos selecionáveis de legenda no render.
+- [x] Oito identidades de legenda por nicho, além do automático e personalizado.
+- [x] Editor visual de fonte, cores, tamanho, posição, contorno, sombra e ritmo de palavras.
+- [x] Prévia instantânea e validação de contraste/área inferior em formato vertical.
+- [x] Modelo personalizado persistente por projeto.
 - [x] A mesma legenda na prova e no render final.
 - [x] Bloqueio de render legendado sem alinhamento.
 - [x] Pré-voo de qualidade de mídia no passo de render.

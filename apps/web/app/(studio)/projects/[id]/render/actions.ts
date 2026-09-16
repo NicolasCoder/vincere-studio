@@ -2,15 +2,55 @@
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
+import { CAPTION_PRESET_IDS, type CaptionMode, type EstiloLegenda } from "@docupulse/core";
 import { MOTION_PRESETS, normalizeMotion } from "@docupulse/render";
 
 const REVIEW_STATUSES = ["PENDING", "APPROVED", "CHANGES_REQUESTED", "REJECTED"] as const;
+const CAPTION_FONTS = ["Segoe UI", "Segoe UI Semibold", "Arial Black", "Georgia", "Verdana", "Trebuchet MS", "Impact"];
+const hex = (value: FormDataEntryValue | null, fallback: string) => /^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value) : fallback;
+const numberIn = (value: FormDataEntryValue | null, fallback: number, min: number, max: number) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.max(min, Math.min(max, parsed)) : fallback;
+};
+
+function captionStyleFromForm(formData: FormData): EstiloLegenda & { mode: CaptionMode } {
+  const fontRaw = String(formData.get("captionFont") ?? "Segoe UI");
+  const positionRaw = String(formData.get("captionPosition") ?? "bottom");
+  const modeRaw = String(formData.get("captionMode") ?? "subtle-bottom");
+  return {
+    fonte: CAPTION_FONTS.includes(fontRaw) ? fontRaw : "Segoe UI",
+    cor: hex(formData.get("captionColor"), "#FFFFFF"),
+    corAtiva: hex(formData.get("captionActiveColor"), "#22D3EE"),
+    corContorno: hex(formData.get("captionOutlineColor"), "#111111"),
+    tamanhoRel: {
+      horizontal: numberIn(formData.get("captionSizeH"), 4.2, 3, 7) / 100,
+      vertical: numberIn(formData.get("captionSizeV"), 4.5, 3, 7) / 100,
+    },
+    posicao: (["top", "center", "bottom"] as const).includes(positionRaw as "top" | "center" | "bottom") ? positionRaw as "top" | "center" | "bottom" : "bottom",
+    palavrasPorLinha: Math.round(numberIn(formData.get("captionWords"), 5, 2, 10)),
+    maiusculas: formData.get("captionUppercase") !== null,
+    contorno: Math.round(numberIn(formData.get("captionOutlineWidth"), 3, 0, 8)),
+    sombra: Math.round(numberIn(formData.get("captionShadow"), 1, 0, 5)),
+    mode: modeRaw === "bold-center-animated" ? "bold-center-animated" : "subtle-bottom",
+  };
+}
 
 export async function renderVideo(projectId: string, formData: FormData) {
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { captionPreset: true, captionStyle: true } });
   const profile = String(formData.get("profile") ?? "");
-  const captionPreset = String(formData.get("captionPreset") ?? "auto");
+  const submittedPreset = formData.get("captionPreset");
+  const presetRaw = submittedPreset == null ? (project?.captionPreset ?? "auto") : String(submittedPreset);
+  const captionPreset = (CAPTION_PRESET_IDS as readonly string[]).includes(presetRaw) ? presetRaw : "auto";
+  const captionStyle = submittedPreset == null ? (project?.captionStyle ?? "{}") : JSON.stringify(captionStyleFromForm(formData));
   const captions = formData.get("captions") !== null;
   const music = formData.get("music") !== null;
+  if (submittedPreset != null) {
+    await prisma.project.update({ where: { id: projectId }, data: { captionPreset, captionStyle } });
+  }
+  if (formData.get("saveCaption") !== null) {
+    revalidatePath(`/projects/${projectId}/render`);
+    redirect(`/projects/${projectId}/render?saved=caption`);
+  }
   // `preview` vem do botão de prova, que usa o mesmo formulário para herdar trilha e legenda —
   // uma prova com opções diferentes das do render final não provaria o render final. O perfil
   // também não é forçado: em projeto vertical, 720p sairia 1280×720 e a prova mentiria sobre o
@@ -25,6 +65,7 @@ export async function renderVideo(projectId: string, formData: FormData) {
         profile: profile || undefined,
         captions,
         captionPreset,
+        captionStyle,
         music,
         ...(preview ? { preview: true } : {}),
       }),
