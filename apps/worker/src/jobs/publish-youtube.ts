@@ -153,6 +153,7 @@ export async function publishYoutube(ctx: JobContext) {
 
   const render = await prisma.renderJob.findFirst({ where: { projectId, outputPath: { not: null } }, orderBy: { startedAt: "desc" } });
   if (!render?.outputPath) throw new Error("Nenhum render concluído ainda — renderize o vídeo no Passo 4 antes de publicar.");
+  if (render.reviewStatus !== "APPROVED") throw new Error("A versão mais recente precisa ser aprovada no Passo 4 antes da publicação.");
 
   // O que sobe é a versão com camada visual, quando ela existe e é mais nova que o master.
   // O master é só o insumo dela; publicar o master depois de aplicar a camada jogaria fora

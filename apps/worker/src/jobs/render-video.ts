@@ -4,13 +4,14 @@ import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { captionPresetFor, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
 import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
-import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
+import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, normalizeMotion, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
 
 // Quantos renders finais (mp4) manter por projeto — os mais antigos são apagados
 // automaticamente depois de um render novo bem-sucedido, pra não acumular espaço em disco
 // à toa (o histórico de "Renders" na UI já mostra o registro no banco, só o arquivo grande some).
 const KEEP_LAST_RENDERS = 3;
+const MAX_RENDER_CACHE_BYTES = 2 * 1024 * 1024 * 1024;
 
 type AlignedWord = { text: string; startMs: number; endMs: number };
 
@@ -66,6 +67,32 @@ async function pruneOldRenders(outDir: string, keptOutFile: string, log: (line: 
   }
 }
 
+/** Mantém o ganho do render incremental sem deixar o cache consumir o disco indefinidamente. */
+async function pruneRenderCache(cacheDir: string | undefined, log: (line: string) => Promise<void>) {
+  if (!cacheDir || !existsSync(cacheDir)) return;
+  try {
+    const entries = await readdir(cacheDir);
+    const files = await Promise.all(entries.filter((name) => name.endsWith(".mp4")).map(async (name) => {
+      const full = path.join(cacheDir, name);
+      const info = await stat(full);
+      return { full, size: info.size, mtime: info.mtimeMs };
+    }));
+    let total = files.reduce((sum, file) => sum + file.size, 0);
+    if (total <= MAX_RENDER_CACHE_BYTES) return;
+    files.sort((a, b) => a.mtime - b.mtime);
+    let removed = 0;
+    for (const file of files) {
+      if (total <= MAX_RENDER_CACHE_BYTES) break;
+      await unlink(file.full).catch(() => {});
+      total -= file.size;
+      removed++;
+    }
+    if (removed) await log(`Cache incremental: ${removed} arquivo(s) antigo(s) removido(s); limite de 2 GB preservado.`);
+  } catch (err) {
+    await log(`Limpeza do cache incremental falhou (não crítico): ${(err as Error).message}`);
+  }
+}
+
 /**
  * RENDER_VIDEO: monta a timeline (voz + cenas + legendas) e renderiza o MP4 final.
  * payload: { projectId, profile?: "YOUTUBE_1080"|"SHORTS_1080x1920"|"WEB_720", captions?: boolean, renderJobId? }
@@ -99,7 +126,8 @@ export async function renderVideo(ctx: JobContext) {
    */
   const prova = ctx.payload.preview === true;
 
-  const renderJob = prova ? null : await prisma.renderJob.create({ data: { projectId, profile: profile.id, startedAt: new Date(), progress: 0 } });
+  const revision = prova ? null : (await prisma.renderJob.count({ where: { projectId } })) + 1;
+  const renderJob = prova ? null : await prisma.renderJob.create({ data: { projectId, profile: profile.id, revision: revision!, reviewStatus: "PENDING", startedAt: new Date(), progress: 0 } });
   const appendLog = async (line: string) => {
     await ctx.log(line);
     if (!renderJob) return;
@@ -119,7 +147,7 @@ export async function renderVideo(ctx: JobContext) {
         file: usable,
         mediaType: (s.mediaType as "image" | "video") ?? "image",
         durationMs: Math.max(1, s.endMs - s.startMs),
-        motion: (JSON.parse(s.motion || "{}").kind as TimelineScene["motion"]) ?? style.motion,
+        motion: normalizeMotion(JSON.parse(s.motion || "{}").kind, normalizeMotion(style.motion)),
         title: b.title, // cartão de título em português (o prompt em inglês fica só para geração)
         mediaDurationMs: s.durationMs,
       };
@@ -150,6 +178,7 @@ export async function renderVideo(ctx: JobContext) {
 
   const outDir = await projectDir(projectId, prova ? "previews" : "renders");
   const workDir = await projectDir(projectId, "renders/work");
+  const cacheDir = prova ? undefined : await projectDir(projectId, "renders/cache");
   const outFile = path.join(outDir, `${prova ? "prova" : profile.id.toLowerCase()}-${Date.now()}.mp4`);
   const captions = wantCaptions ? captionPreset.mode : "none";
   await appendLog(`Legendas: ${wantCaptions ? captionPreset.label : "desativadas"}`);
@@ -169,6 +198,7 @@ export async function renderVideo(ctx: JobContext) {
     profile,
     captions,
     workDir,
+    cacheDir,
     outFile,
     transicoesPct: eixos.transicoes,
     legenda: captionPreset.style,
@@ -198,6 +228,7 @@ export async function renderVideo(ctx: JobContext) {
   // Limpeza automática pós-render: arquivos de trabalho do ffmpeg (sempre) e renders
   // antigos demais (mantendo os mais recentes) — evita acumular gigabytes à toa a cada render.
   await cleanupWorkDir(workDir, appendLog);
+  await pruneRenderCache(cacheDir, appendLog);
   // Provas também acumulam: cada ajuste gera uma, e são dezenas de MB cada.
   await pruneOldRenders(outDir, outFile, appendLog);
 

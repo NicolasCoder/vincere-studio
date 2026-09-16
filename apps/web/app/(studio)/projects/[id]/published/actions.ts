@@ -7,10 +7,16 @@ import { absPath, getAuthenticatedYoutubeClient, getTextProvider, projectDir, re
 import { quadroDe, renderizarThumbnail } from "@docupulse/render";
 import { z } from "zod";
 
+async function requireApprovedRender(projectId: string) {
+  const render = await prisma.renderJob.findFirst({ where: { projectId, outputPath: { not: null } }, orderBy: { startedAt: "desc" }, select: { reviewStatus: true } });
+  if (!render || render.reviewStatus !== "APPROVED") throw new Error("A versão mais recente precisa ser aprovada no Passo 4 antes da publicação.");
+}
+
 /** Enfileira o upload real pro YouTube (job PUBLISH_YOUTUBE) — nasce no privacyStatus
  * escolhido no formulário (padrão: privado, pra sempre dar chance de revisão antes de
  * tornar público). Ação com efeito real e irreversível-ish: só dispara com clique explícito. */
 export async function publishToYoutube(projectId: string, formData: FormData) {
+  await requireApprovedRender(projectId);
   const privacyStatus = String(formData.get("privacyStatus") ?? "private");
   const job = await prisma.job.create({
     data: { type: "PUBLISH_YOUTUBE", projectId, payload: JSON.stringify({ projectId, privacyStatus }) },
@@ -23,6 +29,7 @@ export async function publishToYoutube(projectId: string, formData: FormData) {
  * Assim a publicação acontece mesmo se o Pulse Studio estiver fechado no horário marcado.
  */
 export async function scheduleYoutubePublication(projectId: string, formData: FormData) {
+  await requireApprovedRender(projectId);
   const raw = String(formData.get("publishAt") ?? "").trim();
   const publishAt = new Date(raw);
   if (!raw || Number.isNaN(publishAt.getTime())) throw new Error("Informe uma data e hora válidas para a publicação.");

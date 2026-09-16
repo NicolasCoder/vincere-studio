@@ -4,13 +4,20 @@ import { readFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { CAPTION_PRESETS, FORMATS, type VideoFormat } from "@docupulse/core";
 import { absPath } from "@docupulse/providers";
-import { profileFor } from "@docupulse/render";
+import { MOTION_PRESETS, normalizeMotion, profileFor } from "@docupulse/render";
 import { Badge, Button, Card, Chip, Icon, Progress } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { renderVideo, generateThumbnail } from "./actions";
+import { renderVideo, generateThumbnail, reviewRender, updateSceneReview } from "./actions";
+
+const REVIEW_META: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "error"; icon: string }> = {
+  PENDING: { label: "Aguardando revisão", tone: "neutral", icon: "rate_review" },
+  APPROVED: { label: "Aprovado", tone: "success", icon: "verified" },
+  CHANGES_REQUESTED: { label: "Alterações solicitadas", tone: "warning", icon: "edit_note" },
+  REJECTED: { label: "Rejeitado", tone: "error", icon: "cancel" },
+};
 
 const STAGES = [
   ["Áudio & Ducking", "Concatenação das locuções, trilha com ducking e normalização -14 LUFS", 68],
@@ -28,7 +35,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const current = renders[0];
   const progress = current?.progress ?? 0;
   const defaultProfile = profileFor(project.format);
-  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { include: { voiceTracks: { select: { durationMs: true, provider: true, voiceId: true, fallbackUsed: true, captions: { select: { id: true, words: true } } } }, scenes: { select: { filePath: true, width: true, height: true, mediaType: true } } } } } });
+  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { orderBy: [{ act: "asc" }, { order: "asc" }], include: { voiceTracks: { select: { durationMs: true, provider: true, voiceId: true, fallbackUsed: true, captions: { select: { id: true, words: true } } } }, scenes: { orderBy: { order: "asc" }, select: { id: true, order: true, filePath: true, thumbPath: true, width: true, height: true, mediaType: true, motion: true, reviewStatus: true, reviewNote: true, description: true } } } } } });
   const blocks = script?.blocks ?? [];
   const voiced = blocks.filter((b) => b.voiceTracks.length).length;
   const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
@@ -77,6 +84,8 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
 
   const voiceSet = new Set(blocks.filter((b) => b.voiceTracks[0]).map((b) => `${b.voiceTracks[0].provider}/${b.voiceTracks[0].voiceId}`));
   const mixedVoices = voiceSet.size > 1;
+  const review = current ? (REVIEW_META[current.reviewStatus] ?? REVIEW_META.PENDING) : REVIEW_META.PENDING;
+  const approved = current?.reviewStatus === "APPROVED";
 
   return (
     <>
@@ -186,6 +195,30 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               )}
             </Card>
 
+            {current?.outputPath && (
+              <Card className="p-5" accent={approved ? "dual" : "violet"}>
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-lg font-semibold">
+                      <Icon name="fact_check" className="mr-1 align-middle text-primary-bright" />
+                      Revisão da versão {current.revision}
+                    </h3>
+                    <p className="mt-1 text-xs text-fg-secondary">A decisão fica vinculada a este MP4. Rejeitar não apaga o arquivo e uma nova renderização cria outra versão.</p>
+                  </div>
+                  <Badge tone={review.tone}><Icon name={review.icon} className="mr-1 align-middle text-[14px]" />{review.label}</Badge>
+                </div>
+                <form action={reviewRender.bind(null, project.id, current.id)} className="mt-4 space-y-3">
+                  <textarea name="reviewNote" defaultValue={current.reviewNote ?? ""} rows={3} placeholder="Observações gerais: trecho, timecode e alteração desejada…" className="field w-full px-3 py-2 text-sm" />
+                  <div className="flex flex-wrap gap-2">
+                    <Button type="submit" name="status" value="APPROVED" variant="primary" icon="verified">Aprovar versão</Button>
+                    <Button type="submit" name="status" value="CHANGES_REQUESTED" icon="edit_note">Solicitar alterações</Button>
+                    <Button type="submit" name="status" value="REJECTED" variant="ghost" icon="cancel">Rejeitar</Button>
+                  </div>
+                </form>
+                {current.reviewedAt && <div className="mt-2 font-mono text-[10px] text-muted">Revisado em {new Date(current.reviewedAt).toLocaleString("pt-BR")}</div>}
+              </Card>
+            )}
+
             <Card className="p-5">
               <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="memory" className="mr-1 align-middle text-primary-bright" />Etapas do Render</h3><span className="font-mono text-xs text-fg-secondary">Local · FFmpeg · {current?.finishedAt ? "Concluído" : busy ? "Em execução" : "Aguardando"}</span></div>
               <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
@@ -202,6 +235,59 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               </div>
               {current?.log && <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-line bg-void/70 p-3 font-mono text-[10px] leading-relaxed text-fg-secondary">{current.log}</pre>}
             </Card>
+
+            {current?.outputPath && scenes.length > 0 && (
+              <Card className="p-5">
+                <div className="flex flex-wrap items-start justify-between gap-3">
+                  <div>
+                    <h3 className="font-display text-lg font-semibold"><Icon name="movie_edit" className="mr-1 align-middle text-primary-bright" />Editor e revisão por cena</h3>
+                    <p className="mt-1 text-xs text-fg-secondary">Ajuste o movimento e registre a decisão de cada trecho. As mudanças entram na próxima versão; cenas e atos sem alteração são reaproveitados pelo cache incremental.</p>
+                  </div>
+                  <form action={renderVideo.bind(null, project.id)}>
+                    <input type="hidden" name="profile" value={current.profile} />
+                    <input type="hidden" name="music" value="1" />
+                    {format.captions.required && <input type="hidden" name="captions" value="1" />}
+                    <Button type="submit" variant="primary" icon="refresh" disabled={busy}>Gerar nova versão</Button>
+                  </form>
+                </div>
+                <div className="mt-4 space-y-4">
+                  {blocks.map((block) => (
+                    <div key={block.id} className="rounded border border-line bg-void/30 p-3">
+                      <div className="mb-3 flex items-center gap-2"><Badge tone="violet">Ato {block.act}</Badge><span className="text-xs font-medium">{block.title}</span></div>
+                      <div className="space-y-2">
+                        {block.scenes.map((scene) => {
+                          let motion = "static";
+                          try { motion = normalizeMotion(JSON.parse(scene.motion || "{}").kind, "static"); } catch {}
+                          const sceneReview = REVIEW_META[scene.reviewStatus] ?? REVIEW_META.PENDING;
+                          return (
+                            <form key={scene.id} action={updateSceneReview.bind(null, project.id, scene.id)} className="grid grid-cols-1 items-end gap-2 rounded border border-line/70 bg-surface-low/50 p-3 md:grid-cols-[minmax(9rem,1fr)_minmax(10rem,1.2fr)_minmax(10rem,1fr)_auto]">
+                              <div className="min-w-0">
+                                <div className="flex items-center gap-2"><span className="font-mono text-[10px] text-muted">Cena {scene.order}</span><Badge tone={sceneReview.tone}>{sceneReview.label}</Badge></div>
+                                <div className="mt-1 truncate text-xs text-fg-secondary" title={scene.description ?? scene.filePath ?? ""}>{scene.description || scene.filePath || "Cartão de título"}</div>
+                              </div>
+                              <label className="text-[10px] text-muted">Motion
+                                <select name="motion" defaultValue={motion} className="field mt-1 w-full px-2 py-1.5 text-xs">
+                                  {MOTION_PRESETS.map((preset) => <option key={preset.id} value={preset.id} className="bg-surface-low">{preset.label} — {preset.description}</option>)}
+                                </select>
+                              </label>
+                              <label className="text-[10px] text-muted">Decisão e observação
+                                <div className="mt-1 flex gap-1">
+                                  <select name="reviewStatus" defaultValue={scene.reviewStatus} className="field w-36 px-2 py-1.5 text-xs">
+                                    <option value="PENDING">Pendente</option><option value="APPROVED">Aprovar</option><option value="CHANGES_REQUESTED">Alterar</option><option value="REJECTED">Rejeitar</option>
+                                  </select>
+                                  <input name="reviewNote" defaultValue={scene.reviewNote ?? ""} placeholder="Nota ou timecode" className="field min-w-0 flex-1 px-2 py-1.5 text-xs" />
+                                </div>
+                              </label>
+                              <Button type="submit" size="sm" icon="save">Salvar cena</Button>
+                            </form>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </Card>
+            )}
           </div>
 
           <aside className="space-y-4">
@@ -211,8 +297,8 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
                 {renders.length === 0 && <div className="text-xs text-muted">Nenhum render ainda.</div>}
                 {renders.map((r) => (
                   <div key={r.id} className="flex items-center gap-2 rounded border border-line bg-void/40 p-2 text-xs">
-                    <Icon name={r.outputPath ? "check_circle" : "sync"} className={`text-[16px] ${r.outputPath ? "text-success" : "text-primary-bright"}`} />
-                    <div className="flex-1"><div className="font-mono">{r.profile}</div><div className="text-[10px] text-muted">{r.startedAt ? new Date(r.startedAt).toLocaleString("pt-BR") : ""}</div></div>
+                    <Icon name={r.outputPath ? (REVIEW_META[r.reviewStatus]?.icon ?? "check_circle") : "sync"} className={`text-[16px] ${r.reviewStatus === "APPROVED" ? "text-success" : r.reviewStatus === "REJECTED" ? "text-error" : "text-primary-bright"}`} />
+                    <div className="flex-1"><div className="font-mono">v{r.revision} · {r.profile}</div><div className="text-[10px] text-muted">{r.outputPath ? (REVIEW_META[r.reviewStatus]?.label ?? "Aguardando revisão") : `${r.progress}%`} · {r.startedAt ? new Date(r.startedAt).toLocaleString("pt-BR") : ""}</div></div>
                     {r.outputPath ? <a href={`/api/media/${r.outputPath}?download=1`} className="text-primary-bright"><Icon name="download" className="text-[16px]" /></a> : <span className="font-mono text-[10px]">{r.progress}%</span>}
                   </div>
                 ))}
@@ -266,7 +352,7 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
         <Card className="mt-6 flex items-center gap-4 p-4">
           <Icon name="rocket_launch" className="text-primary-bright" />
           <div className="flex-1 text-sm"><div className="font-semibold">Render local via FFmpeg</div><div className="text-xs text-fg-secondary">Ao terminar, o MP4 fica em storage/projects/…/renders e o Passo 5 (publicação) usa o último render concluído.</div></div>
-          <form action={advanceStage.bind(null, project.id)}><Button type="submit" variant="primary" iconRight="arrow_forward" disabled={busy || !current?.outputPath}>Avançar para Publicação</Button></form>
+          <form action={advanceStage.bind(null, project.id)}><Button type="submit" variant="primary" iconRight="arrow_forward" disabled={busy || !current?.outputPath || !approved} title={current?.outputPath && !approved ? "Aprove a versão atual antes de publicar" : ""}>Avançar para Publicação</Button></form>
         </Card>
       </main>
     </>

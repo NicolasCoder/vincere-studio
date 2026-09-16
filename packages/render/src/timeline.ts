@@ -4,7 +4,7 @@ export interface TimelineScene {
   file: string | null; // caminho absoluto ou null (cartão de título)
   mediaType: "image" | "video";
   durationMs: number;
-  motion: "slow-zoom-in" | "slow-pan" | "gentle-float" | "static";
+  motion: MotionKind;
   title: string; // texto do cartão quando não há mídia
   /** Segundo inicial ao usar um vídeo mais longo que a cena (evita começar sempre do zero) */
   startOffsetSec?: number;
@@ -14,7 +14,29 @@ export interface TimelineScene {
   borrowed?: boolean;
 }
 
-const MOTIONS: TimelineScene["motion"][] = ["slow-zoom-in", "slow-pan", "gentle-float"];
+export const MOTION_PRESETS = [
+  { id: "static", label: "Estático", description: "Sem movimento de câmera" },
+  { id: "slow-zoom-in", label: "Zoom suave", description: "Aproximação cinematográfica" },
+  { id: "slow-zoom-out", label: "Zoom de abertura", description: "Revela gradualmente o quadro" },
+  { id: "pan-right", label: "Pan para direita", description: "Varredura horizontal suave" },
+  { id: "pan-left", label: "Pan para esquerda", description: "Varredura horizontal inversa" },
+  { id: "pan-up", label: "Pan para cima", description: "Revela o quadro de baixo para cima" },
+  { id: "pan-down", label: "Pan para baixo", description: "Revela o quadro de cima para baixo" },
+  { id: "dolly-in", label: "Dolly in", description: "Aproximação mais intensa para impacto" },
+  { id: "gentle-float", label: "Flutuação suave", description: "Movimento orgânico discreto" },
+  { id: "parallax-soft", label: "Parallax suave", description: "Profundidade simulada com movimento diagonal" },
+  { id: "handheld-soft", label: "Handheld leve", description: "Oscilação documental controlada" },
+  { id: "punch-zoom", label: "Punch zoom", description: "Entrada rápida para momentos de impacto" },
+] as const;
+export type MotionKind = (typeof MOTION_PRESETS)[number]["id"];
+
+/** Compatibilidade com cenas antigas que usavam o nome genérico slow-pan. */
+export function normalizeMotion(value: unknown, fallback: MotionKind = "slow-zoom-in"): MotionKind {
+  if (value === "slow-pan") return "pan-right";
+  return MOTION_PRESETS.some((preset) => preset.id === value) ? (value as MotionKind) : fallback;
+}
+
+const MOTIONS: MotionKind[] = ["slow-zoom-in", "slow-zoom-out", "pan-right", "pan-left", "gentle-float", "parallax-soft"];
 
 /**
  * Cenas sem mídia herdam a mídia da cena mais próxima do mesmo ato (com outro movimento e outro

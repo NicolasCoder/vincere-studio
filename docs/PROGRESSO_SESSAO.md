@@ -387,3 +387,14 @@ Unificar é a correção estrutural mais valiosa pendente.
 - Tela de publicação ganhou calendário das próximas postagens, reagendamento e cancelamento. O
   cancelamento mantém o vídeo privado no YouTube, sem apagar o upload.
 - `pnpm typecheck` aprovado nos 7 pacotes após banco e Prisma regenerados.
+
+### Continuação — revisão, versões e motion
+
+- Cada render final agora nasce como uma versão numerada e aceita aprovação, rejeição ou pedido de alterações com observação.
+- O histórico mostra versão e decisão; rejeitar preserva o arquivo e nunca sobrescreve o master anterior.
+- Publicação e agendamento no YouTube exigem aprovação explícita da versão mais recente.
+- O editor por cena permite aprovar/rejeitar, registrar nota e escolher entre 12 presets de motion.
+- Pans direcionais, zooms, dolly, parallax suave, handheld e punch zoom funcionam em imagens e B-roll de vídeo; `slow-pan` legado continua compatível.
+- O novo render reaproveita cenas e atos inalterados. O cache incremental tem teto de 2 GB para proteger o disco.
+- Migração `20260916065000_add_render_review_and_scene_motion` aplicada e histórico existente renumerado por projeto.
+- `pnpm typecheck`: 7/7 pacotes aprovados. `pnpm build`: build de produção aprovado. As telas de render e publicação responderam HTTP 200 e exibiram revisão, editor por cena, motions e bloqueio de publicação sem aprovação.

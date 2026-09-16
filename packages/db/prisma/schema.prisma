@@ -152,6 +152,8 @@ model Scene {
   width         Int?
   height        Int?
   durationMs    Int?
+  reviewStatus  String      @default("PENDING") // PENDING | APPROVED | CHANGES_REQUESTED | REJECTED
+  reviewNote    String?
 }
 
 /// Identidade de voz de um canal: provedor principal + equivalentes de reserva.
@@ -180,6 +182,10 @@ model RenderJob {
   outputPath String?
   startedAt  DateTime?
   finishedAt DateTime?
+  revision     Int       @default(1)
+  reviewStatus String    @default("PENDING") // PENDING | APPROVED | CHANGES_REQUESTED | REJECTED
+  reviewNote   String?
+  reviewedAt   DateTime?
 }
 
 model Publication {

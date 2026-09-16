@@ -1,5 +1,6 @@
 import { existsSync } from "node:fs";
-import { mkdir, writeFile } from "node:fs/promises";
+import { copyFile, mkdir, stat, writeFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import path from "node:path";
 import { FFMPEG, run } from "@docupulse/providers";
 import type { RenderProfile } from "./profiles";
@@ -23,6 +24,8 @@ export interface RenderOptions {
   transicoesPct?: number;
   /** Tipografia e cor da legenda queimada. Sem valor, usa a do perfil padrão. */
   legenda?: EstiloLegenda;
+  /** Cache persistente: reaproveita cenas/atos que não mudaram entre revisões. */
+  cacheDir?: string;
 }
 
 /** Quebra texto em linhas de até N caracteres (drawtext não quebra sozinho). */
@@ -51,13 +54,69 @@ function kenBurns(motion: TimelineScene["motion"], W: number, H: number, fps: nu
   switch (motion) {
     case "slow-zoom-in":
       return `zoompan=z='1+0.10*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
-    case "slow-pan":
+    case "slow-zoom-out":
+      return `zoompan=z='1.12-0.12*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "pan-right":
       return `zoompan=z='${z}':x='(iw-iw/zoom)*on/${frames}':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "pan-left":
+      return `zoompan=z='${z}':x='(iw-iw/zoom)*(1-on/${frames})':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "pan-up":
+      return `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "pan-down":
+      return `zoompan=z='${z}':x='iw/2-(iw/zoom/2)':y='(ih-ih/zoom)*on/${frames}':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "dolly-in":
+      return `zoompan=z='1+0.18*on/${frames}':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
     case "gentle-float":
       return `zoompan=z='1.06+0.03*sin(on/${Math.max(1, frames / 3)})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)+(ih*0.01)*sin(on/${Math.max(1, frames / 2)})':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "parallax-soft":
+      return `zoompan=z='1.04+0.08*on/${frames}':x='(iw-iw/zoom)*on/${frames}':y='(ih-ih/zoom)*(1-on/${frames})':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "handheld-soft":
+      return `zoompan=z='1.08':x='iw/2-(iw/zoom/2)+(iw*0.004)*sin(on/3)':y='ih/2-(ih/zoom/2)+(ih*0.004)*cos(on/4)':d=${frames}:s=${W}x${H}:fps=${fps}`;
+    case "punch-zoom":
+      return `zoompan=z='min(1.18,1+0.18*on/${Math.max(2, Math.round(frames * 0.28))})':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${frames}:s=${W}x${H}:fps=${fps}`;
     default:
       return `fps=${fps}`;
   }
+}
+
+/** Movimento em B-roll de vídeo. `d=1` mantém um frame de saída por frame de entrada. */
+function videoMotion(motion: TimelineScene["motion"], W: number, H: number, fps: number, durationMs: number) {
+  if (motion === "static") return `${cover(W, H)},fps=${fps}`;
+  const frames = Math.max(2, Math.round((durationMs / 1000) * fps));
+  const zoom = motion === "punch-zoom"
+    ? `min(1.18,1+0.18*on/${Math.max(2, Math.round(frames * 0.28))})`
+    : motion === "dolly-in"
+      ? `1+0.16*on/${frames}`
+      : motion === "slow-zoom-out"
+        ? `1.14-0.14*on/${frames}`
+        : `1+0.08*on/${frames}`;
+  let x = "iw/2-(iw/zoom/2)";
+  let y = "ih/2-(ih/zoom/2)";
+  if (motion === "pan-right") x = `(iw-iw/zoom)*on/${frames}`;
+  if (motion === "pan-left") x = `(iw-iw/zoom)*(1-on/${frames})`;
+  if (motion === "pan-up") y = `(ih-ih/zoom)*(1-on/${frames})`;
+  if (motion === "pan-down") y = `(ih-ih/zoom)*on/${frames}`;
+  if (motion === "parallax-soft") {
+    x = `(iw-iw/zoom)*on/${frames}`;
+    y = `(ih-ih/zoom)*(1-on/${frames})`;
+  }
+  if (motion === "gentle-float") {
+    x = `iw/2-(iw/zoom/2)+(iw*0.002)*sin(on/8)`;
+    y = `ih/2-(ih/zoom/2)+(ih*0.003)*sin(on/11)`;
+  }
+  if (motion === "handheld-soft") {
+    x = `iw/2-(iw/zoom/2)+(iw*0.003)*sin(on/3)`;
+    y = `ih/2-(ih/zoom/2)+(ih*0.003)*cos(on/4)`;
+  }
+  return `${cover(Math.round(W * 1.2), Math.round(H * 1.2))},zoompan=z='${zoom}':x='${x}':y='${y}':d=1:s=${W}x${H}:fps=${fps},format=yuv420p`;
+}
+
+const cacheKey = (value: unknown) => createHash("sha256").update(JSON.stringify(value)).digest("hex").slice(0, 24);
+
+async function mediaFingerprint(file: string | null) {
+  if (!file || !existsSync(file)) return null;
+  const info = await stat(file);
+  return { file, size: info.size, mtimeMs: Math.round(info.mtimeMs) };
 }
 
 /**
@@ -115,7 +174,8 @@ async function renderSceneClip(s: TimelineScene, extraMs: number, o: RenderOptio
   const ex = expo ? `,${expo}` : "";
   if (s.file && existsSync(s.file) && s.mediaType === "video") {
     const seek = s.startOffsetSec && s.startOffsetSec > 0 ? ["-ss", s.startOffsetSec.toFixed(2)] : [];
-    await run(FFMPEG, [...common, ...seek, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${cover(W, H)}${ex},fps=${fps}`, ...enc, out]);
+    const filter = videoMotion(s.motion, W, H, fps, s.durationMs + extraMs);
+    await run(FFMPEG, [...common, ...seek, "-stream_loop", "-1", "-i", s.file, "-t", dur.toFixed(3), "-vf", `${filter}${ex}`, ...enc, out]);
     return;
   }
   if (s.file && existsSync(s.file)) {
@@ -190,9 +250,12 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
   const transitionMs = o.transitionMs ?? 400;
   const fontFile = o.fontFile || winFont();
   await mkdir(o.workDir, { recursive: true });
+  if (o.cacheDir) await mkdir(o.cacheDir, { recursive: true });
   const log = async (l: string) => o.onLog?.(l);
   const totalScenes = t.acts.reduce((s, a) => s + a.scenes.length, 0);
   let done = 0;
+  let sceneCacheHits = 0;
+  let actCacheHits = 0;
 
   // 0) Piso de exposição: mede cada cena antes de renderizar qualquer coisa, porque o custo é de
   // três seeks por cena e o prejuízo de descobrir depois é um render inteiro de ~11 minutos.
@@ -221,22 +284,41 @@ export async function renderTimeline(t: Timeline, o: RenderOptions) {
   const actFiles: string[] = [];
   for (const a of t.acts) {
     const clips: string[] = [];
+    const clipKeys: string[] = [];
     const durs: number[] = [];
     for (let i = 0; i < a.scenes.length; i++) {
       const s = a.scenes[i];
       const isLast = i === a.scenes.length - 1;
       const out = path.join(o.workDir, `a${String(a.act).padStart(2, "0")}-s${String(i + 1).padStart(2, "0")}.mp4`);
-      await renderSceneClip(s, isLast ? 0 : transitionMs, o, out, fontFile, expoPorCena.get(s.id));
-      clips.push(out);
+      const key = cacheKey({ s, extraMs: isLast ? 0 : transitionMs, profile, expo: expoPorCena.get(s.id), media: await mediaFingerprint(s.file) });
+      const cached = o.cacheDir ? path.join(o.cacheDir, `scene-${key}.mp4`) : null;
+      if (cached && existsSync(cached)) {
+        clips.push(cached);
+        sceneCacheHits++;
+      } else {
+        await renderSceneClip(s, isLast ? 0 : transitionMs, o, out, fontFile, expoPorCena.get(s.id));
+        if (cached) await copyFile(out, cached);
+        clips.push(out);
+      }
+      clipKeys.push(key);
       durs.push(s.durationMs);
       done++;
       await o.onProgress?.({ percent: 5 + (done / totalScenes) * 60, message: `Ato ${a.act}: cena ${i + 1}/${a.scenes.length}` });
     }
     const actOut = path.join(o.workDir, `act-${String(a.act).padStart(2, "0")}.mp4`);
-    await renderAct(clips, durs, transitionMs, profile.fps, actOut, a.act, o.transicoesPct ?? 20);
-    actFiles.push(actOut);
-    await log(`Ato ${a.act}: ${a.scenes.length} cenas → ${path.basename(actOut)}`);
+    const actKey = cacheKey({ clipKeys, durs, transitionMs, fps: profile.fps, act: a.act, transitions: o.transicoesPct ?? 20 });
+    const cachedAct = o.cacheDir ? path.join(o.cacheDir, `act-${actKey}.mp4`) : null;
+    if (cachedAct && existsSync(cachedAct)) {
+      actFiles.push(cachedAct);
+      actCacheHits++;
+    } else {
+      await renderAct(clips, durs, transitionMs, profile.fps, actOut, a.act, o.transicoesPct ?? 20);
+      if (cachedAct) await copyFile(actOut, cachedAct);
+      actFiles.push(actOut);
+    }
+    await log(`Ato ${a.act}: ${a.scenes.length} cenas → ${cachedAct && existsSync(cachedAct) ? path.basename(cachedAct) : path.basename(actOut)}`);
   }
+  if (o.cacheDir) await log(`Render incremental: ${sceneCacheHits}/${totalScenes} cena(s) e ${actCacheHits}/${t.acts.length} ato(s) reaproveitados.`);
 
   // 3) Vídeo completo (concat de atos) + trilha de áudio (vozes com gap)
   await o.onProgress?.({ percent: 68, message: "Montando vídeo e áudio" });

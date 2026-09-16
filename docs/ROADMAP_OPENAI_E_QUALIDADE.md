@@ -42,8 +42,12 @@ Registrado em 16/09/2026 para retomada no próximo ciclo.
 - [x] Verificação automática de quadros pretos e silêncio excessivo no master.
 - [ ] Verificação visual automatizada da área segura das legendas.
 - [x] Calendário de postagens na publicação, com reagendamento e cancelamento.
-- [ ] Mais movimento em stills (parallax/câmera dirigida) e efeitos sonoros sincronizados.
+- [x] Mais movimento em stills e B-roll: pans direcionais, zooms, dolly, parallax suave, handheld e punch zoom.
+- [ ] Biblioteca de efeitos sonoros sincronizados por evento/palavra.
 - [x] Pontuação de retenção e checklist editorial antes do render final.
+- [x] Aprovação, rejeição e solicitação de alterações por versão renderizada.
+- [x] Revisão por cena com observação e seleção de motion.
+- [x] Versionamento e render incremental com cache limitado a 2 GB.
 
 ## Regra de implementação
 

@@ -22,7 +22,8 @@ export default async function PublishedPage({ params, searchParams }: { params: 
   const stats = parseJson<{ views?: number; ctr?: number; avgViewDuration?: number }>(pub?.stats, {});
   const tags = parseJson<string[]>(pub?.tags, []);
   const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
-  const canPublish = !!pub && !!master?.outputPath;
+  const renderApproved = master?.reviewStatus === "APPROVED";
+  const canPublish = !!pub && !!master?.outputPath && renderApproved;
   const isScheduled = !!pub?.scheduledAt && !pub.publishedAt;
   const isPrivateUpload = !!pub?.videoId && pub.privacyStatus === "private" && !isScheduled;
   const isPublished = !!pub?.publishedAt && pub.privacyStatus !== "private";
@@ -98,6 +99,7 @@ export default async function PublishedPage({ params, searchParams }: { params: 
         </div>
 
         {job && <div className="mt-4"><JobWatcher jobId={job} label="Publicando no YouTube" /></div>}
+        {master?.outputPath && !renderApproved && <Card className="mt-4 p-4 text-sm text-warning"><Icon name="rate_review" className="mr-1 align-middle" />A versão atual ainda não foi aprovada. Revise o vídeo no <Link href={`/projects/${project.id}/render`} className="underline">Passo 4</Link> antes de publicar ou programar.</Card>}
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[1fr_22rem]">
           <div className="space-y-4">
