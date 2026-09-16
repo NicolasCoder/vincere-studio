@@ -5,7 +5,7 @@ import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
 import { FORMATS, sceneFileStem, type VideoFormat } from "@docupulse/core";
-import { downloadTo, getStockProviders, probeDurationMs, projectDir, relPath, type StockAsset } from "@docupulse/providers";
+import { downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@docupulse/providers";
 
 const REROLL_STOPWORDS = new Set(["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "with", "from", "by", "is", "are", "this", "that", "scene", "shot", "footage", "video", "image", "close", "up", "wide", "view"]);
 function rerollTerms(keywords: string | null, description: string | null): string[] {
@@ -149,7 +149,8 @@ export async function uploadSceneMedia(projectId: string, sceneId: string, formD
   const dest = path.join(dir, `${sceneFileStem(scene.block.act, scene.order)}${ext}`);
   const buf = Buffer.from(await file.arrayBuffer());
   await writeFile(dest, buf);
-  const durationMs = isVideo ? await probeDurationMs(dest).catch(() => null) : null;
+  const info = await probeMediaInfo(dest).catch(() => ({ durationMs: null, width: null, height: null }));
+  const durationMs = isVideo ? info.durationMs : null;
   await prisma.scene.update({
     where: { id: sceneId },
     data: {
@@ -159,8 +160,10 @@ export async function uploadSceneMedia(projectId: string, sceneId: string, formD
       provider: "FLOW_MANUAL",
       providerRef: null,
       durationMs,
+      width: info.width,
+      height: info.height,
       status: "READY",
-      license: "Gerado pelo usuário (Flow/Gemini)",
+      license: "Gerado pelo usuário (GPT/Flow/Gemini)",
     },
   });
   revalidatePath(`/projects/${projectId}/media`);

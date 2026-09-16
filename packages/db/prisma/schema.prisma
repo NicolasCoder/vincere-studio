@@ -193,6 +193,8 @@ model Publication {
   tags          String    @default("[]")
   chapters      String    @default("[]")
   thumbnailPath String?
+  privacyStatus String?
+  scheduledAt   DateTime?
   publishedAt   DateTime?
   stats         String    @default("{}") // JSON {views, ctr, avgViewDuration}
 }

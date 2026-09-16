@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
-import { FORMATS, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe} from "@docupulse/core";
+import { captionPresetFor, getVisualStyle, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
 import { absPath, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
 import type { JobContext } from "../queue";
@@ -11,6 +11,25 @@ import type { JobContext } from "../queue";
 // automaticamente depois de um render novo bem-sucedido, pra não acumular espaço em disco
 // à toa (o histórico de "Renders" na UI já mostra o registro no banco, só o arquivo grande some).
 const KEEP_LAST_RENDERS = 3;
+
+type AlignedWord = { text: string; startMs: number; endMs: number };
+
+/** Legenda vazia ou corrompida deve falhar no pré-voo, não durante o FFmpeg. */
+function parseAlignedWords(raw?: string | null): AlignedWord[] {
+  try {
+    const parsed = JSON.parse(raw ?? "[]") as unknown;
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((word): word is AlignedWord => {
+      if (!word || typeof word !== "object") return false;
+      const item = word as Partial<AlignedWord>;
+      return typeof item.text === "string" && item.text.trim().length > 0
+        && Number.isFinite(item.startMs) && Number.isFinite(item.endMs)
+        && Number(item.endMs) > Number(item.startMs);
+    });
+  } catch {
+    return [];
+  }
+}
 
 async function cleanupWorkDir(workDir: string, log: (line: string) => Promise<void>) {
   // renders/work/ guarda só arquivos intermediários do ffmpeg (mix.wav, video-all.mp4, act-*.mp4 etc.)
@@ -55,15 +74,21 @@ export async function renderVideo(ctx: JobContext) {
   const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
   const project = await prisma.project.findUnique({ where: { id: projectId } });
   if (!project) throw new Error("Projeto não encontrado");
-  const format = FORMATS[project.format as VideoFormat];
   const style = getVisualStyle(project.visualStyle);
   const profile = profileFor(project.format, ctx.payload.profile as string | undefined);
   const wantCaptions = ctx.payload.captions !== false;
+  const captionPreset = captionPresetFor(ctx.payload.captionPreset, project.format as VideoFormat, legendaDe(null));
 
   const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: { include: { captions: true } }, scenes: { orderBy: { order: "asc" } } } } } });
   if (!script) throw new Error("Sem roteiro");
   const missingVoice = script.blocks.filter((b) => !b.voiceTracks.length);
   if (missingVoice.length) throw new Error(`Sintetize a locução dos atos ${missingVoice.map((b) => b.act).join(", ")} antes de renderizar.`);
+  const missingCaptions = script.blocks.filter((b) => parseAlignedWords(b.voiceTracks[0]?.captions[0]?.words).length === 0);
+  if (wantCaptions && missingCaptions.length) {
+    throw new Error(
+      `Alinhe as legendas dos atos ${missingCaptions.map((b) => b.act).join(", ")} no Passo 3 antes de renderizar com legendas.`,
+    );
+  }
 
   /**
    * Render de prova: janelas curtas de atos diferentes, pelo mesmo caminho do render final.
@@ -81,18 +106,24 @@ export async function renderVideo(ctx: JobContext) {
     await prisma.$executeRaw`UPDATE "RenderJob" SET log = log || ${line + "\n"} WHERE id = ${renderJob.id}`;
   };
 
+  let brokenMediaRefs = 0;
   const acts = script.blocks.map((b) => {
     const t = b.voiceTracks[0];
-    const words = JSON.parse(t.captions[0]?.words ?? "[]") as { text: string; startMs: number; endMs: number }[];
-    const scenes: TimelineScene[] = b.scenes.map((s) => ({
-      id: s.id,
-      file: s.filePath ? absPath(s.filePath) : null,
-      mediaType: (s.mediaType as "image" | "video") ?? "image",
-      durationMs: Math.max(1, s.endMs - s.startMs),
-      motion: (JSON.parse(s.motion || "{}").kind as TimelineScene["motion"]) ?? style.motion,
-      title: b.title, // cartão de título em português (o prompt em inglês fica só para geração)
-      mediaDurationMs: s.durationMs,
-    }));
+    const words = parseAlignedWords(t.captions[0]?.words);
+    const scenes: TimelineScene[] = b.scenes.map((s) => {
+      const resolved = s.filePath ? absPath(s.filePath) : null;
+      const usable = resolved && existsSync(resolved) ? resolved : null;
+      if (s.filePath && !usable) brokenMediaRefs++;
+      return {
+        id: s.id,
+        file: usable,
+        mediaType: (s.mediaType as "image" | "video") ?? "image",
+        durationMs: Math.max(1, s.endMs - s.startMs),
+        motion: (JSON.parse(s.motion || "{}").kind as TimelineScene["motion"]) ?? style.motion,
+        title: b.title, // cartão de título em português (o prompt em inglês fica só para geração)
+        mediaDurationMs: s.durationMs,
+      };
+    });
     const fitted = fitScenesToVoice(scenes.length ? scenes : [{ id: `card-${b.id}`, file: null, mediaType: "image" as const, durationMs: t.durationMs, motion: "static" as const, title: b.title }], t.durationMs);
     return { act: b.act, title: b.title, voiceFile: absPath(t.filePath), voiceDurationMs: t.durationMs, scenes: randomizeVideoOffsets(borrowNeighborMedia(fitted)), words };
   });
@@ -115,11 +146,13 @@ export async function renderVideo(ctx: JobContext) {
   const missing = acts.reduce((s, a) => s + a.scenes.filter((x) => !x.file).length, 0);
   const borrowed = acts.reduce((s, a) => s + a.scenes.filter((x) => x.borrowed).length, 0);
   await appendLog(`Timeline: ${acts.length} atos · ${acts.reduce((s, a) => s + a.scenes.length, 0)} cenas (${borrowed} herdadas da vizinha, ${missing} cartão) · perfil ${profile.label} · trilha ${musicFile ? path.basename(musicFile) : "nenhuma"}`);
+  if (brokenMediaRefs) await appendLog(`Pré-voo: ${brokenMediaRefs} arquivo(s) de mídia não existem mais; aplicado fallback seguro.`);
 
   const outDir = await projectDir(projectId, prova ? "previews" : "renders");
   const workDir = await projectDir(projectId, "renders/work");
   const outFile = path.join(outDir, `${prova ? "prova" : profile.id.toLowerCase()}-${Date.now()}.mp4`);
-  const captions = wantCaptions ? format.captions.style : "none";
+  const captions = wantCaptions ? captionPreset.mode : "none";
+  await appendLog(`Legendas: ${wantCaptions ? captionPreset.label : "desativadas"}`);
 
   if (prova) {
     const janelaMs = Number(ctx.payload.janelaMs ?? 7000);
@@ -138,7 +171,7 @@ export async function renderVideo(ctx: JobContext) {
     workDir,
     outFile,
     transicoesPct: eixos.transicoes,
-    legenda: legendaDe(null),
+    legenda: captionPreset.style,
     onLog: appendLog,
     onProgress: async (p) => {
       await ctx.progress(p);

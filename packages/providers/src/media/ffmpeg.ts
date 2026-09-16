@@ -27,6 +27,28 @@ export async function probeDurationMs(file: string): Promise<number> {
   return Math.round(parseFloat(out.trim()) * 1000) || 0;
 }
 
+/** Metadados técnicos usados no pré-voo de imagens e vídeos importados. */
+export async function probeMediaInfo(file: string): Promise<{ durationMs: number | null; width: number | null; height: number | null }> {
+  const out = await run(FFPROBE, [
+    "-v", "error",
+    "-select_streams", "v:0",
+    "-show_entries", "stream=width,height:format=duration",
+    "-of", "json",
+    file,
+  ]);
+  const parsed = JSON.parse(out) as {
+    streams?: { width?: number; height?: number }[];
+    format?: { duration?: string | number };
+  };
+  const stream = parsed.streams?.[0];
+  const duration = Number(parsed.format?.duration);
+  return {
+    durationMs: Number.isFinite(duration) && duration > 0 ? Math.round(duration * 1000) : null,
+    width: Number.isFinite(stream?.width) && Number(stream?.width) > 0 ? Number(stream?.width) : null,
+    height: Number.isFinite(stream?.height) && Number(stream?.height) > 0 ? Number(stream?.height) : null,
+  };
+}
+
 /** Grava PCM 16-bit mono como WAV. */
 export async function pcmToWav(pcm: Buffer, file: string, sampleRate = 24000) {
   const header = Buffer.alloc(44);

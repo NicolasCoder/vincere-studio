@@ -4,6 +4,7 @@ import { prisma } from "@docupulse/db";
 
 export async function renderVideo(projectId: string, formData: FormData) {
   const profile = String(formData.get("profile") ?? "");
+  const captionPreset = String(formData.get("captionPreset") ?? "auto");
   const captions = formData.get("captions") !== null;
   const music = formData.get("music") !== null;
   // `preview` vem do botão de prova, que usa o mesmo formulário para herdar trilha e legenda —
@@ -19,6 +20,7 @@ export async function renderVideo(projectId: string, formData: FormData) {
         projectId,
         profile: profile || undefined,
         captions,
+        captionPreset,
         music,
         ...(preview ? { preview: true } : {}),
       }),

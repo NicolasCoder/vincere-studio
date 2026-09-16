@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { prisma } from "@docupulse/db";
-import { FORMATS, type VideoFormat } from "@docupulse/core";
+import { CAPTION_PRESETS, FORMATS, type VideoFormat } from "@docupulse/core";
 import { profileFor } from "@docupulse/render";
 import { Badge, Button, Card, Chip, Icon, Progress } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
@@ -25,13 +25,29 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const current = renders[0];
   const progress = current?.progress ?? 0;
   const defaultProfile = profileFor(project.format);
-  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { include: { voiceTracks: { select: { durationMs: true, provider: true, voiceId: true, fallbackUsed: true, captions: { select: { id: true } } } }, scenes: { select: { filePath: true } } } } } });
+  const script = await prisma.script.findFirst({ where: { projectId: id }, orderBy: { version: "desc" }, include: { blocks: { include: { voiceTracks: { select: { durationMs: true, provider: true, voiceId: true, fallbackUsed: true, captions: { select: { id: true, words: true } } } }, scenes: { select: { filePath: true, width: true, height: true, mediaType: true } } } } } });
   const blocks = script?.blocks ?? [];
   const voiced = blocks.filter((b) => b.voiceTracks.length).length;
   const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
   const scenes = blocks.flatMap((b) => b.scenes);
   const ready = scenes.filter((s) => s.filePath).length;
-  const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
+  const captioned = blocks.filter((b) => {
+    try {
+      const words = JSON.parse(b.voiceTracks[0]?.captions[0]?.words ?? "[]");
+      return Array.isArray(words) && words.length > 0;
+    } catch {
+      return false;
+    }
+  }).length;
+  const mediaCounts = new Map<string, number>();
+  for (const scene of scenes) if (scene.filePath) mediaCounts.set(scene.filePath, (mediaCounts.get(scene.filePath) ?? 0) + 1);
+  const repeatedMedia = [...mediaCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  const lowResolution = scenes.filter((scene) => {
+    if (!scene.filePath || !scene.width || !scene.height) return false;
+    const requiredScale = Math.max(defaultProfile.width / scene.width, defaultProfile.height / scene.height);
+    return requiredScale > 1.35;
+  }).length;
+  const unknownResolution = scenes.filter((scene) => scene.filePath && (!scene.width || !scene.height)).length;
   const canRender = voiced === blocks.length && blocks.length > 0;
   // A prova não vira RenderJob (senão viraria o master do projeto), então vem do resultado do job.
   const provaJob = await prisma.job.findFirst({
@@ -65,6 +81,14 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
                 onde a camada visual DVP posiciona os lower thirds. O CC do YouTube cobre acessibilidade.
                 Short queima, porque é assistido sem som. */}
             <label className="flex items-center gap-2 text-xs text-fg-secondary"><input type="checkbox" name="captions" defaultChecked={format.captions.required} className="accent-primary" /> Queimar legendas ({format.captions.style === "bold-center-animated" ? "karaokê central" : "rodapé discreto"}){!format.captions.required && <span className="text-muted"> — desligado no longo</span>}</label>
+            <label className="text-xs text-fg-secondary">
+              <span className="mb-1 block font-medium text-fg">Modelo de legenda</span>
+              <select name="captionPreset" defaultValue="auto" className="w-full rounded border border-line bg-void px-3 py-2 text-xs text-fg outline-none focus:border-primary">
+                {CAPTION_PRESETS.map((preset) => (
+                  <option key={preset.id} value={preset.id}>{preset.label} — {preset.description}</option>
+                ))}
+              </select>
+            </label>
             {/* Dois botões em vez de um seletor de perfil: 720p tem 44% dos pixels de 1080p, então o
                 render de revisão sai em ~metade do tempo. Para decidir se a qualidade serve, a
                 resolução é irrelevante — só o corte aprovado precisa ir em 1080p. */}
@@ -211,6 +235,9 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
                 <li className="flex gap-2"><Icon name={mixedVoices ? "warning" : "check_circle"} className={`text-[16px] ${mixedVoices ? "text-warning" : "text-success"}`} />{mixedVoices ? `Vozes misturadas (${[...voiceSet].join(", ")}) — regrave no Passo 3` : "Voz consistente em todos os atos"}</li>
                 <li className="flex gap-2"><Icon name={captioned === blocks.length && blocks.length ? "check_circle" : "radio_button_unchecked"} className={`text-[16px] ${captioned === blocks.length && blocks.length ? "text-success" : "text-muted"}`} />Legendas alinhadas ({captioned}/{blocks.length})</li>
                 <li className="flex gap-2"><Icon name={ready === scenes.length && scenes.length ? "check_circle" : "warning"} className={`text-[16px] ${ready === scenes.length && scenes.length ? "text-success" : "text-warning"}`} />Cenas com mídia ({ready}/{scenes.length}); as demais viram cartão de título</li>
+                <li className="flex gap-2"><Icon name={lowResolution === 0 ? "check_circle" : "warning"} className={`text-[16px] ${lowResolution === 0 ? "text-success" : "text-warning"}`} />{lowResolution === 0 ? "Resolução conhecida adequada" : `${lowResolution} cena(s) podem perder nitidez no enquadramento`}</li>
+                <li className="flex gap-2"><Icon name={repeatedMedia === 0 ? "check_circle" : "warning"} className={`text-[16px] ${repeatedMedia === 0 ? "text-success" : "text-warning"}`} />{repeatedMedia === 0 ? "Sem mídia repetida entre cenas" : `${repeatedMedia} repetição(ões) de mídia — revise a variedade visual`}</li>
+                {unknownResolution > 0 && <li className="flex gap-2"><Icon name="info" className="text-[16px] text-muted" />{unknownResolution} mídia(s) sem dimensão registrada; confira no render de prova</li>}
               </ul>
             </Card>
           </aside>

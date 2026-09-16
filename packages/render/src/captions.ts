@@ -166,7 +166,7 @@ Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
         // largura do texto reflui a linha inteira, e o bloco volta a balançar — que é
         // exatamente o problema que estamos corrigindo. Borda não altera o avanço do glifo.
         const ativo = `{\\c${corAssInline(estilo.corAtiva)}\\b1\\bord${bord + 3}\\t(0,120,\\bord${bord})}`;
-        const normal = `{\\c&HF8FAFC&\\b1\\bord${bord}}`;
+        const normal = `{\\c${corAssInline(estilo.cor)}\\b1\\bord${bord}}`;
         for (let k = 0; k < chunk.length; k++) {
           const ws = offset + chunk[k].startMs;
           const we = k === chunk.length - 1 ? end : offset + chunk[k + 1].startMs;

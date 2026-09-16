@@ -321,3 +321,53 @@ Unificar é a correção estrutural mais valiosa pendente.
 - **OK geral do usuário (09/09, ~01:17)**: autorizou aplicar os itens do backlog acima sem precisar pedir confirmação item a item — assim que o render do vídeo atual terminar e os créditos dele renovarem (~40min depois desse OK). Mudanças que exigem reiniciar processos node/`db push` ainda seguem a regra de segurança acima (avisar no chat antes de reiniciar), mas sem precisar esperar um novo "sim" pra cada melhoria da lista.
 - **Keep-awake**: script `_keepawake.ps1` (raiz do repo, não commitado — é só utilitário local) roda em loop chamando a API do Windows `SetThreadExecutionState` pra evitar que a máquina durma, sem alterar nenhuma configuração do sistema. Iniciado a pedido do usuário; é seguro parar a qualquer momento fechando o processo powershell.
 - **Confirmado em 09/09 ~07:35**: os processos do `pnpm dev` (web+worker) tinham caído sozinhos (provavelmente a máquina hibernou/travou durante uma instabilidade de conexão anterior) — por isso o `--turbopack` só foi confirmado em uso depois desse restart (Ready em 4.3s, bem mais rápido que antes).
+
+## Sessão 16/09/2026 — GPT, qualidade e postagem programada
+
+### Geração assistida de imagens
+
+- Adicionado **Gerar com GPT** no Passo de Mídia. A rota
+  `GET /api/projects/[id]/gpt-image-pack` baixa um TXT com contexto do projeto, proporção,
+  identidade visual, regras de continuidade e um prompt por cena.
+- O pacote usa os mesmos nomes aceitos pelo importador (`a01-s01.png`), portanto o retorno do GPT
+  entra pela mesma inbox usada pelo Flow.
+- Validação real no projeto `cmtz5wi6h000u9n54f18hlvra`: 13 imagens geradas, 13/13
+  importadas e novo master vertical 1080×1920 renderizado com 95,067s.
+
+### Legendas e pré-voo
+
+- Quatro presets selecionáveis: automático, documentário clean, impacto amarelo e neon magenta.
+- Prova e render final recebem o mesmo preset.
+- Render com legenda falha cedo quando algum ato não possui palavras alinhadas válidas.
+- Arquivos de mídia ausentes recebem fallback seguro; a tela sinaliza repetição, baixa
+  resolução e dimensão desconhecida.
+- A importação e o upload agora leem largura, altura e duração via ffprobe. Foi feito backfill
+  das 13 cenas existentes; o pré-voo passou a exibir “Resolução conhecida adequada”.
+
+### Alta retenção
+
+- O planejamento denso foi renomeado para **Planejar alta retenção**. Em Short ele usa o ritmo
+  configurado de 2–4 segundos por cena; o modo Flow esparso continua disponível para reduzir o
+  trabalho manual.
+
+### Programar postagem no YouTube
+
+- Nova coluna `Publication.scheduledAt` e migração
+  `20260916044500_add_publication_schedule`.
+- Nova coluna `Publication.privacyStatus`, para distinguir corretamente upload privado de vídeo
+  efetivamente publicado.
+- A tela de publicação ganhou data/hora e botão **Programar postagem**. Exige pelo menos 15
+  minutos de antecedência.
+- O upload acontece imediatamente como privado e `status.publishAt` é enviado ao YouTube. A
+  publicação futura fica a cargo do agendador nativo do YouTube e não depende de o Pulse Studio
+  permanecer aberto.
+- Quando já existe um `videoId` privado, publicar ou programar atualiza o mesmo vídeo com
+  `videos.update`; não cria upload duplicado.
+- Registros antigos foram normalizados a partir do resultado do último job `PUBLISH_YOUTUBE`.
+
+### Verificação
+
+- `pnpm typecheck`: 7/7 pacotes aprovados.
+- Páginas de render e publicação: HTTP 200.
+- Interface confirmou estado “Enviado como privado”, campo `datetime-local`, botão de
+  programação e pré-voo sem dimensões desconhecidas.

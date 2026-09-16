@@ -5,7 +5,7 @@ import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration, parseJson } from "@/lib/data";
 import { getYoutubeConnection } from "@docupulse/providers";
 import { partirManchete } from "@docupulse/render";
-import { generateSeoMetadata, publishToYoutube } from "./actions";
+import { generateSeoMetadata, publishToYoutube, scheduleYoutubePublication } from "./actions";
 import { ThumbnailStudio } from "./ThumbnailStudio";
 
 export default async function PublishedPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
@@ -18,6 +18,9 @@ export default async function PublishedPage({ params, searchParams }: { params: 
   const tags = parseJson<string[]>(pub?.tags, []);
   const chapters = parseJson<{ time: string; label: string }[]>(pub?.chapters, []);
   const canPublish = !!pub && !!master?.outputPath;
+  const isScheduled = !!pub?.scheduledAt && !pub.publishedAt;
+  const isPrivateUpload = !!pub?.videoId && pub.privacyStatus === "private" && !isScheduled;
+  const isPublished = !!pub?.publishedAt && pub.privacyStatus !== "private";
   // O título de publicação já é a manchete final quando o SEO rodou; antes disso, o do projeto.
   const manchete = partirManchete(pub?.title ?? project.title);
 
@@ -28,7 +31,11 @@ export default async function PublishedPage({ params, searchParams }: { params: 
         <div className="flex items-start justify-between gap-6">
           <div>
             <div className="flex items-center gap-2">
-              {pub?.publishedAt ? (
+              {isScheduled ? (
+                <Badge tone="violet" pill dot>Programado para {new Date(pub.scheduledAt).toLocaleString("pt-BR")}</Badge>
+              ) : isPrivateUpload ? (
+                <Badge tone="cyan" pill dot>Enviado como privado · pronto para programar</Badge>
+              ) : isPublished ? (
                 <Badge tone="success" pill dot>Publicado com sucesso</Badge>
               ) : pub ? (
                 <Badge tone="warning" pill dot>Metadados prontos · aguardando publicação manual</Badge>
@@ -47,19 +54,31 @@ export default async function PublishedPage({ params, searchParams }: { params: 
             ) : (
               <Button icon="download" disabled title="Renderize o vídeo no Passo 4 primeiro">Baixar Master</Button>
             )}
-            {pub?.publishedAt ? (
+            {isScheduled ? (
+              <Button variant="primary" icon="schedule" disabled>Postagem programada</Button>
+            ) : isPublished ? (
               <Button variant="primary" icon="check_circle" disabled>Publicado no YouTube</Button>
             ) : youtubeConnection ? (
-              <form action={publishToYoutube.bind(null, project.id)} className="flex flex-col gap-1.5">
-                <select name="privacyStatus" defaultValue="private" className="field px-2 py-1.5 text-xs">
-                  <option value="private" className="bg-surface-low">Privado</option>
-                  <option value="unlisted" className="bg-surface-low">Não listado</option>
-                  <option value="public" className="bg-surface-low">Público</option>
-                </select>
-                <Button type="submit" variant="primary" icon="cloud_upload" className="w-full" disabled={busy || !canPublish} title={canPublish ? "" : "Gere os metadados de SEO e finalize o render no Passo 4 antes"}>
-                  Publicar no YouTube
-                </Button>
-              </form>
+              <div className="flex flex-col gap-3">
+                <form action={publishToYoutube.bind(null, project.id)} className="flex flex-col gap-1.5">
+                  <select name="privacyStatus" defaultValue="private" className="field px-2 py-1.5 text-xs">
+                    <option value="private" className="bg-surface-low">Privado</option>
+                    <option value="unlisted" className="bg-surface-low">Não listado</option>
+                    <option value="public" className="bg-surface-low">Público</option>
+                  </select>
+                  <Button type="submit" variant="primary" icon="cloud_upload" className="w-full" disabled={busy || !canPublish} title={canPublish ? "" : "Gere os metadados de SEO e finalize o render no Passo 4 antes"}>
+                    Publicar no YouTube
+                  </Button>
+                </form>
+                <form action={scheduleYoutubePublication.bind(null, project.id)} className="flex flex-col gap-1.5 rounded border border-line bg-void/40 p-2">
+                  <label className="text-[11px] text-fg-secondary">Data e hora da postagem</label>
+                  <input type="datetime-local" name="publishAt" required className="field px-2 py-1.5 text-xs" />
+                  <Button type="submit" icon="schedule_send" className="w-full" disabled={busy || !canPublish} title={canPublish ? "O upload é feito agora; o YouTube publica na hora escolhida" : "Gere os metadados de SEO e finalize o render no Passo 4 antes"}>
+                    Programar postagem
+                  </Button>
+                  <span className="text-[10px] text-muted">Horário local do servidor · mínimo de 15 minutos. O YouTube agenda a publicação após o upload.</span>
+                </form>
+              </div>
             ) : (
               <Link href="/settings"><Button icon="link" variant="ghost" className="w-full">Conectar canal (Settings)</Button></Link>
             )}
@@ -86,7 +105,7 @@ export default async function PublishedPage({ params, searchParams }: { params: 
               <div className="grid grid-cols-1 divide-y divide-line border-t border-line text-xs sm:grid-cols-3 sm:divide-x sm:divide-y-0">
                 <div className="p-3"><div className="label-mono text-muted">URL oficial</div><div className="mt-1 truncate font-mono text-primary-bright">{pub?.url ?? "—"}</div></div>
                 <div className="p-3"><div className="label-mono text-muted">Video ID</div><div className="mt-1 font-mono">{pub?.videoId ?? "—"}</div></div>
-                <div className="p-3"><div className="label-mono text-muted">Publicado em</div><div className="mt-1 font-mono">{pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
+                <div className="p-3"><div className="label-mono text-muted">{isScheduled ? "Programado para" : isPrivateUpload ? "Situação" : "Publicado em"}</div><div className="mt-1 font-mono">{isScheduled ? new Date(pub.scheduledAt).toLocaleString("pt-BR") : isPrivateUpload ? "Privado no YouTube" : pub?.publishedAt ? new Date(pub.publishedAt).toLocaleString("pt-BR") : "—"}</div></div>
               </div>
             </Card>
             <ThumbnailStudio projectId={project.id} tituloInicial={manchete.titulo} subInicial={manchete.sub} />

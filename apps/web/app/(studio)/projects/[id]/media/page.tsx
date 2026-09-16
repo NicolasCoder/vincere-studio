@@ -61,7 +61,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
             <form action={alignCaptions.bind(null, project.id)}><Button type="submit" icon="subtitles" className="w-full" disabled={busy || !voiced}>Alinhar legendas (Whisper)</Button></form>
             <div className="flex gap-2">
               <form action={generateScenePrompts.bind(null, project.id, "sparse")} className="flex-1"><Button type="submit" variant={voiced && !scenes.length ? "primary" : "ghost"} icon="auto_awesome" className="w-full" disabled={busy || !blocks.length} title="Cenas longas (8–12s): menos imagens para gerar à mão no Flow">{scenes.length ? "Replanejar (Flow)" : "Planejar cenas (Flow)"}</Button></form>
-              <form action={generateScenePrompts.bind(null, project.id, "dense")} className="flex-1"><Button type="submit" icon="burst_mode" className="w-full" disabled={busy || !blocks.length} title="Cenas curtas no ritmo do formato: para acervo Pexels/Pixabay ou API de imagem">{scenes.length ? "Replanejar (denso)" : "Planejar cenas (denso)"}</Button></form>
+              <form action={generateScenePrompts.bind(null, project.id, "dense")} className="flex-1"><Button type="submit" icon="burst_mode" className="w-full" disabled={busy || !blocks.length} title="Cenas a cada 2–4s no Short para mais mudanças visuais e retenção">{scenes.length ? "Replanejar (alta retenção)" : "Planejar alta retenção"}</Button></form>
             </div>
           </div>
         </div>
@@ -194,16 +194,17 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
             </Card>
 
             <Card className="p-4">
-              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Modo Flow</Badge></div>
+              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Flow + GPT</Badge></div>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
               {scenes.length > 0 && <Progress value={scenes.length ? (ready / scenes.length) * 100 : 0} className="mt-3" />}
               <div className="mt-3 space-y-2">
+                {scenes.length > 0 && <a href={`/api/projects/${project.id}/gpt-image-pack`}><Button icon="smart_toy" variant="primary" size="sm" className="w-full">Gerar com GPT</Button></a>}
                 {scenes.length > 0 && <a href={`/api/media/projects/${project.id}/prompts/flow-pack.md?download=1`}><Button icon="download" size="sm" className="w-full">Baixar pacote de prompts (Flow)</Button></a>}
                 <form action={importInbox.bind(null, project.id)}><Button type="submit" icon="folder_open" size="sm" className="w-full" disabled={busy || !scenes.length}>Importar da pasta inbox</Button></form>
                 <form action={huntBroll.bind(null, project.id, false)}><Button type="submit" icon="travel_explore" size="sm" className="w-full" disabled={busy || !scenes.length || !hasStock} title={hasStock ? "Pexels/Pixabay" : "Configure PEXELS_API_KEY / PIXABAY_API_KEY"}>Buscar B-roll no acervo{!hasStock && " (sem chave)"}</Button></form>
               </div>
               <div className="mt-3 rounded border border-line bg-void/60 p-2 font-mono text-[10px] text-muted break-all"><Icon name="folder" className="mr-1 align-middle text-[12px]" />{inboxPath}</div>
-              <p className="mt-2 text-[11px] text-fg-secondary">Gere as imagens no Flow com os prompts do pacote, salve nesta pasta com os nomes indicados (a01-s03.png) e clique em Importar.</p>
+              <p className="mt-2 text-[11px] text-fg-secondary">No GPT, baixe o .txt, cole o conteúdo nesta conversa e peça a geração completa. Salve as imagens nesta pasta com os nomes indicados (a01-s03.png) e clique em Importar. O fluxo do Flow continua disponível.</p>
               <div className="mt-3 rounded border border-dashed border-line bg-void/40 p-2 font-mono text-[10px] text-muted break-all"><Icon name="collections_bookmark" className="mr-1 align-middle text-[12px]" />{refPath}</div>
               <p className="mt-1 text-[11px] text-fg-secondary">Pasta de referências (opcional): coloque ali imagens de estilo/paleta do canal para manter consistência visual entre as cenas.</p>
             </Card>

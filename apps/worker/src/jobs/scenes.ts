@@ -2,7 +2,7 @@ import path from "node:path";
 import { readdir, rename, stat, writeFile } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, SCENES_PROMPT_VERSION, ScenesResponseSchema, composeImagePrompt, getVisualStyle, parseSceneFileStem, sceneFileStem, scenesPrompt, type VideoFormat } from "@docupulse/core";
-import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, projectDir, recordUsage, relPath } from "@docupulse/providers";
+import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, probeMediaInfo, projectDir, recordUsage, relPath } from "@docupulse/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -90,9 +90,10 @@ export async function importInbox(ctx: JobContext) {
     const dest = path.join(scenesDir, `${sceneFileStem(target.act, target.s.order)}${ext}`);
     await rename(path.join(inbox, f), dest);
     const isVideo = /\.(mp4|mov|webm)$/i.test(ext);
-    const durationMs = isVideo ? await probeDurationMs(dest).catch(() => null) : null;
+    const info = await probeMediaInfo(dest).catch(() => ({ durationMs: null, width: null, height: null }));
+    const durationMs = isVideo ? info.durationMs : null;
     const size = (await stat(dest)).size;
-    await prisma.scene.update({ where: { id: target.s.id }, data: { filePath: relPath(dest), mediaType: isVideo ? "video" : "image", source: "IMPORTED", provider: "FLOW_MANUAL", status: "READY", durationMs, license: "Gerado pelo usuário (Flow/Gemini)" } });
+    await prisma.scene.update({ where: { id: target.s.id }, data: { filePath: relPath(dest), mediaType: isVideo ? "video" : "image", source: "IMPORTED", provider: "FLOW_MANUAL", status: "READY", durationMs, width: info.width, height: info.height, license: "Gerado pelo usuário (GPT/Flow/Gemini)" } });
     imported++;
     await ctx.log(`${f} → ${sceneFileStem(target.act, target.s.order)}${ext} (${Math.round(size / 1024)} KB)`);
   }

@@ -97,7 +97,7 @@ async function enviarLegenda(
  * Canal do YouTube), usando o título/descrição/tags já gerados em SEO & Metadados,
  * e define a thumbnail já gerada. Nasce no privacyStatus escolhido pelo usuário
  * (padrão: privado — nunca público sem revisão manual).
- * payload: { projectId, privacyStatus?: "private"|"unlisted"|"public", categoryId?: string }
+ * payload: { projectId, privacyStatus?: "private"|"unlisted"|"public", categoryId?: string, publishAt?: ISO-8601 }
  */
 export async function publishYoutube(ctx: JobContext) {
   const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
@@ -106,6 +106,50 @@ export async function publishYoutube(ctx: JobContext) {
 
   const pub = await prisma.publication.findFirst({ where: { projectId } });
   if (!pub) throw new Error('Sem metadados de SEO ainda — clique em "Gerar com IA" antes de publicar.');
+
+  const requestedPrivacy = String(ctx.payload.privacyStatus ?? "private") as "private" | "unlisted" | "public";
+  const publishAt = ctx.payload.publishAt ? new Date(String(ctx.payload.publishAt)) : null;
+  if (publishAt && (Number.isNaN(publishAt.getTime()) || publishAt.getTime() <= Date.now())) {
+    throw new Error("A data programada precisa estar no futuro.");
+  }
+  // A API do YouTube exige vídeo privado quando `publishAt` é definido; o próprio YouTube o
+  // torna público no horário, sem depender de o worker continuar online.
+  const privacyStatus: "private" | "unlisted" | "public" = publishAt ? "private" : requestedPrivacy;
+
+  await ctx.log("Autenticando com a conta do YouTube conectada...");
+  const { youtube, channelTitle } = await getAuthenticatedYoutubeClient();
+  await ctx.log(`Canal: ${channelTitle}`);
+
+  // Se o master já foi enviado como privado, agendar/publicar deve alterar ESSE vídeo. Fazer
+  // outro upload criaria duplicatas no canal e desperdiçaria cota.
+  if (pub.videoId) {
+    await ctx.progress({ percent: 40, message: publishAt ? "Programando vídeo privado" : "Atualizando visibilidade" });
+    await youtube.videos.update({
+      part: ["status"],
+      requestBody: {
+        id: pub.videoId,
+        status: {
+          privacyStatus,
+          ...(publishAt ? { publishAt: publishAt.toISOString() } : {}),
+          selfDeclaredMadeForKids: false,
+        },
+      },
+    });
+    const url = pub.url || `https://www.youtube.com/watch?v=${pub.videoId}`;
+    await prisma.publication.update({
+      where: { id: pub.id },
+      data: {
+        url,
+        privacyStatus,
+        scheduledAt: publishAt,
+        publishedAt: publishAt || privacyStatus === "private" ? null : new Date(),
+      },
+    });
+    await ctx.log(publishAt
+      ? `Vídeo privado programado para ${publishAt.toLocaleString("pt-BR")}: ${url}`
+      : `Visibilidade atualizada para ${privacyStatus}: ${url}`);
+    return { videoId: pub.videoId, url, privacyStatus, scheduledAt: publishAt?.toISOString() ?? null, reusedExisting: true };
+  }
 
   const render = await prisma.renderJob.findFirst({ where: { projectId, outputPath: { not: null } }, orderBy: { startedAt: "desc" } });
   if (!render?.outputPath) throw new Error("Nenhum render concluído ainda — renderize o vídeo no Passo 4 antes de publicar.");
@@ -116,10 +160,6 @@ export async function publishYoutube(ctx: JobContext) {
   // Se o projeto foi renderizado DE NOVO depois da camada, aí o master é que está em dia.
   const arquivo = await escolherArquivo(projectId, render.outputPath, render.finishedAt ?? render.startedAt, ctx);
 
-  await ctx.log("Autenticando com a conta do YouTube conectada...");
-  const { youtube, channelTitle } = await getAuthenticatedYoutubeClient();
-  await ctx.log(`Canal: ${channelTitle}`);
-
   const tags = (() => {
     try {
       return JSON.parse(pub.tags || "[]") as string[];
@@ -127,7 +167,6 @@ export async function publishYoutube(ctx: JobContext) {
       return [];
     }
   })();
-  const privacyStatus = String(ctx.payload.privacyStatus ?? "private") as "private" | "unlisted" | "public";
   const categoryId = String(ctx.payload.categoryId ?? "27"); // 27 = Education (documentário)
 
   const videoPath = absPath(arquivo);
@@ -141,7 +180,7 @@ export async function publishYoutube(ctx: JobContext) {
       part: ["snippet", "status"],
       requestBody: {
         snippet: { title: pub.title.slice(0, 100), description: pub.description, tags: tags.slice(0, 30), categoryId },
-        status: { privacyStatus, selfDeclaredMadeForKids: false },
+        status: { privacyStatus, ...(publishAt ? { publishAt: publishAt.toISOString() } : {}), selfDeclaredMadeForKids: false },
       },
       media: { mimeType: "video/mp4", body: createReadStream(videoPath) },
     },
@@ -170,15 +209,26 @@ export async function publishYoutube(ctx: JobContext) {
     }
   }
 
-  await prisma.publication.update({ where: { id: pub.id }, data: { platform: "YOUTUBE", videoId, url, publishedAt: new Date() } });
-  await ctx.log(`Publicado com sucesso (${privacyStatus}): ${url}`);
+  await prisma.publication.update({
+    where: { id: pub.id },
+    data: {
+      platform: "YOUTUBE",
+      videoId,
+      url,
+      privacyStatus,
+      scheduledAt: publishAt,
+      publishedAt: publishAt || privacyStatus === "private" ? null : new Date(),
+    },
+  });
+  if (publishAt) await ctx.log(`Postagem programada no YouTube para ${publishAt.toLocaleString("pt-BR")}: ${url}`);
+  else await ctx.log(`Publicado com sucesso (${privacyStatus}): ${url}`);
 
   // Só libera espaço quando é publicação de verdade (public/unlisted) — "private" costuma ser
   // revisão antes de publicar, e apagar o material ali impediria rerenderizar ou reaplicar a
   // camada visual antes da publicação real.
-  if (privacyStatus !== "private") {
+  if (!publishAt && privacyStatus !== "private") {
     await cleanupAfterPublish(projectId, videoPath, (line) => ctx.log(line));
   }
 
-  return { videoId, url, privacyStatus };
+  return { videoId, url, privacyStatus, scheduledAt: publishAt?.toISOString() ?? null };
 }

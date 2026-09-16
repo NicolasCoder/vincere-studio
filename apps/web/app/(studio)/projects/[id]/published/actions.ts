@@ -19,6 +19,34 @@ export async function publishToYoutube(projectId: string, formData: FormData) {
 }
 
 /**
+ * Faz o upload agora como privado e entrega o horário ao agendador nativo do YouTube.
+ * Assim a publicação acontece mesmo se o Pulse Studio estiver fechado no horário marcado.
+ */
+export async function scheduleYoutubePublication(projectId: string, formData: FormData) {
+  const raw = String(formData.get("publishAt") ?? "").trim();
+  const publishAt = new Date(raw);
+  if (!raw || Number.isNaN(publishAt.getTime())) throw new Error("Informe uma data e hora válidas para a publicação.");
+  if (publishAt.getTime() < Date.now() + 15 * 60_000) {
+    throw new Error("Programe a postagem com pelo menos 15 minutos de antecedência para dar tempo de enviar e processar o vídeo.");
+  }
+  const active = await prisma.job.findFirst({
+    where: { projectId, type: "PUBLISH_YOUTUBE", status: { in: ["QUEUED", "RUNNING"] } },
+    select: { id: true },
+  });
+  if (active) redirect(`/projects/${projectId}/published?job=${active.id}`);
+
+  const job = await prisma.job.create({
+    data: {
+      type: "PUBLISH_YOUTUBE",
+      projectId,
+      message: `Programando para ${publishAt.toLocaleString("pt-BR")}`,
+      payload: JSON.stringify({ projectId, privacyStatus: "private", publishAt: publishAt.toISOString() }),
+    },
+  });
+  redirect(`/projects/${projectId}/published?job=${job.id}`);
+}
+
+/**
  * Grava a variação escolhida como a thumbnail do projeto.
  *
  * Recompõe em vez de copiar o arquivo da prévia. A prévia é descartável — some na próxima

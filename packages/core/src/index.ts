@@ -9,4 +9,6 @@ export * from "./visual-styles";
 export * from "./prompts/scenes";
 export * from "./edit-plan";
 export * from "./edit-profiles";
+export * from "./caption-presets";
+export * from "./gpt-image-pack";
 export * from "./prompts/edit-plan";
