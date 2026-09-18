@@ -4,18 +4,27 @@ import { writeFile } from "node:fs/promises";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@docupulse/db";
-import { FORMATS, sceneFileStem, type VideoFormat } from "@docupulse/core";
+import { CAPTION_PRESET_IDS, FORMATS, sceneFileStem, type VideoFormat } from "@docupulse/core";
 import { downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@docupulse/providers";
+import { captionStyleFromForm } from "../render/caption-style";
 
 const REROLL_STOPWORDS = new Set(["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "with", "from", "by", "is", "are", "this", "that", "scene", "shot", "footage", "video", "image", "close", "up", "wide", "view"]);
 function rerollTerms(keywords: string | null, description: string | null): string[] {
   const raw = `${keywords ?? ""} ${description ?? ""}`.toLowerCase();
   return Array.from(new Set(raw.split(/[^a-z0-9]+/).filter((w) => w.length >= 3 && !REROLL_STOPWORDS.has(w))));
 }
-function rerollScore(asset: { tags?: string; pageUrl?: string }, terms: string[]): number {
-  if (!terms.length) return 0;
+/**
+ * Pontua por sobreposição de tags/URL. Termos-âncora (tema do projeto inteiro) valem o dobro dos
+ * termos só da cena — sem isso, uma keyword literal e isolada da cena (ex.: "disco girando" numa
+ * frase sobre "girar" a situação) conseguia nota alta contra si mesma e trazia mídia fora do tema
+ * do vídeo inteiro, mesmo com resultado tecnicamente "relevante" pra aquela palavra solta.
+ */
+function rerollScore(asset: { tags?: string; pageUrl?: string }, terms: string[], anchorTerms: string[]): { score: number; anchorHits: number; sceneHits: number } {
   const haystack = `${asset.tags ?? ""} ${asset.pageUrl ?? ""}`.toLowerCase();
-  return haystack.trim() ? terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0) : 0;
+  if (!haystack.trim()) return { score: 0, anchorHits: 0, sceneHits: 0 };
+  const anchorHits = anchorTerms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+  const sceneHits = terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+  return { score: anchorHits * 2 + sceneHits, anchorHits, sceneHits };
 }
 /** Termos mais recorrentes nas keywords do roteiro inteiro, pra ancorar a busca no tema do projeto. */
 function rerollThemeAnchor(allKeywords: (string | null)[], minCount = 2, take = 3): string[] {
@@ -53,6 +62,20 @@ export async function setVoiceProfile(projectId: string, formData: FormData) {
 export async function setVisualStyle(projectId: string, formData: FormData) {
   await prisma.project.update({ where: { id: projectId }, data: { visualStyle: String(formData.get("visualStyle") ?? "DARK_DOC") } });
   revalidatePath(`/projects/${projectId}/media`);
+}
+
+/**
+ * Mesmo destino do "saveCaption" do Passo 4 (grava captionPreset/captionStyle no projeto), só que
+ * disparável aqui no Passo 3 — assim o modelo já vem certo quando o Passo 4 gerar o primeiro
+ * render, sem precisar renderizar de novo só para trocar a legenda.
+ */
+export async function setCaptionStyle(projectId: string, formData: FormData) {
+  const presetRaw = String(formData.get("captionPreset") ?? "auto");
+  const captionPreset = (CAPTION_PRESET_IDS as readonly string[]).includes(presetRaw) ? presetRaw : "auto";
+  const captionStyle = JSON.stringify(captionStyleFromForm(formData));
+  await prisma.project.update({ where: { id: projectId }, data: { captionPreset, captionStyle } });
+  revalidatePath(`/projects/${projectId}/media`);
+  redirect(`/projects/${projectId}/media?saved=caption`);
 }
 export async function clearScene(projectId: string, sceneId: string) {
   await prisma.scene.update({ where: { id: sceneId }, data: { filePath: null, status: "PENDING", source: "GENERATED", provider: "FLOW_MANUAL", thumbPath: null } });
@@ -95,9 +118,17 @@ export async function rerollScene(projectId: string, sceneId: string, formData: 
       }
     }
     if (pool.length) {
-      const scored = pool.map((r, i) => ({ r, score: rerollScore(r, terms) + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), i }));
+      const scored = pool.map((r, i) => {
+        const { score, anchorHits, sceneHits } = rerollScore(r, terms, anchor);
+        return { r, score: score + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), anchorHits, sceneHits, i };
+      });
       scored.sort((a, b) => b.score - a.score || a.i - b.i);
-      hit = scored[0].r;
+      const top = scored[0];
+      // Com âncora de tema definida, o resultado precisa bater com o tema do vídeo inteiro OU ter
+      // pelo menos 2 termos próprios da cena — uma cena de paisagem legítima não precisa também
+      // mencionar "dark/vintage/ocean"; só a palavra isolada e literal não pode validar a si mesma.
+      if (anchor.length > 0 ? top.anchorHits === 0 && top.sceneHits < 2 : terms.length > 0 && top.score === 0) continue;
+      hit = top.r;
       break;
     }
   }

@@ -38,3 +38,6 @@ editor-ia/public/tmp-mesa/
 # video ja vem comprimido, entao o git nao ganha nada com delta e o blob fica para sempre.
 # Os props de verdade em Edicao/Assets (jpg/png) continuam versionados.
 Edição/Assets/*.mp4
+
+# Videos de referencia soltos na raiz de Edicao (clipes de terceiros analisados com /watch): nao versionar
+Edição/*.mp4

@@ -1,17 +1,21 @@
 import Link from "next/link";
 import { createHash } from "node:crypto";
-import { readFile } from "node:fs/promises";
+import { createReadStream } from "node:fs";
+import { stat } from "node:fs/promises";
 import { prisma } from "@docupulse/db";
 import { FORMATS, type VideoFormat } from "@docupulse/core";
 import { absPath } from "@docupulse/providers";
 import { MOTION_PRESETS, normalizeMotion, profileFor } from "@docupulse/render";
-import { Badge, Button, Card, Chip, Icon, Progress } from "@docupulse/ui";
+import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration } from "@/lib/data";
 import { advanceStage } from "../../actions";
 import { renderVideo, generateThumbnail, reviewRender, updateSceneReview } from "./actions";
 import { CaptionStyleEditor } from "./CaptionStyleEditor";
+import { RenderProgressOverlay } from "./RenderProgress";
+import { RenderStagesLive } from "./RenderStagesLive";
+import { RENDER_STAGES } from "./stages";
 
 const REVIEW_META: Record<string, { label: string; tone: "neutral" | "success" | "warning" | "error"; icon: string }> = {
   PENDING: { label: "Aguardando revisão", tone: "neutral", icon: "rate_review" },
@@ -19,13 +23,6 @@ const REVIEW_META: Record<string, { label: string; tone: "neutral" | "success" |
   CHANGES_REQUESTED: { label: "Alterações solicitadas", tone: "warning", icon: "edit_note" },
   REJECTED: { label: "Rejeitado", tone: "error", icon: "cancel" },
 };
-
-const STAGES = [
-  ["Áudio & Ducking", "Concatenação das locuções, trilha com ducking e normalização -14 LUFS", 68],
-  ["Composição", "Ken Burns nas imagens, vídeos de acervo em loop, cartões de título e dissolves", 65],
-  ["Legendas", "ASS gerado a partir das palavras alinhadas (rodapé no 16:9, karaokê no 9:16)", 80],
-  ["Codificação", "H.264 via Intel QuickSync quando disponível, senão libx264 · MP4 faststart", 100],
-] as const;
 
 export default async function RenderPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; saved?: string }> }) {
   const { id } = await params;
@@ -53,9 +50,21 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
   const mediaCounts = new Map<string, number>();
   for (const scene of scenes) if (scene.filePath) mediaCounts.set(scene.filePath, (mediaCounts.get(scene.filePath) ?? 0) + 1);
   const repeatedMedia = [...mediaCounts.values()].reduce((sum, count) => sum + Math.max(0, count - 1), 0);
+  // Amostra só os primeiros 2MB (+ tamanho no hash) em vez do arquivo inteiro — com vídeos de
+  // acervo de dezenas de MB cada, ler tudo em toda carga da página deixava o Passo 4 lentíssimo.
+  const HASH_SAMPLE_BYTES = 2 * 1024 * 1024;
   const contentHashes = await Promise.all([...mediaCounts.keys()].map(async (filePath) => {
     try {
-      return createHash("sha256").update(await readFile(absPath(filePath))).digest("hex");
+      const file = absPath(filePath);
+      const { size } = await stat(file);
+      const hash = createHash("sha256").update(String(size));
+      await new Promise<void>((resolve, reject) => {
+        const stream = createReadStream(file, { end: Math.max(0, Math.min(size, HASH_SAMPLE_BYTES) - 1) });
+        stream.on("data", (chunk) => hash.update(chunk));
+        stream.on("end", resolve);
+        stream.on("error", reject);
+      });
+      return hash.digest("hex");
     } catch {
       return null;
     }
@@ -139,7 +148,23 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
         </div>
 
         {job && <div className="mt-4"><JobWatcher jobId={job} label="Renderizando com FFmpeg" /></div>}
-        {saved === "caption" && <Card className="mt-4 p-3 text-sm text-success"><Icon name="check_circle" className="mr-1 align-middle" />Modelo de legenda salvo neste projeto.</Card>}
+        {saved === "caption" && (
+          <Card className="mt-4 flex flex-wrap items-center gap-3 p-3 text-sm text-success">
+            <Icon name="check_circle" className="align-middle" />
+            <span className="flex-1">
+              Modelo de legenda salvo. A legenda é gravada no vídeo durante o render — este ajuste só aparece a partir da
+              {current?.outputPath ? " próxima versão renderizada." : " primeira renderização."}
+            </span>
+            {current?.outputPath && (
+              <form action={renderVideo.bind(null, project.id)}>
+                <input type="hidden" name="profile" value={current.profile} />
+                <input type="hidden" name="music" value="1" />
+                {format.captions.required && <input type="hidden" name="captions" value="1" />}
+                <Button type="submit" size="sm" variant="primary" icon="refresh" disabled={busy}>Gerar nova versão agora</Button>
+              </form>
+            )}
+          </Card>
+        )}
 
         <div className="mt-6 grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_22rem]">
           <div className="space-y-4">
@@ -168,17 +193,14 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
               </Card>
             )}
             <Card className="overflow-hidden" accent="dual">
-              <div className={`relative grid place-items-center bg-gradient-to-br from-void via-surface-low to-secondary/20 ${format.ratio === "9:16" ? "aspect-video" : "aspect-video"}`}>
+              <div className={`relative grid place-items-center bg-gradient-to-br from-void via-surface-low to-secondary/20 ${format.ratio === "9:16" ? "aspect-[9/16] h-[520px] mx-auto" : "aspect-video"}`}>
                 {current?.outputPath ? (
                   <video controls preload="metadata" src={`/api/media/${current.outputPath}`} className={`${format.ratio === "9:16" ? "h-full" : "w-full"} max-h-[520px] bg-black`} />
                 ) : (
                   <div className="text-center"><Icon name="movie" className="text-[48px] text-muted" /><div className="mt-2 font-mono text-xs text-muted">{busy ? "Renderizando… o preview aparece ao terminar" : "O preview do render aparece aqui"}</div></div>
                 )}
-                {!current?.outputPath && (
-                  <div className="absolute inset-x-4 bottom-4 rounded border border-line bg-void/80 p-3 backdrop-blur">
-                    <div className="flex items-center justify-between font-mono text-[11px]"><span className="text-primary-bright">{progress}%</span><span className="text-muted">{current ? `perfil ${current.profile}` : "nenhum render ainda"}</span></div>
-                    <Progress value={progress} className="mt-2" pulse />
-                  </div>
+                {!current?.outputPath && current && (
+                  <RenderProgressOverlay renderJobId={current.id} initialProgress={progress} initialProfile={current.profile} />
                 )}
               </div>
               {current?.outputPath && (
@@ -216,19 +238,21 @@ export default async function RenderPage({ params, searchParams }: { params: Pro
 
             <Card className="p-5">
               <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="memory" className="mr-1 align-middle text-primary-bright" />Etapas do Render</h3><span className="font-mono text-xs text-fg-secondary">Local · FFmpeg · {current?.finishedAt ? "Concluído" : busy ? "Em execução" : "Aguardando"}</span></div>
-              <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
-                {STAGES.map(([n, d, at], i) => {
-                  const done = progress >= at;
-                  const active = !done && progress > (STAGES[i - 1]?.[2] ?? 0) - 1 && busy;
-                  return (
-                    <div key={n} className="rounded border border-line bg-void/40 p-3">
-                      <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-mono text-xs"><Icon name={done ? "check_circle" : active ? "sync" : "radio_button_unchecked"} className={`text-[16px] ${done ? "text-success" : active ? "animate-spin text-primary-bright" : "text-muted"}`} />Etapa {String(i + 1).padStart(2, "0")}: {n}</span><Badge tone={done ? "success" : active ? "cyan" : "neutral"}>{done ? "OK" : active ? "em curso" : "pendente"}</Badge></div>
-                      <p className="mt-2 text-xs text-fg-secondary">{d}</p>
-                    </div>
-                  );
-                })}
-              </div>
-              {current?.log && <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-line bg-void/70 p-3 font-mono text-[10px] leading-relaxed text-fg-secondary">{current.log}</pre>}
+              {current && !current.outputPath ? (
+                <RenderStagesLive renderJobId={current.id} initialProgress={progress} initialProfile={current.profile} />
+              ) : (
+                <>
+                  <div className="mt-4 grid grid-cols-1 gap-3 sm:grid-cols-2">
+                    {RENDER_STAGES.map(([n, d, at]) => (
+                      <div key={n} className="rounded border border-line bg-void/40 p-3">
+                        <div className="flex items-center justify-between"><span className="flex items-center gap-2 font-mono text-xs"><Icon name={current?.outputPath ? "check_circle" : "radio_button_unchecked"} className={`text-[16px] ${current?.outputPath ? "text-success" : "text-muted"}`} />{n}</span><Badge tone={current?.outputPath ? "success" : "neutral"}>{current?.outputPath ? "OK" : "pendente"}</Badge></div>
+                        <p className="mt-2 text-xs text-fg-secondary">{d}</p>
+                      </div>
+                    ))}
+                  </div>
+                  {current?.log && <pre className="mt-4 max-h-40 overflow-auto whitespace-pre-wrap rounded border border-line bg-void/70 p-3 font-mono text-[10px] leading-relaxed text-fg-secondary">{current.log}</pre>}
+                </>
+              )}
             </Card>
 
             {current?.outputPath && scenes.length > 0 && (

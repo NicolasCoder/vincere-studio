@@ -6,15 +6,16 @@ import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
+import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setCaptionStyle, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
 import { SceneUpload } from "./SceneUpload";
+import { CaptionStyleEditor } from "../render/CaptionStyleEditor";
 import path from "node:path";
 
 const GEMINI_VOICES = ["Charon", "Fenrir", "Enceladus", "Orus", "Kore", "Aoede", "Leda", "Puck"];
 
-export default async function MediaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string }> }) {
+export default async function MediaPage({ params, searchParams }: { params: Promise<{ id: string }>; searchParams: Promise<{ blocked?: string; job?: string; saved?: string }> }) {
   const { id } = await params;
-  const { blocked, job } = await searchParams;
+  const { blocked, job, saved } = await searchParams;
   const { project, header, busy } = await loadProjectShell(id, "MEDIA", blocked, job);
   const format = FORMATS[project.format as VideoFormat];
   const style = getVisualStyle(project.visualStyle);
@@ -67,6 +68,7 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
         </div>
 
         {job && <div className="mt-4"><JobWatcher jobId={job} label="Estúdio de mídia trabalhando" /></div>}
+        {saved === "caption" && <Card className="mt-4 p-3 text-sm text-success"><Icon name="check_circle" className="mr-1 align-middle" />Modelo de legenda salvo — o próximo render no Passo 4 já sai com ele.</Card>}
         {(mixedVoices || fallbackCount > 0) && !job && (
           <div className="mt-4 flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm">
             <Icon name="warning" className="text-[18px] text-warning" />
@@ -174,6 +176,14 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                 </div>
               )}
               <p className="mt-2 text-[11px] text-muted">Vozes Gemini: {GEMINI_VOICES.join(", ")}. Edge (grátis, sem chave): {edgeVoices.map((v) => v.label.split(" ·")[0]).join(", ")}. Crie perfis em Settings.</p>
+            </Card>
+
+            <Card className="p-4">
+              <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="subtitles" className="mr-1 align-middle text-primary-bright" />Modelo de legenda</h3></div>
+              <p className="mt-1 text-[11px] text-fg-secondary">Escolha aqui, antes de renderizar — o Passo 4 já sai com este modelo, sem precisar gerar 2 renders.</p>
+              <form action={setCaptionStyle.bind(null, project.id)} className="mt-3">
+                <CaptionStyleEditor format={project.format as VideoFormat} savedPreset={project.captionPreset} savedStyleJson={project.captionStyle} />
+              </form>
             </Card>
 
             <Card className="p-4">

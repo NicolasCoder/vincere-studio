@@ -100,7 +100,11 @@ export function CaptionStyleEditor({ format, savedPreset, savedStyleJson }: { fo
       <div className={`relative mt-3 overflow-hidden rounded border border-line bg-gradient-to-br from-slate-900 via-slate-700 to-amber-900 ${vertical ? "mx-auto aspect-[9/16] max-h-72" : "aspect-video w-full"}`}>
         <div className="absolute inset-0 opacity-25" style={{ backgroundImage: "radial-gradient(circle at 65% 25%, white 0, transparent 32%), linear-gradient(120deg, transparent 45%, black 100%)" }} />
         <div className={`absolute inset-x-[6%] text-center leading-tight ${positionClass}`} style={{ fontFamily: style.fonte, fontSize: `${Math.max(14, sizePct * (vertical ? 4.6 : 3.6))}px`, color: style.cor, textShadow: shadow, textTransform: style.maiusculas ? "uppercase" : "none", fontWeight: mode === "bold-center-animated" ? 900 : 600 }}>
-          Uma <span style={{ color: style.corAtiva }}>história</span> que ninguém contou
+          {mode === "bold-center-animated" ? (
+            <>Uma <span style={{ color: style.corAtiva }}>história</span> que ninguém contou</>
+          ) : (
+            "Uma história que ninguém contou"
+          )}
         </div>
         <span className="absolute left-2 top-2 rounded bg-black/55 px-2 py-1 font-mono text-[9px] text-white">PRÉVIA {vertical ? "9:16" : "16:9"}</span>
       </div>
@@ -119,8 +123,8 @@ export function CaptionStyleEditor({ format, savedPreset, savedStyleJson }: { fo
         <label className="text-[10px] text-muted">Cor principal
           <input name="captionColor" type="color" value={style.cor} onChange={(event) => customize({ cor: event.target.value })} className="mt-1 h-9 w-full rounded border border-line bg-void p-1" />
         </label>
-        <label className="text-[10px] text-muted">Palavra ativa
-          <input name="captionActiveColor" type="color" value={style.corAtiva} onChange={(event) => customize({ corAtiva: event.target.value })} className="mt-1 h-9 w-full rounded border border-line bg-void p-1" />
+        <label className="text-[10px] text-muted">Palavra ativa {mode !== "bold-center-animated" && <span className="text-warning">(só no modo Karaokê)</span>}
+          <input name="captionActiveColor" type="color" value={style.corAtiva} onChange={(event) => customize({ corAtiva: event.target.value })} className="mt-1 h-9 w-full rounded border border-line bg-void p-1" disabled={mode !== "bold-center-animated"} />
         </label>
         <label className="text-[10px] text-muted">Contorno
           <input name="captionOutlineColor" type="color" value={style.corContorno} onChange={(event) => customize({ corContorno: event.target.value })} className="mt-1 h-9 w-full rounded border border-line bg-void p-1" />

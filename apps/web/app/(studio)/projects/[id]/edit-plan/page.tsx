@@ -113,6 +113,7 @@ export default async function EditPlanPage({
           icon="auto_awesome_mosaic"
           title="Plano de Edição (camada visual DVP)"
           subtitle="O que entra POR CIMA do master já renderizado — lower thirds, destaques de dado, intertítulos. Nada é renderizado aqui: este é o plano para você revisar."
+          right={<Link href={`/projects/${project.id}/render`}><Button variant="ghost" icon="arrow_back">Voltar para Render</Button></Link>}
         />
 
         <Card className="p-5">

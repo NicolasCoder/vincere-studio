@@ -109,12 +109,18 @@ function relevanceTerms(keywords: string | null, description: string | null): st
   return Array.from(new Set(words));
 }
 
-/** Pontua um candidato do acervo pela sobreposição entre suas tags/página e os termos relevantes da cena. */
-function scoreAsset(asset: { tags?: string; pageUrl?: string }, terms: string[]): number {
-  if (!terms.length) return 0;
+/**
+ * Pontua um candidato pela sobreposição com os termos da cena e com os termos-âncora do projeto
+ * inteiro. Âncora vale o dobro: uma keyword isolada e literal de uma cena (ex.: "disco girando"
+ * numa frase que só usava "girar" como figura de linguagem) não pode validar a si mesma — o
+ * candidato também precisa bater com o tema geral do vídeo pra não sair do assunto.
+ */
+function scoreAsset(asset: { tags?: string; pageUrl?: string }, terms: string[], anchorTerms: string[]): { score: number; anchorHits: number; sceneHits: number } {
   const haystack = `${asset.tags ?? ""} ${asset.pageUrl ?? ""}`.toLowerCase();
-  if (!haystack.trim()) return 0;
-  return terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+  if (!haystack.trim()) return { score: 0, anchorHits: 0, sceneHits: 0 };
+  const anchorHits = anchorTerms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+  const sceneHits = terms.reduce((s, t) => (haystack.includes(t) ? s + 1 : s), 0);
+  return { score: anchorHits * 2 + sceneHits, anchorHits, sceneHits };
 }
 
 /**
@@ -147,7 +153,7 @@ export async function huntBroll(ctx: JobContext) {
   if (!providers.length) throw new Error("Nenhuma chave de acervo: configure PEXELS_API_KEY e/ou PIXABAY_API_KEY no .env");
   const project = await prisma.project.findUniqueOrThrow({ where: { id: projectId } });
   const format = FORMATS[project.format as VideoFormat];
-  const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { scenes: { orderBy: { order: "asc" } } } } } });
+  const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { scenes: { orderBy: { order: "asc" } }, voiceTracks: { take: 1, include: { captions: { take: 1, select: { words: true } } } } } } } });
   if (!script) throw new Error("Sem roteiro");
   const targets = script.blocks.flatMap((b) => b.scenes.filter((s) => !s.filePath && (!onlyPreferVideo || s.preferVideo)).map((s) => ({ s, act: b.act }))).slice(0, limit === Infinity ? undefined : limit);
   if (!targets.length) {
@@ -194,19 +200,20 @@ export async function huntBroll(ctx: JobContext) {
       if (!pool.length) continue;
       // Pixabay traz tags mais ricas que o Pexels (que não retorna tags pra vídeo); em caso de empate
       // na pontuação de relevância para vídeo, prefere o candidato do Pixabay.
-      const scored = pool.map((r, i) => ({ r, score: scoreAsset(r, terms) + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), i }));
+      const scored = pool.map((r, i) => {
+        const { score, anchorHits, sceneHits } = scoreAsset(r, terms, anchor);
+        return { r, score: score + (type === "video" && r.provider === "PIXABAY" ? 0.25 : 0), anchorHits, sceneHits, i };
+      });
       scored.sort((a, b) => b.score - a.score || a.i - b.i);
-      const top = scored[0];
-      if (terms.length > 0 && top.score === 0) {
-        // Nenhum candidato deste tipo tem qualquer sobreposição com o contexto da cena — tenta o
-        // outro tipo (imagem/vídeo) antes de desistir, em vez de aceitar algo genérico/fora de tema.
-        continue;
-      }
+      // Com âncora de tema definida, exige bater com o tema do vídeo inteiro OU com pelo menos 2
+      // termos próprios da cena — uma cena de paisagem genérica e legítima ("terreno ártico
+      // rochoso") não precisa também mencionar "dark/vintage/ocean" pra ser válida; só a palavra
+      // isolada e literal (ex.: "spinning" sozinho) que não pode validar a si mesma.
+      const offTheme = (c: (typeof scored)[number]) => (anchor.length > 0 ? c.anchorHits === 0 && c.sceneHits < 2 : terms.length > 0 && c.score === 0);
+      if (offTheme(scored[0])) continue;
       // Em paralelo, duas cenas podem ter passado pelo mesmo candidato antes de qualquer uma marcar
       // como usado. A reserva acontece aqui, sem await no meio, então é atômica entre as tarefas.
-      // O filtro de relevância entra de novo: cair para um candidato com score 0 só porque o melhor
-      // já foi levado traria uma imagem fora de tema, que é justo o que a regra acima evita.
-      const pick = scored.find((c) => !used.has(`${c.r.provider}:${c.r.id}`) && !(terms.length > 0 && c.score === 0));
+      const pick = scored.find((c) => !used.has(`${c.r.provider}:${c.r.id}`) && !offTheme(c));
       if (!pick) continue;
       used.add(`${pick.r.provider}:${pick.r.id}`);
       hit = pick.r;
