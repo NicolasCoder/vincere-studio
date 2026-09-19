@@ -6,7 +6,8 @@
     "dev": "next dev --turbopack --port 3210",
     "build": "next build",
     "start": "next start --port 3210",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run --config vitest.smoke.config.ts"
   },
   "dependencies": {
     "@docupulse/core": "workspace:*",
@@ -28,6 +29,7 @@
     "@types/react": "^19.1.0",
     "@types/react-dom": "^19.1.0",
     "tailwindcss": "^4.1.0",
-    "typescript": "^5.9.0"
+    "typescript": "^5.9.0",
+    "vitest": "^3.2.4"
   }
 }

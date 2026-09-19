@@ -4,11 +4,14 @@ dist/
 .turbo/
 *.db
 *.db-journal
+*.db-shm
+*.db-wal
 .env
 storage/*
 !storage/.gitkeep
 .DS_Store
 _incoming/
+scripts/auto-pull.log
 
 # Scripts e logs de diagnóstico local (convenção: prefixo _)
 _*
