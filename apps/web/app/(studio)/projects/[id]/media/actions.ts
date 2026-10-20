@@ -1,11 +1,12 @@
 "use server";
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
+import { existsSync } from "node:fs";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@vincere-studio/db";
 import { CAPTION_PRESET_IDS, FORMATS, sceneFileStem, type VideoFormat } from "@vincere-studio/core";
-import { downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@vincere-studio/providers";
+import { absPath, downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@vincere-studio/providers";
 import { captionStyleFromForm } from "../render/caption-style";
 
 const REROLL_STOPWORDS = new Set(["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "with", "from", "by", "is", "are", "this", "that", "scene", "shot", "footage", "video", "image", "close", "up", "wide", "view"]);
@@ -53,6 +54,28 @@ export async function importInbox(projectId: string) {
 }
 export async function huntBroll(projectId: string, onlyPreferVideo = false) {
   await enqueue(projectId, "HUNT_BROLL", { onlyPreferVideo });
+}
+/**
+ * Cenas cujo arquivo sumiu do disco (limpeza antiga, migração) continuam com filePath e por isso
+ * o HUNT_BROLL as pula. Aqui elas voltam a "sem mídia" e, havendo chave de acervo, a busca roda.
+ */
+export async function repairMissingMedia(projectId: string) {
+  const scenes = await prisma.scene.findMany({
+    where: { filePath: { not: null }, block: { script: { projectId } } },
+    select: { id: true, filePath: true },
+  });
+  const sumidas = scenes.filter((s) => s.filePath && !existsSync(absPath(s.filePath))).map((s) => s.id);
+  if (sumidas.length) {
+    await prisma.scene.updateMany({
+      where: { id: { in: sumidas } },
+      data: { filePath: null, status: "PENDING", thumbPath: null, durationMs: null },
+    });
+  }
+  if (sumidas.length && getStockProviders().length) {
+    await enqueue(projectId, "HUNT_BROLL", { onlyPreferVideo: false });
+  }
+  revalidatePath(`/projects/${projectId}/media`);
+  back(projectId);
 }
 export async function setVoiceProfile(projectId: string, formData: FormData) {
   const voiceProfileId = String(formData.get("voiceProfileId") ?? "") || null;

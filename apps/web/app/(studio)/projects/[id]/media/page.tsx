@@ -1,12 +1,13 @@
+import { existsSync } from "node:fs";
 import { prisma } from "@vincere-studio/db";
 import { FORMATS, getVisualStyle, sceneFileStem, visualStyleList, type VideoFormat } from "@vincere-studio/core";
-import { EdgeVoiceProvider, storageRoot } from "@vincere-studio/providers";
+import { EdgeVoiceProvider, absPath, getStockProviders, storageRoot } from "@vincere-studio/providers";
 import { Badge, Button, Card, Chip, Icon, Progress, Stat } from "@vincere-studio/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
-import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setCaptionStyle, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
+import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, repairMissingMedia, rerollScene, setCaptionStyle, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
 import { SceneUpload } from "./SceneUpload";
 import { SceneFlowButton } from "./SceneFlowButton";
 import { CaptionStyleEditor } from "../render/CaptionStyleEditor";
@@ -30,7 +31,9 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
   const voiced = blocks.filter((b) => b.voiceTracks.length).length;
   const captioned = blocks.filter((b) => b.voiceTracks[0]?.captions.length).length;
   const scenes = blocks.flatMap((b) => b.scenes.map((s) => ({ ...s, act: b.act })));
-  const ready = scenes.filter((s) => s.filePath).length;
+  // filePath sem arquivo no disco conta como faltante (não como pronta).
+  const missing = scenes.filter((s) => s.filePath && !existsSync(absPath(s.filePath))).length;
+  const ready = scenes.filter((s) => s.filePath).length - missing;
   const totalMs = blocks.reduce((s, b) => s + (b.voiceTracks[0]?.durationMs ?? 0), 0);
   const fallbackCount = blocks.filter((b) => b.voiceTracks[0]?.fallbackUsed).length;
   const fallbackIds = blocks.filter((b) => b.voiceTracks[0]?.fallbackUsed).map((b) => b.id);
@@ -39,7 +42,9 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
   const bySource = { STOCK: scenes.filter((s) => s.source === "STOCK").length, IMPORTED: scenes.filter((s) => s.source === "IMPORTED").length, GENERATED: scenes.filter((s) => s.source === "GENERATED" && s.filePath).length };
   const inboxPath = path.join(storageRoot(), "projects", id, "inbox");
   const refPath = path.join(storageRoot(), "projects", id, "referencias");
-  const hasStock = !!(process.env.PEXELS_API_KEY || process.env.PIXABAY_API_KEY);
+  // Openverse (imagens de acervo) não precisa de chave: a busca funciona mesmo sem Pexels/Pixabay.
+  const hasStock = getStockProviders().length > 0;
+  const hasVideoStock = !!(process.env.PEXELS_API_KEY || process.env.PIXABAY_API_KEY);
   const edgeVoices = new EdgeVoiceProvider().voices();
 
   return (
@@ -215,11 +220,21 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
               <div className="flex items-center justify-between"><h3 className="font-display font-semibold"><Icon name="movie_filter" className="mr-1 align-middle text-primary-bright" />Curadoria & B-Roll</h3><Badge tone="violet">Flow + GPT</Badge></div>
               <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-2"><Stat label="Cenas com mídia" value={`${ready} / ${scenes.length}`} sub={scenes.length ? `${Math.round((ready / scenes.length) * 100)}% cobertura` : "planeje as cenas"} /><Stat label="Fontes" value={`${bySource.STOCK}·${bySource.IMPORTED}`} sub="acervo · Flow/import" tone="fg" /></div>
               {scenes.length > 0 && <Progress value={scenes.length ? (ready / scenes.length) * 100 : 0} className="mt-3" />}
+              {missing > 0 && (
+                <div className="mt-3 rounded border border-warning/40 bg-warning/10 p-3 text-xs text-warning">
+                  <p><Icon name="warning" className="mr-1 align-middle text-[14px]" />{missing} cena(s) apontam para arquivos que não existem mais no disco.</p>
+                  <form action={repairMissingMedia.bind(null, project.id)} className="mt-2">
+                    <Button type="submit" size="sm" icon="healing" className="w-full" disabled={busy}>
+                      {hasStock ? "Recuperar: rebuscar no acervo" : "Marcar como pendentes (configure Pexels/Pixabay para rebuscar)"}
+                    </Button>
+                  </form>
+                </div>
+              )}
               <div className="mt-3 space-y-2">
                 {scenes.length > 0 && <a href={`/api/projects/${project.id}/gpt-image-pack`}><Button icon="smart_toy" variant="primary" size="sm" className="w-full">Gerar com GPT</Button></a>}
                 {scenes.length > 0 && <a href={`/api/media/projects/${project.id}/prompts/flow-pack.md?download=1`}><Button icon="download" size="sm" className="w-full">Baixar pacote de prompts (Flow)</Button></a>}
                 <form action={importInbox.bind(null, project.id)}><Button type="submit" icon="folder_open" size="sm" className="w-full" disabled={busy || !scenes.length}>Importar da pasta inbox</Button></form>
-                <form action={huntBroll.bind(null, project.id, false)}><Button type="submit" icon="travel_explore" size="sm" className="w-full" disabled={busy || !scenes.length || !hasStock} title={hasStock ? "Pexels/Pixabay" : "Configure PEXELS_API_KEY / PIXABAY_API_KEY"}>Buscar B-roll no acervo{!hasStock && " (sem chave)"}</Button></form>
+                <form action={huntBroll.bind(null, project.id, false)}><Button type="submit" icon="travel_explore" size="sm" className="w-full" disabled={busy || !scenes.length || !hasStock} title={hasVideoStock ? "Pexels/Pixabay/Openverse" : "Só imagens (Openverse, grátis). Para vídeo, configure PEXELS_API_KEY / PIXABAY_API_KEY"}>Buscar B-roll no acervo{!hasVideoStock && " (só imagens)"}</Button></form>
               </div>
               <div className="mt-3 rounded border border-line bg-void/60 p-2 font-mono text-[10px] text-muted break-all"><Icon name="folder" className="mr-1 align-middle text-[12px]" />{inboxPath}</div>
               <p className="mt-2 text-[11px] text-fg-secondary">No GPT, baixe o .txt, cole o conteúdo nesta conversa e peça a geração completa. Salve as imagens nesta pasta com os nomes indicados (a01-s03.png) e clique em Importar. O fluxo do Flow continua disponível.</p>
