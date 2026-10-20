@@ -1,6 +1,6 @@
-# Editor-IA — camada visual DVP sobre os masters do DocuPulse
+# Editor-IA — camada visual DVP sobre os masters do Vincere Studio
 
-Projeto Remotion **único** que recebe os vídeos já renderizados pelo DocuPulse.AI e devolve a versão
+Projeto Remotion **único** que recebe os vídeos já renderizados pelo Vincere Studio e devolve a versão
 com camada visual aplicada, pronta para postar.
 
 Nunca criar outro `package.json`, `node_modules` ou projeto Remotion dentro das pastas de material.
@@ -13,7 +13,7 @@ Existe um projeto só, na raiz de `Edição/`.
 Entra em `Projetos/<slug>/`, sai em `Edições/<slug>/`.
 
 ```text
-Projetos/<slug>/      master do DocuPulse, transcrição exportada, referências
+Projetos/<slug>/      master do Vincere Studio, transcrição exportada, referências
 src/videos/<slug>/    cenas Remotion deste trabalho
 docs/videos/<slug>.md plano de inserções (uma linha por inserção)
 Edições/<slug>/       render final — nada mais
@@ -22,7 +22,7 @@ Assets/               identidade visual DVP (referência fixa, compartilhada)
 
 Um master de entrada = um trabalho. Dois masters nunca são concatenados sem pedido explícito.
 
-O `slug` acompanha o projeto no DocuPulse (ex.: `rodovia-44-carros-vazios`).
+O `slug` acompanha o projeto no Vincere Studio (ex.: `rodovia-44-carros-vazios`).
 
 ---
 
@@ -66,7 +66,7 @@ A composição Remotion **herda largura, altura e fps do master**. Nunca fixar v
 
 ## Transcrição — já pronta, não rodar Whisper
 
-A transcrição alinhada por palavra **já existe no banco do DocuPulse**, gerada pelo job
+A transcrição alinhada por palavra **já existe no banco do Vincere Studio**, gerada pelo job
 `ALIGN_CAPTIONS`: tabela `Caption`, campo `words` (JSON `{text, startMs, endMs}[]`), uma linha por
 `VoiceTrack` — ou seja, **uma por ato**.
 

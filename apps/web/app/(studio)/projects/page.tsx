@@ -1,5 +1,5 @@
-import { COST_MODES, formatList } from "@docupulse/core";
-import { Badge, Button, Card, Icon } from "@docupulse/ui";
+import { COST_MODES, formatList } from "@vincere-studio/core";
+import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary, listProjects } from "@/lib/data";

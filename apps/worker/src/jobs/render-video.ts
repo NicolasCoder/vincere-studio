@@ -1,10 +1,10 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { captionPresetFor, getVisualStyle, type CaptionMode, type EstiloLegenda, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@docupulse/core";
-import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@docupulse/providers";
-import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, normalizeMotion, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@docupulse/render";
+import { prisma } from "@vincere-studio/db";
+import { captionPresetFor, getVisualStyle, type CaptionMode, type EstiloLegenda, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@vincere-studio/core";
+import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@vincere-studio/providers";
+import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, normalizeMotion, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@vincere-studio/render";
 import type { JobContext } from "../queue";
 
 // Quantos renders finais (mp4) manter por projeto — os mais antigos são apagados

@@ -1,5 +1,5 @@
 {
-  "name": "pulsestudio",
+  "name": "vincere-studio",
   "private": true,
   "packageManager": "pnpm@10.28.0",
   "scripts": {
@@ -7,10 +7,10 @@
     "build": "turbo run build",
     "start": "turbo run start",
     "typecheck": "turbo run typecheck",
-    "db:generate": "pnpm --filter @docupulse/db generate",
-    "db:push": "pnpm --filter @docupulse/db push",
-    "db:seed": "pnpm --filter @docupulse/db seed",
-    "db:studio": "pnpm --filter @docupulse/db studio",
+    "db:generate": "pnpm --filter @vincere-studio/db generate",
+    "db:push": "pnpm --filter @vincere-studio/db push",
+    "db:seed": "pnpm --filter @vincere-studio/db seed",
+    "db:studio": "pnpm --filter @vincere-studio/db studio",
     "setup": "pnpm install && pnpm db:generate && pnpm db:push && pnpm db:seed",
     "test": "turbo run test"
   },

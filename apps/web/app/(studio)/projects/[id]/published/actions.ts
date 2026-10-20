@@ -2,9 +2,9 @@
 import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { prisma } from "@docupulse/db";
-import { absPath, getAuthenticatedYoutubeClient, getTextProvider, projectDir, recordUsage, relPath } from "@docupulse/providers";
-import { quadroDe, renderizarThumbnail } from "@docupulse/render";
+import { prisma } from "@vincere-studio/db";
+import { absPath, getAuthenticatedYoutubeClient, getTextProvider, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
+import { quadroDe, renderizarThumbnail } from "@vincere-studio/render";
 import { z } from "zod";
 
 async function requireApprovedRender(projectId: string) {
@@ -26,7 +26,7 @@ export async function publishToYoutube(projectId: string, formData: FormData) {
 
 /**
  * Faz o upload agora como privado e entrega o horário ao agendador nativo do YouTube.
- * Assim a publicação acontece mesmo se o Pulse Studio estiver fechado no horário marcado.
+ * Assim a publicação acontece mesmo se o Vincere Studio estiver fechado no horário marcado.
  */
 export async function scheduleYoutubePublication(projectId: string, formData: FormData) {
   await requireApprovedRender(projectId);

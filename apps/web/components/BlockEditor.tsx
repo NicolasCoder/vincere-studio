@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button, cn } from "@docupulse/ui";
+import { Button, cn } from "@vincere-studio/ui";
 
 /** Editor de um bloco de roteiro: texto editável com salvar explícito e realce das marcações [Pausa]. */
 export function BlockEditor({ narration, title, action, disabled }: { narration: string; title: string; action: (fd: FormData) => Promise<void>; disabled?: boolean }) {

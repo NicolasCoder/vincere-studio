@@ -1,7 +1,7 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { ProviderError, gerarImagemComRedundancia, motorImagem, projectDir, relPath } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { ProviderError, gerarImagemComRedundancia, motorImagem, projectDir, relPath } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 const MAX_COUNT = 8;

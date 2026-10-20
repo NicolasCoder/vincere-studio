@@ -1,4 +1,4 @@
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import {
   IDEATION_PROMPT_VERSION,
   IdeasResponseSchema,
@@ -8,8 +8,8 @@ import {
   trendAnglesSystemPrompt,
   trendAnglesUserPrompt,
   type VideoFormat,
-} from "@docupulse/core";
-import { getTextProvider, recordUsage } from "@docupulse/providers";
+} from "@vincere-studio/core";
+import { getTextProvider, recordUsage } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**

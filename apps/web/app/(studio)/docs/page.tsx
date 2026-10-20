@@ -1,4 +1,4 @@
-import { Card } from "@docupulse/ui";
+import { Card } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary } from "@/lib/data";

@@ -1,6 +1,6 @@
 "use client";
 import { useState } from "react";
-import { Button } from "@docupulse/ui";
+import { Button } from "@vincere-studio/ui";
 
 /**
  * Abre o Remotion Studio numa aba nova, subindo o processo sozinho se ainda não estiver rodando.

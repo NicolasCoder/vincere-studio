@@ -1,10 +1,10 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile, copyFile } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { FORMATS, planSegments, passthroughRanges, type EditPlanData, type VideoFormat } from "@docupulse/core";
-import { profileFor } from "@docupulse/render";
-import { FFMPEG, FFPROBE, absPath, probeDurationMs, projectDir, relPath, run, storageRoot } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { FORMATS, planSegments, passthroughRanges, type EditPlanData, type VideoFormat } from "@vincere-studio/core";
+import { profileFor } from "@vincere-studio/render";
+import { FFMPEG, FFPROBE, absPath, probeDurationMs, projectDir, relPath, run, storageRoot } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /** Raiz do projeto Remotion. storage/ e editor-ia/ são irmãos na raiz do repo. */

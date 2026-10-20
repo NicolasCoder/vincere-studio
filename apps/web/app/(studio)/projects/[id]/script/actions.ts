@@ -1,8 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
-import { blockTiming, estimateRetention, type RewriteMode } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { blockTiming, estimateRetention, type RewriteMode } from "@vincere-studio/core";
 
 const back = (projectId: string, job?: string) => redirect(`/projects/${projectId}/script${job ? `?job=${job}` : ""}`);
 

@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { ProviderError } from "@docupulse/providers";
+import { ProviderError } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 // IGO-7: bug real que já aconteceu em produção — quando o Gemini trunca o JSON do
@@ -7,7 +7,7 @@ import type { JobContext } from "../queue";
 // de ideias inteira não pode travar. O código já tem o try/catch certo em
 // generate-ideas.ts; este teste é a rede de segurança pra não perder isso num refactor.
 //
-// Mocka @docupulse/providers e @docupulse/db (não precisa de banco real aqui — o ponto
+// Mocka @vincere-studio/providers e @vincere-studio/db (não precisa de banco real aqui — o ponto
 // é isolar o comportamento de "um provedor externo falhou no meio do job").
 
 const { mockGenerateJson, mockRecordUsage, mockIdea, mockProject } = vi.hoisted(() => ({
@@ -17,8 +17,8 @@ const { mockGenerateJson, mockRecordUsage, mockIdea, mockProject } = vi.hoisted(
   mockProject: { findUnique: vi.fn() },
 }));
 
-vi.mock("@docupulse/providers", async (importOriginal) => {
-  const actual = await importOriginal<typeof import("@docupulse/providers")>();
+vi.mock("@vincere-studio/providers", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("@vincere-studio/providers")>();
   return {
     ...actual,
     getTextProvider: () => ({ name: "GEMINI", generateJson: mockGenerateJson, generateText: vi.fn() }),
@@ -26,7 +26,7 @@ vi.mock("@docupulse/providers", async (importOriginal) => {
   };
 });
 
-vi.mock("@docupulse/db", () => ({
+vi.mock("@vincere-studio/db", () => ({
   prisma: {
     project: mockProject,
     idea: mockIdea,

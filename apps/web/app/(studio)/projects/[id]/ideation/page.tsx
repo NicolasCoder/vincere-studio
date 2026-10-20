@@ -1,5 +1,5 @@
-import { FORMATS, type VideoFormat } from "@docupulse/core";
-import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
+import { FORMATS, type VideoFormat } from "@vincere-studio/core";
+import { Badge, Button, Card, Chip, Icon } from "@vincere-studio/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { fmtDuration, parseJson } from "@/lib/data";
 import { generateIdeas, selectIdea } from "../../actions";

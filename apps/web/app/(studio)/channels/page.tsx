@@ -1,10 +1,10 @@
 import Link from "next/link";
-import { prisma } from "@docupulse/db";
-import { Badge, Card, Icon, Stat } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { Badge, Card, Icon, Stat } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary } from "@/lib/data";
-import { getYoutubeChannelManagerData } from "@docupulse/providers";
+import { getYoutubeChannelManagerData } from "@vincere-studio/providers";
 
 function formatCount(n?: number) {
   if (n == null) return "—";
@@ -105,7 +105,7 @@ export default async function ChannelsPage() {
                             {v.publishedAt && <span className="text-[11px] text-fg-secondary">{new Date(v.publishedAt).toLocaleDateString("pt-BR")}</span>}
                             {pub ? (
                               <Link href={`/projects/${pub.projectId}/published`}>
-                                <Badge tone="cyan">Feito no Vincere</Badge>
+                                <Badge tone="cyan">Feito no Vincere Studio</Badge>
                               </Link>
                             ) : (
                               <Badge tone="neutral">Externo</Badge>

@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 /**
  * Webhook de entrada (ex.: n8n cria um projeto a partir de uma planilha de tópicos).

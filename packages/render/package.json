@@ -1,5 +1,5 @@
 {
-  "name": "@docupulse/render",
+  "name": "@vincere-studio/render",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -7,6 +7,6 @@
   "types": "./src/index.ts",
   "exports": { ".": "./src/index.ts" },
   "scripts": { "typecheck": "tsc --noEmit" },
-  "dependencies": { "@docupulse/core": "workspace:*", "@docupulse/providers": "workspace:*" },
+  "dependencies": { "@vincere-studio/core": "workspace:*", "@vincere-studio/providers": "workspace:*" },
   "devDependencies": { "@types/node": "^22.0.0", "typescript": "^5.9.0" }
 }

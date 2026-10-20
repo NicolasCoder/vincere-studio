@@ -1,6 +1,6 @@
 "use client";
 import { useCallback, useEffect, useRef, useState, useTransition } from "react";
-import { Button, Card, Icon } from "@docupulse/ui";
+import { Button, Card, Icon } from "@vincere-studio/ui";
 import { aplicarThumbnail } from "./actions";
 
 interface Variante {

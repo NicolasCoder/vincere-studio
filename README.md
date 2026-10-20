@@ -1,4 +1,4 @@
-# DocuPulse.AI · Studio OS
+# Vincere Studio
 
 Automação de documentários (16:9) e vídeos curtos (9:16) com IA: ideação → roteiro → voz e B-roll → render → publicação.
 

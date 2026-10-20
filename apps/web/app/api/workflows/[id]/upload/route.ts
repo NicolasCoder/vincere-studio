@@ -1,7 +1,7 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { storageRoot, relPath } from "@docupulse/providers";
+import { storageRoot, relPath } from "@vincere-studio/providers";
 
 /** Upload de imagem de referência para um node do Workflow Studio (Avatar/Produto). */
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {

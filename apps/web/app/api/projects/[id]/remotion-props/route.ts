@@ -2,9 +2,9 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { mkdir, rm, writeFile, copyFile } from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { prisma } from "@docupulse/db";
-import { FORMATS, type EditPlanData, type VideoFormat } from "@docupulse/core";
-import { absPath, probeDurationMs, run, FFPROBE } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { FORMATS, type EditPlanData, type VideoFormat } from "@vincere-studio/core";
+import { absPath, probeDurationMs, run, FFPROBE } from "@vincere-studio/providers";
 import { STUDIO_URL, editorIaDir, ensureRemotionStudio } from "@/lib/remotion-studio";
 
 /**

@@ -1,6 +1,136 @@
-# Progresso da sessão — DocuPulse.AI
+# Progresso do projeto — Vincere Studio
 
 Registro do que foi feito, decidido e ainda falta, pra não perder contexto entre sessões.
+
+> **Handoff ativo:** a próxima sessão deve começar por [`NEXT_SESSION.md`](../NEXT_SESSION.md).
+> O plano está preparado para Codex e Claude e deve ser executado na ordem registrada.
+
+## Nome oficial do produto — decisão de 19/09/2026
+
+- **Nome oficial e definitivo da ferramenta:** **Vincere Studio**.
+- Nomes anteriores não devem mais ser usados como marca, nem mesmo em novos registros históricos.
+- A pasta local e o repositório ainda conservam um nome técnico anterior, mas não representam
+  o nome do produto.
+- Todo novo texto de interface, documentação, apresentação e comunicação deve usar
+  **Vincere Studio**. O escopo interno dos pacotes foi alinhado para `@vincere-studio/*`; o
+  arquivo do banco e caminhos físicos legados devem ser migrados separadamente, com cuidado
+  para não quebrar dados ou automações.
+
+---
+
+## Sessão 19/10/2026 (noite, Claude) — vistoria da 2.0
+
+Achados medidos (não presumidos):
+
+- A web roda na VPS (pm2 `vincere-web`), sem git lá; código da VPS idêntico ao local, exceto
+  `scripts/cleanup-vps.sh`, que só existe na VPS e precisa ser versionado.
+- `/api/health` na VPS conta **0 projetos**; o banco local tem 8 projetos e 6 roteiros.
+  Os dados não foram levados para a VPS (ou o `DATABASE_URL` aponta para um banco vazio).
+- `next start` escuta em `*:3210` com `ufw` inativo: app sem login aberta na internet.
+- `/api/hyperframes` lia `C:\Users\Igor\Videos-HF` e executava `hyperframes` **na VPS**; isso
+  deixou um HyperFrames órfão na VPS ocupando `127.0.0.1:3010` e desviando o túnel do PC.
+- `/api/voicestudio` tinha a chave da API no código e o áudio apontava para `localhost:3900`.
+- O Copiloto é protótipo: beats da Nike fixos, nada persiste, POST de narração sem rota.
+- `node_modules` local incompleto (sem `turbo`): typecheck/test/build não rodam no PC.
+- Disco C: 94% cheio (14 GB livres). Vincere usa ~1 GB ali; o resto é sistema, apps e caches.
+
+Corrigido no código local (ainda **não** publicado na VPS):
+
+- `/api/hyperframes` consulta o preview por HTTP (`HYPERFRAMES_URL`, rota `/api/projects`) e
+  não inicia processo nem cria pasta; `/studio` usa o host do navegador no iframe e o modal de
+  novo projeto gera o comando/pedido para o PC.
+- `/api/voicestudio`: chave só via `OMNIVOICE_API_KEY`, proxy de áudio, POST responde 501 claro.
+- `scripts/lan-proxy.mjs` + `scripts/iniciar-vincere.ps1` + `Iniciar Vincere.bat`: sobe túnel,
+  HyperFrames, Flow e acesso pelo celular sem duplicar processos.
+
+Segunda rodada (autorizada pelo Igor):
+
+- **Banco:** a VPS tinha os projetos apagados (cascata, provavelmente `delete-projects --confirm`)
+  e a pasta `storage/projects` vazia. `scripts/db-merge.py` mescla o banco do PC (base) com o
+  vivo da VPS (vence em conflito); testado em cópia: integridade ok, 0 violações de FK, 8
+  projetos, 159 cenas, 3 workflows e 2 skills de roteiro preservados.
+- **Publicação:** `scripts/deploy-vps.sh [--restore-db]` faz backup, envia código, aplica
+  segurança (next em 127.0.0.1, chave do VoiceStudio no .env, `HYPERFRAMES_URL`, encerra
+  HyperFrames órfão), build com reversão automática e conferência. O auto mode do Claude Code
+  bloqueia deploy em produção: o Igor roda o comando.
+- **Ponte com o Claude:** botão flutuante "Chamar o Claude" (`components/ClaudeButton.tsx`,
+  `/api/claude`, `storage/claude-inbox.json`) + skill global `vincere-pedidos`
+  (`/loop 1m /vincere-pedidos` no PC).
+- **Nichos:** `apps/web/lib/nichos.ts` alimenta o Início ("O que vamos criar hoje?"), o Roteiro
+  em beats e as receitas das skills. Novo nicho = nova entrada.
+- **UI:** identidade a partir do logotipo (grafite + azul Vincere, gradiente só no logo/CTA,
+  títulos em Sora); tokens `surface-mid`/`line-bright` que não existiam; cores fixas
+  emerald/amber/purple trocadas por tokens; Sidebar enxuta; barra móvel com menu em todas as
+  telas; Topbar sem busca/sino/avatar falsos; biblioteca de skills didática com prévias em CSS.
+- **Skills:** `video-sharingan` (estava só em `~/.agents`), `manim-video`, `ascii-video`,
+  `gif-search`, `youtube-content` e `songsee` copiadas para `~/.claude/skills`.
+- **Limpeza:** `node_modules_old`/`_trash` (870 MB) para a lixeira do Drive; scripts `_*.ps1`
+  em `scripts/_local/`; mídias antigas em `C:\Users\Igor\Videos-HF\_arquivo`.
+
+Ainda pendente: rodar o deploy; reinstalar `node_modules` local (ou mover o repo para fora do
+Drive) para typecheck/test no PC; versionar `cleanup-vps.sh`; commits e IGO-7 na `main`.
+
+Terceira rodada (20/10):
+
+- **Vince (assistente):** `components/ClaudeButton.tsx` virou o mascote Vince com abas
+  "Conversar" (`/api/assistente`, LLM do servidor com o mapa de telas, nichos, skills e prompts
+  no system prompt; responde com `irPara` e `acaoClaude`) e "Pedidos ao Claude". Voz grátis do
+  navegador (ditado + leitura). `ASSISTENTE_PROVIDER` escolhe a LLM sem mexer nos roteiros.
+- **Provedor `OPENAI_COMPAT`:** `packages/providers/src/openai-compat/text.ts` — NVIDIA NIM,
+  OpenRouter :free, Groq, Ollama /v1 ou Hermes, via `OPENAI_COMPAT_*`.
+- **Biblioteca de prompts (`/prompts`):** 30 prompts do Animation Workspace (licenciados pelo
+  Igor) em `lib/prompt-library.ts`, imagens em `public/prompts` (WebP 640px, 1,9 MB).
+- **GPT Image 2 via Codex:** `codex-imagegen-cli` instalado (pip --user, commit `bf126f9`
+  revisado). Conta ChatGPT do Igor é **free** → backend devolve 403; só funciona com Plus/Pro.
+  Não integrado à web por isso.
+- **LiveKit:** avaliado e adiado (servidor de mídia + agente + pipeline de voz para 1 usuário).
+- `cleanup-vps.sh` versionado e corrigido (não apaga containers de outros serviços nem pastas
+  `work` recentes); CI em `.github/workflows/ci.yml`; rótulo "Meta de consistência facial".
+
+## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
+
+- **Integração Completa do HyperFrames Studio:**
+  - Servidor HyperFrames preview configurado como daemon persistente na porta 3010.
+  - Criada rota `/studio` com iframe interativo direto, seletor de projetos locais (`Videos-HF`), modal para criação de novos projetos baseado nos 6 perfis canônicos do Igor (Documentário DVP, Curto Vertical Estilo Igor, Cortes com Legendas Cinéticas, Reels de Oferta, YouTube Horizontal e Motion Graphic Puro) e gaveta flutuante com catálogo de 447 componentes de Motion e SFX.
+  - Criada API interna `/api/hyperframes` para checagem em tempo real e scaffolding de novos projetos.
+- **Integração VoiceStudio VPS & Flow Studio MCP:**
+  - Telas dedicadas `/voice-studio` (conectada à porta 3900 da VPS HostGator com voz oficial do Igor e Whisper large-v3-turbo) e `/flow-studio` (porta 9334 para geração de imagens 4K com Nano Banana Pro e vídeos Veo 3.1 com créditos da conta Google).
+- **Redesign Dark Cinema do Dashboard e Sidebar:**
+  - Sidebar ampliada para 288px (w-72) eliminando todos os truncamentos de texto e categorizada em 4 seções lógicas: Produção, Inteligência Artificial, Gestão & Ativos e Sistema.
+  - Dashboard reformulado como Centro de Comando com:
+    1. Hub de Status em Tempo Real dos 4 Motores (HyperFrames, VoiceStudio VPS, Flow MCP e MiniMax H3).
+    2. Guia Interativo de Fluxo em 3 Passos (Documentários, Cortes Dinâmicos de Vídeo/Desenho e Google Flow).
+    3. Feeds de projetos e fila de jobs com links diretos para o estúdio de edição.
+- **Validação de Rotas:** Todas as 8 rotas principais respondendo com HTTP 200 OK.
+- **Workflow Studio & Multi-Engine com Auto-Fallback:**
+  - Repaginação completa do canvas nodal com estética dark glassmorphism.
+  - Suporte a múltiplos motores de geração no nó de Prompt: Gemini (Nano Banana), Flow Daemon (porta 9334), MiniMax H3 e Pollinations.ai.
+  - Fallback automático e transparente para Pollinations.ai quando o Gemini indicar limite de cota sem faturamento.
+- **Evolução do Copiloto para Copiloto Criativo Multi-Nicho:**
+  - Rota `/copilot` renomeada e reestruturada para 5 estilos: Dossiê, Cinema, Character Sheets, Comercial UGC e Curiosidades.
+  - Pipeline em 3 passos: Conceito → Roteiro em Beats → Síntese de Narração antecipada.
+- **Instalação Global de Skills Audiovisuais:**
+  - `get-brolls` (4.471 arquivos), `video-sharingan` e `subtitles_studio` instaladas no Claude Code, Gemini CLI, Antigravity e VPS.
+- **Sincronização Completa do Obsidian Vault:**
+  - Atualizado `MANUAL_PRODUCAO_VINCERE_STUDIO.md` com 11 seções detalhadas (Pipeline, Character Sheets, Workflow Studio, Copiloto Criativo, Comandos de Voz e Regras de Discos C: vs G:).
+  - Atualizados `status-projeto.md`, `decisoes-produto.md`, `roadmap-producao-video.md` e criada memória `sessao-2026-10-19.md`.
+
+
+## Sessão 19/09/2026 — Hermes, testes mínimos e consolidação
+
+- Hermes unificou a zona segura real do `editor-ia` com `captionSafeZone` do core no commit
+  `6384955`, eliminando as duas implementações divergentes. Ainda falta executar a validação
+  completa do pacote externo ao workspace: `npx tsc --noEmit` e `npm run verificar-layouts`
+  dentro de `editor-ia/`.
+- Hermes adicionou `scripts/list-projects.ts` e `scripts/delete-projects.ts` no commit
+  `529c374`. A exclusão é *dry-run* por padrão e só remove dados com `--confirm`.
+- A branch `feat/igo-7-testes-minimos` recebeu o commit `781431f`, com Vitest orquestrado pelo
+  Turbo e cobertura mínima para zona segura de legenda, orçamento, PRAGMA/SQLite, JSON truncado
+  do Niche Finder e smoke tests das páginas de projetos e repurposing.
+- A branch de testes está publicada no GitHub, mas ainda precisa ser incorporada à `main`.
+- Os scripts locais de auto-pull ainda não estão versionados nem registrados no Agendador de
+  Tarefas. No formato atual, arquivos não versionados deixam a árvore “suja” e fazem o próprio
+  auto-pull pular a atualização.
 
 ---
 
@@ -154,7 +284,7 @@ As duas frações de tamanho ficaram separadas por orientação de propósito: v
 - **Correções na tela de Publicado**: a thumbnail gerada por IA (já funcionava no worker, só faltava UI) agora aparece de verdade em vez do texto fixo "aparece aqui (Sprint 5)" — com os botões de overlay reposicionados pro topo da imagem pra não cobrir o título já embutido na própria thumbnail. "Baixar Master" também virou um link real pro último render concluído em vez de ficar sempre desabilitado. Testado visualmente (screenshot) e via HTML (200 OK, `<img>` e link de download apontando pros arquivos certos).
 - **Publicação automática no YouTube**: job `PUBLISH_YOUTUBE` deixou de ser placeholder — agora sobe o vídeo renderizado de verdade pro canal conectado via OAuth (título/descrição/tags/capítulos do SEO já gerado, thumbnail personalizada, privacidade escolhida no formulário — padrão **Privado**). Conexão de conta em Settings → "Canal do YouTube" (login e autorização acontecem na tela oficial do Google, o app nunca vê a senha). Falta só o passo manual único de criar a credencial OAuth no Google Cloud Console — veja a seção abaixo.
 - **Media Assets** (`/assets`): a página que era só um placeholder virou biblioteca de verdade — reúne cenas, miniaturas de capa e renders finais de todos os projetos numa grade única, com busca por título/nicho/cena, filtro por tipo (Cena/Miniatura/Render) e por nicho, e download direto de cada arquivo. Sem tabela nova no banco — lê os campos que já existiam (`Scene.filePath`, `Project.thumbnailPath`, `RenderJob.outputPath`). Testado ao vivo: 240 itens renderizando (125 imagens + 115 vídeos), filtro por tipo funcionando.
-- **Channel Manager real** (`/channels`): deixou de ser mockado (badge fixo "3", tela vazia sem dado real) — agora mostra inscritos/visualizações/total de vídeos e os uploads recentes de verdade do canal conectado, via YouTube Data API (`channels.list` com `part=statistics` + `playlistItems.list` na playlist de uploads), cruzando com as publicações feitas pelo próprio DocuPulse pra marcar "Feito no DocuPulse" vs externo. A Sidebar trocou o badge fixo "3" por um indicador real de conexão (Conectado/Conectar).
+- **Channel Manager real** (`/channels`): deixou de ser mockado (badge fixo "3", tela vazia sem dado real) — agora mostra inscritos/visualizações/total de vídeos e os uploads recentes de verdade do canal conectado, via YouTube Data API (`channels.list` com `part=statistics` + `playlistItems.list` na playlist de uploads), cruzando com as publicações feitas pela própria ferramenta para marcar conteúdo interno vs externo. A Sidebar trocou o badge fixo "3" por um indicador real de conexão (Conectado/Conectar). O rótulo da interface deve usar **"Feito no Vincere Studio"**.
 - **Geração real de imagem no nó Prompt do Workflow Studio**: o nó "Prompt & Qualidade Visual" deixou de ser simulado — agora chama o Gemini image-capable ("Nano Banana") de verdade, com image-to-image quando há referência de Avatar/Produto anexada, e a imagem gerada passa a ter prioridade na composição final. **Importante: diferente do texto e da voz (que são grátis), geração de imagem no Gemini normalmente exige faturamento habilitado** — usa `GEMINI_IMAGE_API_KEY` (com fallback pra `GEMINI_API_KEY`, que hoje é só o nível grátis). Testado ao vivo com a chave grátis atual: a API respondeu 429 "quota exceeded... free_tier ... limit: 0" pro modelo de imagem, confirmando que precisa mesmo de uma chave com faturamento — e o job tratou o erro direitinho (log claro, terminou DONE sem crash, caiu de volta pro comportamento anterior). Sem isso configurado, o Prompt continua sem gerar nada (como antes), só com uma mensagem mais clara no log.
 - **Bug corrigido: nó de Voz do Workflow Studio quebrava com voiceId inválido**: o grafo podia carregar um voiceId que não é um ID real do Edge TTS (era o caso do workflow de exemplo "Campanha Aura Serum" — tinha o rótulo do Gemini TTS "Clara - Conversational"), e o msedge-tts derrubava o job inteiro com "Could not infer voiceLocale from voiceName". Agora o `run-workflow.ts` valida o voiceId contra a lista canônica (`EDGE_VOICES`, exportada de `edge-tts.ts`) antes de sintetizar — se não bater, loga um aviso e usa o voiceId padrão em vez de quebrar o job. Corrigido também o dado do workflow de exemplo. Testado ao vivo: locução sintetizou de verdade (Edge TTS, 5.6s), job terminou DONE.
 - **Upload de imagem de referência no Avatar/Produto do Workflow Studio**: item 6 do backlog estava desatualizado — essa UI já existia (thumb clicável nos nós Avatar/Produto, com API `/api/workflows/[id]/upload` salvando em `storage/workflows/<id>/refs`). O que faltava de verdade, encontrado ao revisar o código: o upload chama `updateNodeData` direto, que não passa pelo `onNodesChange` do canvas — então a imagem aparecia na tela mas o grafo nunca ficava "dirty" e o autosave (1,5s de debounce) nunca disparava pra ela, podendo se perder se o usuário não clicasse "Salvar Grafo" ou "Executar Fluxo Vertical" manualmente depois. Corrigido: `WorkflowIdContext` passou a levar também um `markDirty()`, chamado logo após um upload bem-sucedido, garantindo que a referência sempre persiste sozinha como qualquer outra edição do canvas.
@@ -204,17 +334,17 @@ As duas frações de tamanho ficaram separadas por orientação de propósito: v
 
 ## Publicação automática no YouTube — como ativar
 
-O app publica direto no seu canal via OAuth do Google (login e permissão acontecem no site do próprio Google — o DocuPulse.AI nunca vê nem guarda sua senha). Falta só criar uma credencial OAuth gratuita no Google Cloud Console. Passo a passo (dá pra fazer até pelo celular):
+O app publica direto no seu canal via OAuth do Google (login e permissão acontecem no site do próprio Google — o Vincere Studio nunca vê nem guarda sua senha). Falta só criar uma credencial OAuth gratuita no Google Cloud Console. Passo a passo (dá pra fazer até pelo celular):
 
 1. Acesse [console.cloud.google.com](https://console.cloud.google.com) e crie um projeto novo (ou use um existente).
 2. Menu → **APIs e serviços** → **Biblioteca** → busque **"YouTube Data API v3"** → **Ativar**.
 3. Menu → **APIs e serviços** → **Tela de consentimento OAuth**:
    - Tipo de usuário: **Externo**.
-   - Preencha nome do app (ex.: "DocuPulse.AI"), e-mail de suporte e e-mail de contato do desenvolvedor.
+   - Preencha nome do app (ex.: "Vincere Studio"), e-mail de suporte e e-mail de contato do desenvolvedor.
    - Em "Usuários de teste", adicione o seu próprio e-mail do Google/YouTube — sem isso o Google bloqueia o login.
 4. Menu → **APIs e serviços** → **Credenciais** → **Criar credenciais** → **ID do cliente OAuth**:
    - Tipo de aplicativo: **App para computador** (Desktop app).
-   - Nome: qualquer um (ex.: "DocuPulse.AI Desktop").
+   - Nome: qualquer um (ex.: "Vincere Studio Desktop").
 5. Copie o **Client ID** e o **Client Secret** gerados.
 6. Cole no `.env` do projeto:
    ```
@@ -251,12 +381,13 @@ O app nunca pede nem armazena sua senha do Google em nenhum momento — a autent
 
 ## Pendente após 11/09/2026 (ordem de risco)
 
-1. **Unificar as duas zonas seguras** — ver "Duplicação que já causou bug" abaixo. É a correção
-   estrutural com maior retorno.
+1. ~~**Unificar as duas zonas seguras**~~ — **concluído pelo Hermes em 19/09/2026** no commit
+   `6384955`; falta somente a validação completa dentro de `editor-ia/`.
 2. ~~Expor os eixos e a intensidade na interface~~ — **pronto** nesta sessão (ver "Continuação
    11/09/2026" acima): coluna `Project.intensidade` + card no Passo do Plano de Edição.
-3. **Testes no monorepo** — `apps/*` e `packages/*` seguem com zero. Só o `editor-ia` tem
-   verificação.
+3. ~~**Testes no monorepo**~~ — **piso mínimo concluído em 19/09/2026** no commit `781431f`,
+   incluindo testes de core, banco, providers, worker e smoke tests do web. Expandir a cobertura
+   continua sendo trabalho recorrente, mas o monorepo não está mais em zero.
 4. ~~Escolher tipografia/cor da legenda~~ — **pronto junto com o item 2**, mesma interface.
 5. **Variantes verticais de `cronologia` e `mesa-arquivo`** — hoje o perfil DVP libera só 5 dos
    7 layouts em 9:16. A folha de contato mostra o título da cronologia colidindo com os rótulos
@@ -282,7 +413,10 @@ pipeline usa de verdade (props em jpg, PNGs, `PROMPTS_ASSETS.md`) seguem version
 1. **Fechar o ciclo de retenção real**: hoje o roteiro já calcula uma curva de retenção prevista; falta puxar métricas reais do YouTube publicadas e comparar, pra calibrar os próximos roteiros.
 2. **Automação do Google Flow via navegador**: **desbloqueado nesta sessão** — a extensão Claude in Chrome apareceu conectada (Chrome real do usuário, já logado no Google) e foi usada com sucesso pra navegar no app e tirar prints. Ainda não testamos gerar imagem/vídeo de verdade no labs.google/flow com ela, só confirmamos que a conexão funciona. Importante: 120+ cenas (como no vídeo longo atual) é pesado demais pra pilotar via navegador — o teste inicial deve ser com poucas cenas (ex.: 10-15, ou um Short inteiro). Automação de verdade em background (sem alguém pilotando ao vivo) exigiria um robô tipo Playwright guardando a sessão logada, o que tem risco real de ToS/bloqueio — só evoluir pra isso com decisão consciente do usuário.
 3. **Teleprompter desabilitado** no roteiro: modo leitura em tela cheia pro narrador, mencionado na UI mas nunca ligado.
-4. **Sem testes automatizados**: vários bugs (onClick em Server Component no Repurposing, truncamento de JSON no Niche Finder, uso errado de PRAGMA no SQLite) só apareceram em teste manual ao vivo. **Parcialmente atacado em 11/09/2026**: existe `editor-ia/scripts/verificar-layouts.mjs`, que renderiza os 7 layouts nos 2 formatos e afere o resultado. Continua valendo para o resto — o monorepo (`apps/*`, `packages/*`) segue com **zero** teste, e um smoke test de páginas (200 OK) ainda não existe.
+4. ~~**Sem testes automatizados**~~: o risco foi atacado em duas camadas. O `editor-ia` possui
+   `scripts/verificar-layouts.mjs`, que renderiza os 7 layouts nos 2 formatos, e o commit
+   `781431f` adicionou Vitest ao monorepo com testes de regressão e smoke tests HTTP. A cobertura
+   ainda deve crescer junto com as funcionalidades, mas já existe um piso automatizado.
 5. **Novos "formatos de vídeo" (motor de render alternativo)**: hoje só existe um estilo real implementado — documentário dark (B-roll + texto + legenda). Ideias levantadas pelo usuário: vídeo com boneco stickman, personagem 3D, outros estilos de edição inteiramente diferentes. Isso NÃO é uma "Skill" (Skills guarda texto reaproveitável — ganchos, estrutura de ato, CTA, prompt de cena — dentro do estilo que já existe); é um motor de renderização novo, provavelmente via uma ferramenta de composição tipo Remotion ou geração de vídeo com IA de personagem, selecionável como uma opção nova de `visualStyle`. Trabalho pesado, tratar como feature própria quando o usuário quiser expandir pra outros formatos.
 
 ## Decisões técnicas / gotchas importantes (não esquecer)
@@ -304,13 +438,13 @@ pipeline usa de verdade (props em jpg, PNGs, `PROMPTS_ASSETS.md`) seguem version
 - **`vstack` recusa linhas de larguras diferentes** — folha de contato com última linha
   incompleta precisa de células vazias de preenchimento.
 
-### Duplicação que já causou bug (atenção)
+### Zona segura de legenda — duplicação corrigida em 19/09/2026
 
 `captionSafeZone` (`packages/core/src/edit-plan.ts`) e `zonaProibida`
-(`editor-ia/src/dvp/tokens.ts`) são **a mesma verdade escrita em dois pacotes**, sem nada
-ligando uma à outra. Elas já divergiram em silêncio uma vez (a legenda vertical). O core
-alimenta o prompt; o editor-ia posiciona de verdade. **Ao mexer numa, mexer na outra.**
-Unificar é a correção estrutural mais valiosa pendente.
+(`editor-ia/src/dvp/tokens.ts`) eram a mesma verdade escrita em dois pacotes e já haviam
+divergido em silêncio. O commit `6384955` fez `tokens.ts` importar `captionSafeZone` e
+`DVP_PALETTE` diretamente do core. A fonte de verdade agora é única; alterações futuras devem
+ser feitas em `packages/core/src/edit-plan.ts` e verificadas também no `editor-ia`.
 
 - ~~**Nunca rodar `prisma migrate dev`**~~ — **deixou de valer em 11/09/2026**. O baseline foi criado (`prisma/migrations/0_init`, gerado por `migrate diff` a partir do schema e marcado como aplicado), e `migrate status` responde "Database schema is up to date!". `migrate dev` agora funciona normalmente. O aviso antigo era real: sem migrations, o Prisma pedia reset do banco inteiro, o que apagaria todos os projetos.
 - **Lock de arquivo do Prisma no Windows**: qualquer processo Node com `@prisma/client` carregado (web, worker, ou scripts avulsos) trava o `query_engine-windows.dll.node`. Antes de rodar `db push`/`generate`, matar todos os processos node relevantes.
@@ -359,7 +493,7 @@ Unificar é a correção estrutural mais valiosa pendente.
 - A tela de publicação ganhou data/hora e botão **Programar postagem**. Exige pelo menos 15
   minutos de antecedência.
 - O upload acontece imediatamente como privado e `status.publishAt` é enviado ao YouTube. A
-  publicação futura fica a cargo do agendador nativo do YouTube e não depende de o Pulse Studio
+  publicação futura fica a cargo do agendador nativo do YouTube e não depende de o Vincere Studio
   permanecer aberto.
 - Quando já existe um `videoId` privado, publicar ou programar atualiza o mesmo vídeo com
   `videos.update`; não cria upload duplicado.
@@ -408,3 +542,22 @@ Unificar é a correção estrutural mais valiosa pendente.
 - Projetos antigos permanecem no modo automático, com comportamento visual histórico preservado.
 - Migração `20260916101500_add_project_caption_style` aplicada ao banco local.
 - `pnpm typecheck` aprovado nos 7 pacotes e `pnpm build` aprovado. Teste direto do ASS confirmou fonte, cor ativa, posição superior e preservação de caixa do texto; a tela real respondeu HTTP 200 com todos os presets e controles.
+
+### Continuação — Integração HyperFrames, Flow Studio, Subtitles Studio e Workflow Canvas
+
+- **HyperFrames Studio Ativo:**
+  - Montado e rodando o projeto `nike-história` na porta local 3010 (`C:\Users\Igor\Videos-HF\nike-história`).
+  - Embutido na interface do Vincere Studio na rota `/studio` com Hot Reload ativo (< 100ms), inspeção de seleção e catálogo de 447 motions.
+- **Skills Globais Sincronizadas:**
+  - `subtitles_studio` (legendas dinâmicas lockup modulares com plugins em `styles/`) sincronizado no Claude, Gemini, Vincere Studio e VPS.
+  - `get-brolls` (coleta e curadoria com prancheta de aprovação) instalado globalmente no Claude, Gemini, Vincere Studio e VPS.
+  - `video-sharingan` instalado no catálogo e no ecossistema de skills.
+- **Flow Studio Integrado com Projetos:**
+  - `flow_queue_daemon.py` atualizado com endpoint HTTP `/jobs/{id}/file`.
+  - Vincere Studio `/flow-studio` e `/api/flow` integrados com galeria de mídias geradas e botão "⚡ Gerar no Flow" por cena em `/projects/[id]/media`.
+- **Workflow Studio (Canvas de Nós):**
+  - Nós de Prompt atualizados para suportar múltiplos motores de ponta: `Google Flow (Veo 3.1 / Nano Banana)`, `MiniMax (Hailuo)`, `Gemini` e `Pollinations`.
+  - Endpoint `/api/workflows/[id]/keyframe-preview` dispara geração sob demanda diretamente para o daemon do Flow ou MiniMax.
+- **Manutenção e Higienização 24/7 da VPS:**
+  - Script `/opt/vincere-studio/scripts/cleanup-vps.sh` instalado no crontab diário da VPS (`0 4 * * *`).
+  - Higienização de `/tmp`, trabalho efêmero, rotação de logs PM2 e cache do pnpm/Docker. Telemetria: 338 GB livres (29% de uso).

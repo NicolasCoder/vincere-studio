@@ -1,7 +1,7 @@
 import path from "node:path";
-import { prisma } from "@docupulse/db";
-import { pauseMs } from "@docupulse/core";
-import { concatWithSilences, ehCobravel, getVoiceProvider, projectDir, relPath, trimLongSilences, type VoiceProvider } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { pauseMs } from "@vincere-studio/core";
+import { concatWithSilences, ehCobravel, getVoiceProvider, projectDir, relPath, trimLongSilences, type VoiceProvider } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -99,7 +99,7 @@ export async function synthesizeVoice(ctx: JobContext) {
     // Apara silêncios longos do TTS (pausas viram ~0.9s; o resto fica natural)
     const trim = await trimLongSilences(rawFile, finalFile, { maxSilenceMs: Number(process.env.VOICE_MAX_SILENCE_MS ?? 1200), keepMs: Number(process.env.VOICE_KEEP_SILENCE_MS ?? 900) });
     if (trim.count) await ctx.log(`Ato ${b.act}: ${trim.count} silêncio(s) longo(s) aparado(s), -${(trim.removedMs / 1000).toFixed(1)}s`);
-    const { probeDurationMs } = await import("@docupulse/providers");
+    const { probeDurationMs } = await import("@vincere-studio/providers");
     const durationMs = await probeDurationMs(finalFile);
     totalMs += durationMs;
     await prisma.voiceTrack.deleteMany({ where: { scriptBlockId: b.id } });

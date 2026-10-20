@@ -4,9 +4,9 @@ import { rm } from "node:fs/promises";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { z } from "zod";
-import { prisma } from "@docupulse/db";
-import { storageRoot } from "@docupulse/providers";
-import { CostModeSchema, FORMATS, STAGES, STAGE_META, nextStage, type Stage, type VideoFormat } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { storageRoot } from "@vincere-studio/providers";
+import { CostModeSchema, FORMATS, STAGES, STAGE_META, nextStage, type Stage, type VideoFormat } from "@vincere-studio/core";
 
 const NewProject = z.object({
   format: z.enum(["LONG_16_9", "SHORT_9_16"]),

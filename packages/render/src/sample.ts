@@ -1,6 +1,6 @@
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { FFMPEG, run } from "@docupulse/providers";
+import { FFMPEG, run } from "@vincere-studio/providers";
 import { fitScenesToVoice, type Timeline, type TimelineAct } from "./timeline";
 
 /**

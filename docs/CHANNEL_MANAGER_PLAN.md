@@ -2,7 +2,7 @@
 
 Sub-plano de `docs/PLANO_DE_DESENVOLVIMENTO.md`, cobrindo o que falta das Sprints 5 e 6 para o canal
 Códex Perdido (e futuros canais) ficarem conectados de verdade: publicar pelo app e ver métricas reais
-no painel, sem sair do DocuPulse Studio.
+no painel, sem sair do Vincere Studio.
 
 Contexto: o schema, as rotas (`/channels`, `/metrics`, `/projects/[id]/published`) e o `JobType`
 `PUBLISH_YOUTUBE` já existem como placeholder ("Sprint 5") — este documento fecha essa lacuna com

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import {
   EDIT_PLAN_PROMPT_VERSION,
   INTENSIDADES,
@@ -10,9 +10,9 @@ import {
   type EditPlanData,
   type Intensidade,
   type VideoFormat,
-} from "@docupulse/core";
-import { motoresDisponiveis } from "@docupulse/providers";
-import { Button, Card, Chip, Icon } from "@docupulse/ui";
+} from "@vincere-studio/core";
+import { motoresDisponiveis } from "@vincere-studio/providers";
+import { Button, Card, Chip, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";

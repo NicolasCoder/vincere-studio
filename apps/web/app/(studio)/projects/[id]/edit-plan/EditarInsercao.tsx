@@ -1,7 +1,7 @@
 "use client";
 import { useRef, useState, useTransition } from "react";
-import { EDIT_LAYOUTS, LAYOUT_META, type EditInsertion } from "@docupulse/core";
-import { Badge, Button, Icon } from "@docupulse/ui";
+import { EDIT_LAYOUTS, LAYOUT_META, type EditInsertion } from "@vincere-studio/core";
+import { Badge, Button, Icon } from "@vincere-studio/ui";
 
 const LAYOUT_TONE: Record<string, "cyan" | "violet" | "success" | "warning" | "neutral"> = {
   "lower-third": "cyan",

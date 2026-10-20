@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@docupulse/db";
-import { STAGE_META, type Stage } from "@docupulse/core";
-import { Icon } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { STAGE_META, type Stage } from "@vincere-studio/core";
+import { Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { Stepper } from "@/components/Stepper";
 import { getProject, getUsageSummary } from "@/lib/data";

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { setBudgetCapUsd } from "@docupulse/providers";
+import { setBudgetCapUsd } from "@vincere-studio/providers";
 
 /** Atualiza o teto mensal (USD) de gasto com geração paga de imagem/vídeo por IA. */
 export async function updateBudget(formData: FormData) {

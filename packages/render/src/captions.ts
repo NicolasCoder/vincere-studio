@@ -1,4 +1,4 @@
-import { corAss, getEditProfile, type EstiloLegenda } from "@docupulse/core";
+import { corAss, getEditProfile, type EstiloLegenda } from "@vincere-studio/core";
 
 /** Identidade que estava cravada no ASS; segue como padrao quando nenhum perfil e passado. */
 const LEGENDA_PADRAO: EstiloLegenda = getEditProfile(null).legenda;

@@ -1,5 +1,5 @@
-import { prisma } from "@docupulse/db";
-import { buildGptImagePack, FORMATS, getVisualStyle, type VideoFormat } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { buildGptImagePack, FORMATS, getVisualStyle, type VideoFormat } from "@vincere-studio/core";
 
 export async function GET(_req: Request, { params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

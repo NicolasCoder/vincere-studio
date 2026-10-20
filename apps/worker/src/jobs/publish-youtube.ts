@@ -1,8 +1,8 @@
 import { createReadStream, existsSync, statSync } from "node:fs";
 import { Readable } from "node:stream";
-import { prisma } from "@docupulse/db";
-import { absPath, getAuthenticatedYoutubeClient } from "@docupulse/providers";
-import { ACT_GAP_MS, buildSrt, type FaixaLegenda } from "@docupulse/render";
+import { prisma } from "@vincere-studio/db";
+import { absPath, getAuthenticatedYoutubeClient } from "@vincere-studio/providers";
+import { ACT_GAP_MS, buildSrt, type FaixaLegenda } from "@vincere-studio/render";
 import { cleanupAfterPublish } from "./cleanup-after-publish";
 import type { JobContext } from "../queue";
 

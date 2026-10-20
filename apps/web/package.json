@@ -1,5 +1,5 @@
 {
-  "name": "@docupulse/web",
+  "name": "@vincere-studio/web",
   "version": "0.1.0",
   "private": true,
   "scripts": {
@@ -10,9 +10,9 @@
     "test": "vitest run --config vitest.smoke.config.ts"
   },
   "dependencies": {
-    "@docupulse/core": "workspace:*",
-    "@docupulse/db": "workspace:*",
-    "@docupulse/ui": "workspace:*",
+    "@vincere-studio/core": "workspace:*",
+    "@vincere-studio/db": "workspace:*",
+    "@vincere-studio/ui": "workspace:*",
     "next": "^15.5.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
@@ -20,8 +20,9 @@
     "dotenv": "^16.4.0",
     "@xyflow/react": "^12.8.0",
     "zustand": "^5.0.0",
-    "@docupulse/providers": "workspace:*",
-    "@docupulse/render": "workspace:*"
+    "@vincere-studio/providers": "workspace:*",
+    "@vincere-studio/render": "workspace:*",
+    "@prisma/client": "^6.16.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.0",

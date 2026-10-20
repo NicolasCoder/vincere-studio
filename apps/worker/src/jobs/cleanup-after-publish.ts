@@ -1,7 +1,7 @@
 import path from "node:path";
 import { readdir, rm, stat } from "node:fs/promises";
 import { existsSync } from "node:fs";
-import { projectDir } from "@docupulse/providers";
+import { projectDir } from "@vincere-studio/providers";
 
 /**
  * Libera espaço em disco depois que um projeto vai pro ar de verdade.

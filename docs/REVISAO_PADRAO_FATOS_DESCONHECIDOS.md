@@ -1,4 +1,4 @@
-# Revisão: aproximando o DocuPulse do padrão "Fatos Desconhecidos"
+# Revisão: aproximando o Vincere Studio do padrão "Fatos Desconhecidos"
 
 Versão 0.1 · 09/09/2026
 
@@ -11,7 +11,7 @@ Pesquisei o canal Fatos Desconhecidos (Ciência/Desastres/História/Mistério) p
 - Cadência de publicação muito alta (frequência "14" no vidIQ, uma escala consideravelmente maior que a de canais de nicho fechado).
 - Nas duas thumbnails que você mandou: título do vídeo é uma pergunta/afirmação de tensão ("Ele entregou tudo", "Deus vai destruir o Brasil?"), a thumbnail reforça a MESMA frase de um jeito mais curto e gritante (2 tons de cor, fonte gigante), e a descrição abaixo do título no feed já entrega um gancho extra.
 
-Isso confirma o que o prompt de ideação do DocuPulse já mira (título com "lacuna de curiosidade", ganchos nos primeiros segundos, cliffhangers) — o gargalo não é o roteiro, é tudo que vem DEPOIS do roteiro: thumbnail, metadados de publicação e volume de produção.
+Isso confirma o que o prompt de ideação do Vincere Studio já mira (título com "lacuna de curiosidade", ganchos nos primeiros segundos, cliffhangers) — o gargalo não é o roteiro, é tudo que vem DEPOIS do roteiro: thumbnail, metadados de publicação e volume de produção.
 
 Sources:
 - [Fatos Desconhecidos' YouTube Stats: Subscribers, Views & Earnings | vidIQ](https://vidiq.com/youtube-stats/channel/UCbAiIkPobUFy71zlmwVw3jw/)

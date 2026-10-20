@@ -1,9 +1,9 @@
 import path from "node:path";
 import { rm } from "node:fs/promises";
 import { NextResponse } from "next/server";
-import { prisma } from "@docupulse/db";
-import { partirManchete, quadroDe, renderizarThumbnail } from "@docupulse/render";
-import { absPath, projectDir, relPath } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { partirManchete, quadroDe, renderizarThumbnail } from "@vincere-studio/render";
+import { absPath, projectDir, relPath } from "@vincere-studio/providers";
 
 /**
  * Prévia de thumbnail ao vivo, três cenas de uma vez.

@@ -1,8 +1,8 @@
 import path from "node:path";
 import { mkdir, writeFile } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { WorkflowGraph, NODE_META, type NodeKind, type WorkflowNodeData } from "@docupulse/core";
-import { EdgeVoiceProvider, EDGE_VOICES, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, generateImagePollinations, estimateImageCostUsd, checkBudget, recordImageUsage, ProviderError } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { WorkflowGraph, NODE_META, type NodeKind, type WorkflowNodeData } from "@vincere-studio/core";
+import { EdgeVoiceProvider, EDGE_VOICES, FFMPEG, run, absPath, relPath, storageRoot, generateImageGemini, generateImagePollinations, estimateImageCostUsd, checkBudget, recordImageUsage, ProviderError } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**

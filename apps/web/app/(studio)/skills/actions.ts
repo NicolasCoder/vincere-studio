@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 export async function addSkill(formData: FormData) {
   const title = String(formData.get("title") ?? "").trim();

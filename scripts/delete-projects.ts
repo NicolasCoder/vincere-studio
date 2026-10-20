@@ -16,11 +16,11 @@
 import { rm } from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 async function main() {
   const args = process.argv.slice(2);
-  const confirm = args.includes("--confirm");
+  const confirm = args.includes("--confirm") || process.env.CONFIRM === "1";
   const ids = args.filter((a) => a !== "--confirm");
 
   if (!ids.length) {

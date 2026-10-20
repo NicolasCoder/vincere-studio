@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { STAGES, STAGE_META, stepStates, type Stage } from "@docupulse/core";
-import { Icon, Progress, cn } from "@docupulse/ui";
+import { STAGES, STAGE_META, stepStates, type Stage } from "@vincere-studio/core";
+import { Icon, Progress, cn } from "@vincere-studio/ui";
 
 export function Stepper({ projectId, current, progress, eta }: { projectId: string; current: Stage; progress: number; eta?: string }) {
   const states = stepStates(current);

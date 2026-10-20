@@ -1,12 +1,12 @@
 // scripts/list-projects.ts
-// Lista todos os projetos do PulseStudio (id, nome, status, quando foi criado) para você decidir
+// Lista todos os projetos do Vincere Studio (id, nome, status, quando foi criado) para você decidir
 // o que apagar. Rodar da raiz do repo:
 //   cd C:\Users\Igor\Documents\PulseStudio
 //   npx tsx scripts/list-projects.ts
 //
 // (Se der erro de módulo, rode primeiro: pnpm install tsx --save-dev -w)
 
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 async function main() {
   const projects = await prisma.project.findMany({

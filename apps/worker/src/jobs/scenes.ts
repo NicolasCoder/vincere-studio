@@ -1,8 +1,8 @@
 import path from "node:path";
 import { readdir, rename, stat, writeFile } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { FORMATS, SCENES_PROMPT_VERSION, ScenesResponseSchema, composeImagePrompt, getVisualStyle, parseSceneFileStem, sceneFileStem, scenesPrompt, type VideoFormat } from "@docupulse/core";
-import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, probeMediaInfo, projectDir, recordUsage, relPath } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { FORMATS, SCENES_PROMPT_VERSION, ScenesResponseSchema, composeImagePrompt, getVisualStyle, parseSceneFileStem, sceneFileStem, scenesPrompt, type VideoFormat } from "@vincere-studio/core";
+import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, probeMediaInfo, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**

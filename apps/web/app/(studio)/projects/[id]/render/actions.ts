@@ -1,9 +1,9 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
-import { CAPTION_PRESET_IDS } from "@docupulse/core";
-import { MOTION_PRESETS, normalizeMotion } from "@docupulse/render";
+import { prisma } from "@vincere-studio/db";
+import { CAPTION_PRESET_IDS } from "@vincere-studio/core";
+import { MOTION_PRESETS, normalizeMotion } from "@vincere-studio/render";
 import { captionStyleFromForm } from "./caption-style";
 
 const REVIEW_STATUSES = ["PENDING", "APPROVED", "CHANGES_REQUESTED", "REJECTED"] as const;

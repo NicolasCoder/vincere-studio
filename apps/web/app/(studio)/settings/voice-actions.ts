@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 const EQUIVALENTS: Record<string, string> = {
   // voz Gemini → equivalente Edge (mesmo gênero/energia)

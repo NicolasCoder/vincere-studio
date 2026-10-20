@@ -1,4 +1,4 @@
-# DocuPulse.AI — Setup local (Windows)
+# Vincere Studio — Setup local (Windows)
 
 ## Pré-requisitos (já verificados na sua máquina)
 - Node.js 20+ (você tem v26) · Git · FFmpeg (v8.1 full) · Docker (opcional, só para o SaaS)
@@ -55,4 +55,4 @@ pnpm dev                      # sobe o app web (http://localhost:3210) e o worke
 - **Prisma no Windows**: se `pnpm setup` falhar em `prisma generate`, rode `pnpm db:generate` de novo; o download do engine às vezes falha na primeira vez.
 - **Fontes**: o app carrega Geist e Material Symbols do Google Fonts; sem internet o layout fica com fontes de sistema.
 - **Gemini TTS 429/503**: a cota gratuita de voz é pequena e o serviço oscila; o app cai para a voz de reserva (Edge) e marca os atos para regravar depois.
-- **Porta 3210 ocupada**: `pnpm --filter @docupulse/web dev -- --port 3211`.
+- **Porta 3210 ocupada**: `pnpm --filter @vincere-studio/web dev -- --port 3211`.

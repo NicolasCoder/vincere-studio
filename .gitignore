@@ -44,3 +44,9 @@ Edição/Assets/*.mp4
 
 # Videos de referencia soltos na raiz de Edicao (clipes de terceiros analisados com /watch): nao versionar
 Edição/*.mp4
+
+# Capturas de tela do navegador de teste
+.playwright-mcp/
+
+# Cache incremental do TypeScript
+*.tsbuildinfo

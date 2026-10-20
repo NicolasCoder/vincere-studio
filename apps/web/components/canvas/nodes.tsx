@@ -1,8 +1,8 @@
 "use client";
 import { createContext, useContext, useState } from "react";
 import { useReactFlow, type Node, type NodeProps, type NodeTypes } from "@xyflow/react";
-import type { WorkflowNodeData, NodeKind } from "@docupulse/core";
-import { Icon } from "@docupulse/ui";
+import type { WorkflowNodeData, NodeKind } from "@vincere-studio/core";
+import { Icon } from "@vincere-studio/ui";
 import { Field, Meter, NodeShell, Thumb } from "./NodeShell";
 
 export type CanvasNode = Node<WorkflowNodeData & { index?: number }, NodeKind>;
@@ -54,7 +54,7 @@ function AvatarNode({ id, data, selected }: NodeProps<CanvasNode>) {
             <span className="rounded-sm bg-secondary/30 px-1.5 py-0.5 font-mono text-[9px] text-secondary-soft">UGC</span>
           </div>
           <input className="nodrag w-full bg-transparent font-mono text-[11px] text-fg-secondary outline-none" value={d.role} onChange={(e) => set({ role: e.target.value })} />
-          <Meter label="Face Consistency" value={d.faceConsistency} />
+          <Meter label="Meta de consistência facial" value={d.faceConsistency} />
         </div>
       </div>
       <div className="grid grid-cols-2 gap-2">
@@ -111,8 +111,11 @@ function usePromptKeyframe(nodeId: string, data: Extract<WorkflowNodeData, { kin
   const { workflowId } = useContext(WorkflowIdContext);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
+
   const generate = async () => {
     setError(null);
+    setNotice(null);
     setLoading(true);
     try {
       const res = await fetch(`/api/workflows/${workflowId}/keyframe-preview`, {
@@ -122,29 +125,44 @@ function usePromptKeyframe(nodeId: string, data: Extract<WorkflowNodeData, { kin
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || "falha ao gerar keyframe");
-      set({ keyframeUrl: json.imageUrl });
+      if (json.imageUrl) {
+        set({ keyframeUrl: json.imageUrl });
+      }
+      if (json.warning) {
+        setNotice(json.warning);
+      } else if (json.message) {
+        setNotice(json.message);
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : String(err));
     } finally {
       setLoading(false);
     }
   };
-  return { generate, loading, error };
+  return { generate, loading, error, notice };
 }
 
 function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
   const d = data as Extract<WorkflowNodeData, { kind: "PROMPT" }> & { index?: number };
   const set = useUpdate(id);
-  const { generate, loading, error } = usePromptKeyframe(id, d, set);
+  const { generate, loading, error, notice } = usePromptKeyframe(id, d, set);
   return (
     <NodeShell kind="PROMPT" index={d.index ?? 4} selected={selected} width={460}>
-      <div className="flex gap-2">
-        <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary-bright">{d.format}</span>
-        <span className="rounded-sm border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] text-fg-secondary">{d.fps} FPS</span>
+      <div className="flex items-center justify-between gap-2">
+        <div className="flex gap-2">
+          <span className="rounded-sm border border-primary/40 bg-primary/10 px-2 py-0.5 font-mono text-[10px] text-primary-bright">{d.format}</span>
+          <span className="rounded-sm border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] text-fg-secondary">{d.fps} FPS</span>
+        </div>
+        <span className="font-mono text-[10px] text-muted">
+          {d.keyframeUrl ? "✨ Keyframe Pronto" : "⏳ Sem Keyframe"}
+        </span>
       </div>
       {d.keyframeUrl && (
-        <div className="relative overflow-hidden rounded border border-line bg-void/60">
-          <img src={`/api/media/${d.keyframeUrl}`} alt="Keyframe" className="max-h-48 w-full object-contain" />
+        <div className="relative overflow-hidden rounded-lg border border-line bg-void/80 shadow-inner group">
+          <img src={`/api/media/${d.keyframeUrl}`} alt="Keyframe" className="max-h-56 w-full object-cover transition-transform group-hover:scale-105" />
+          <div className="absolute top-2 right-2 rounded bg-void/70 px-1.5 py-0.5 font-mono text-[9px] text-fg backdrop-blur-sm">
+            Render Preview
+          </div>
         </div>
       )}
       <Field label="Prompt Positivo (Comercial 9:16)" value={d.positive} onChange={(v) => set({ positive: v })} multiline mono={false} suffix={<span className="font-mono text-[10px] text-primary-bright">{d.positive.length} chars</span>} />
@@ -155,28 +173,34 @@ function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
       </div>
       <Field label="Sampling Steps" value={`${d.steps} Steps · Euler A`} />
       <div className="rounded border border-line bg-void/60 px-3 py-2">
-        <span className="label-mono text-muted">Motor de imagem</span>
+        <div className="flex items-center justify-between">
+          <span className="label-mono text-muted">Motor de Imagem / Vídeo</span>
+          <span className="font-mono text-[9px] text-primary-bright">⚡ Multi-Engine</span>
+        </div>
         <select
-          className="nodrag mt-1 w-full bg-transparent font-mono text-[12px] text-primary-bright outline-none"
-          value={d.imageProvider}
+          className="nodrag mt-1.5 w-full bg-surface-low border border-line/60 rounded px-2 py-1 font-mono text-[12px] text-fg outline-none cursor-pointer hover:border-primary/50 transition-colors"
+          value={d.imageProvider || "POLLINATIONS"}
           onChange={(e) => set({ imageProvider: e.target.value })}
         >
-          <option value="GEMINI" className="bg-surface-low">Gemini · Nano Banana (pago, controlado por orçamento)</option>
-          <option value="POLLINATIONS" className="bg-surface-low">Pollinations.ai (grátis, sem referência)</option>
+          <option value="POLLINATIONS" className="bg-surface-low text-fg">⚡ Pollinations.ai (Grátis / Instantâneo - Sem Chave)</option>
+          <option value="FLOW" className="bg-surface-low text-fg">⚡ Google Flow Studio (Nano Banana / Veo 3.1)</option>
+          <option value="GEMINI" className="bg-surface-low text-fg">💎 Gemini · Nano Banana (Exige Faturamento)</option>
+          <option value="MINIMAX" className="bg-surface-low text-fg">🎬 MiniMax (Hailuo AI / Vídeo Cinematográfico)</option>
         </select>
       </div>
-      <div className="nodrag flex items-center gap-2">
+      <div className="nodrag flex items-center justify-between gap-2 pt-1">
         <button
           type="button"
           onClick={generate}
           disabled={loading || !d.positive.trim()}
-          className="flex items-center gap-1 rounded border border-primary/40 bg-primary/10 px-2 py-1 font-mono text-[10px] text-primary-bright disabled:opacity-40"
+          className="flex-1 flex items-center justify-center gap-2 rounded-lg border border-primary/50 bg-primary/20 hover:bg-primary/30 px-3 py-2 font-mono text-xs font-semibold text-primary-bright shadow-lg hover:shadow-primary/20 transition-all disabled:opacity-40"
         >
-          <Icon name={loading ? "sync" : "auto_awesome"} className={loading ? "animate-spin text-[14px]" : "text-[14px]"} />
-          {loading ? "Gerando…" : d.keyframeUrl ? "Regenerar Keyframe" : "Gerar Keyframe (IA real)"}
+          <Icon name={loading ? "sync" : "auto_awesome"} className={loading ? "animate-spin text-[16px]" : "text-[16px]"} />
+          {loading ? "Processando Geração..." : d.keyframeUrl ? "Regenerar Keyframe" : "Gerar Keyframe (IA)"}
         </button>
       </div>
-      {error && <div className="font-mono text-[10px] text-error">{error}</div>}
+      {notice && <div className="rounded border border-warning/40 bg-warning/10 p-2 font-mono text-[10px] text-warning leading-relaxed">{notice}</div>}
+      {error && <div className="rounded border border-error/40 bg-error/10 p-2 font-mono text-[10px] text-error leading-relaxed">{error}</div>}
     </NodeShell>
   );
 }

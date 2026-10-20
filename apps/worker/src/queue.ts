@@ -1,5 +1,5 @@
-import { prisma, type Job } from "@docupulse/db";
-import type { JobProgress } from "@docupulse/core";
+import { prisma, type Job } from "@vincere-studio/db";
+import type { JobProgress } from "@vincere-studio/core";
 
 /**
  * Fila v1: polling da tabela Job no SQLite. Interface mínima para que, no SaaS,

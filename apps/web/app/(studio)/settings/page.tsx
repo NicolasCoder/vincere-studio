@@ -1,13 +1,13 @@
-import { COST_MODES } from "@docupulse/core";
-import { Badge, Button, Card, Icon } from "@docupulse/ui";
+import { COST_MODES } from "@vincere-studio/core";
+import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { ensureDefaultVoiceProfiles, getSettings, getUsageSummary, listJobs } from "@/lib/data";
 import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
 import { updateBudget } from "./budget-actions";
-import { prisma } from "@docupulse/db";
-import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@vincere-studio/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
 

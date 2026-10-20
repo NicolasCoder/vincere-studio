@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import { mkdir } from "node:fs/promises";
 import path from "node:path";
-import { FFMPEG, run } from "@docupulse/providers";
+import { FFMPEG, run } from "@vincere-studio/providers";
 
 /**
  * Trilha ambiente procedural (sem download, sem direitos autorais): camadas de senos detunados com

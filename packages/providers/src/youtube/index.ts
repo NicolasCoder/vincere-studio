@@ -1,5 +1,5 @@
 import { google } from "googleapis";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 /**
  * Publicação no YouTube via OAuth 2.0 (conta do próprio usuário, sem custo de API —

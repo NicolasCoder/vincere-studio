@@ -1,6 +1,6 @@
 import type { z } from "zod";
 import { toGeminiSchema } from "../schema";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { ProviderError, type GenerateOptions, type TextProvider, type UsageInfo } from "../types";
 
 /** Preço por 1M tokens (US$). Atualize conforme ai.google.dev/gemini-api/docs/pricing. */

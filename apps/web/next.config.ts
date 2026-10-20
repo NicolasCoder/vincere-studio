@@ -6,7 +6,7 @@ import path from "node:path";
 config({ path: path.resolve(process.cwd(), "../../.env") });
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@docupulse/ui", "@docupulse/core", "@docupulse/db", "@docupulse/providers", "@docupulse/render"],
+  transpilePackages: ["@vincere-studio/ui", "@vincere-studio/core", "@vincere-studio/db", "@vincere-studio/providers", "@vincere-studio/render"],
   serverExternalPackages: ["@prisma/client"],
   images: { remotePatterns: [{ protocol: "https", hostname: "**" }] },
 };

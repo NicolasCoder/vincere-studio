@@ -3,7 +3,7 @@ import { spawn } from "node:child_process";
 
 export const STUDIO_URL = "http://localhost:3001";
 
-/** editor-ia é irmão de apps/web na raiz do monorepo — mesmo cálculo de storageRoot() em @docupulse/providers. */
+/** editor-ia é irmão de apps/web na raiz do monorepo — mesmo cálculo de storageRoot() em @vincere-studio/providers. */
 export function editorIaDir() {
   const cwd = process.cwd();
   const root = /[\\/]apps[\\/]web$/.test(cwd) ? path.resolve(cwd, "../..") : cwd;

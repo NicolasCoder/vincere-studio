@@ -49,7 +49,7 @@ beforeAll(async () => {
   await waitForServer(60_000);
 
   // Pega um projeto real qualquer pra testar a rota dinâmica de repurposing.
-  const { prisma } = await import("@docupulse/db");
+  const { prisma } = await import("@vincere-studio/db");
   const project = await prisma.project.findFirst({ select: { id: true } });
   sampleProjectId = project?.id ?? null;
   await prisma.$disconnect();

@@ -1,7 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { Icon, Progress, cn } from "@docupulse/ui";
+import { Icon, Progress, cn } from "@vincere-studio/ui";
 
 interface JobView { id: string; status: string; progress: number; message?: string | null; error?: string | null; logs?: string }
 

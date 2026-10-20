@@ -1,6 +1,6 @@
-import { prisma } from "@docupulse/db";
-import { RewriteSchema, SuggestionsSchema, rewritePrompt, scriptSystemPrompt, suggestionsPrompt, type RewriteMode } from "@docupulse/core";
-import { getTextProvider, recordUsage } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { RewriteSchema, SuggestionsSchema, rewritePrompt, scriptSystemPrompt, suggestionsPrompt, type RewriteMode } from "@vincere-studio/core";
+import { getTextProvider, recordUsage } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 import { recomputeScript } from "./script-utils";
 

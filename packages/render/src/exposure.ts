@@ -1,6 +1,6 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { FFMPEG, run } from "@docupulse/providers";
+import { FFMPEG, run } from "@vincere-studio/providers";
 import type { TimelineScene } from "./timeline";
 
 /**

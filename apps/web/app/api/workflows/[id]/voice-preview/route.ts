@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 /** Vozes Edge TTS pt-BR reais (grátis, sem chave) que o node de Voz do Workflow Studio pode usar. */
 const EDGE_VOICES = ["pt-BR-AntonioNeural", "pt-BR-FranciscaNeural", "pt-BR-ThalitaNeural", "pt-BR-MacerioMultilingualNeural"];

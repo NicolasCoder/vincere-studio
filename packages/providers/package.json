@@ -1,5 +1,5 @@
 {
-  "name": "@docupulse/providers",
+  "name": "@vincere-studio/providers",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -13,8 +13,8 @@
     "test": "dotenv -e ../../.env.test -- vitest run"
   },
   "dependencies": {
-    "@docupulse/core": "workspace:*",
-    "@docupulse/db": "workspace:*",
+    "@vincere-studio/core": "workspace:*",
+    "@vincere-studio/db": "workspace:*",
     "googleapis": "^178.1.1",
     "msedge-tts": "^2.0.7",
     "zod": "^3.23.0"

@@ -1,5 +1,5 @@
 {
-  "name": "@docupulse/worker",
+  "name": "@vincere-studio/worker",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -11,12 +11,12 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@docupulse/core": "workspace:*",
-    "@docupulse/db": "workspace:*",
+    "@vincere-studio/core": "workspace:*",
+    "@vincere-studio/db": "workspace:*",
     "tsx": "^4.20.0",
     "zod": "^3.23.0",
-    "@docupulse/providers": "workspace:*",
-    "@docupulse/render": "workspace:*"
+    "@vincere-studio/providers": "workspace:*",
+    "@vincere-studio/render": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

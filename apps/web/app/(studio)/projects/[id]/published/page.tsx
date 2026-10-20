@@ -1,11 +1,11 @@
 import Link from "next/link";
-import { Badge, Button, Card, Chip, Icon, Stat } from "@docupulse/ui";
+import { Badge, Button, Card, Chip, Icon, Stat } from "@vincere-studio/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { fmtDuration, parseJson } from "@/lib/data";
-import { getYoutubeConnection } from "@docupulse/providers";
-import { partirManchete } from "@docupulse/render";
-import { prisma } from "@docupulse/db";
+import { getYoutubeConnection } from "@vincere-studio/providers";
+import { partirManchete } from "@vincere-studio/render";
+import { prisma } from "@vincere-studio/db";
 import { cancelScheduledPublication, generateSeoMetadata, publishToYoutube, scheduleYoutubePublication } from "./actions";
 import { ThumbnailStudio } from "./ThumbnailStudio";
 

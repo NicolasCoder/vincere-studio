@@ -36,7 +36,7 @@ export function buildGptImagePack(input: GptImagePackInput): string {
   const sorted = [...input.scenes].sort((a, b) => a.act - b.act || a.order - b.order);
   const size = input.ratio === "9:16" ? "1024×1536, retrato vertical" : "1536×1024, paisagem horizontal";
   const lines: string[] = [
-    "# PACOTE DE IMAGENS PARA GPT — PULSE STUDIO",
+    "# PACOTE DE IMAGENS PARA GPT — VINCERE STUDIO",
     "",
     "## TAREFA",
     `Gere ${sorted.length} imagens SEPARADAS para as cenas abaixo. Não faça colagem, mosaico, storyboard ou uma imagem com vários quadros.`,
@@ -83,7 +83,7 @@ export function buildGptImagePack(input: GptImagePackInput): string {
   lines.push(
     "## ENTREGA",
     `Confirme a conclusão de ${sorted.length}/${sorted.length} imagens e apresente a correspondência entre cada imagem e seu nome de arquivo.`,
-    "Os arquivos serão colocados na pasta inbox do Pulse Studio; portanto, não altere os nomes.",
+    "Os arquivos serão colocados na pasta inbox do Vincere Studio; portanto, não altere os nomes.",
     "",
     `Projeto interno: ${input.projectId}`,
   );

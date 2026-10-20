@@ -1,4 +1,4 @@
-import type { JobType } from "@docupulse/core";
+import type { JobType } from "@vincere-studio/core";
 import type { JobContext } from "../queue";
 import { demo } from "./demo";
 import { runWorkflow } from "./run-workflow";

@@ -1,4 +1,4 @@
-import type { CaptionMode, EstiloLegenda } from "@docupulse/core";
+import type { CaptionMode, EstiloLegenda } from "@vincere-studio/core";
 
 const CAPTION_FONTS = ["Segoe UI", "Segoe UI Semibold", "Arial Black", "Georgia", "Verdana", "Trebuchet MS", "Impact"];
 const hex = (value: FormDataEntryValue | null, fallback: string) => (/^#[0-9a-f]{6}$/i.test(String(value ?? "")) ? String(value) : fallback);

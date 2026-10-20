@@ -17,8 +17,8 @@ import {
   type OnConnect,
 } from "@xyflow/react";
 import "@xyflow/react/dist/style.css";
-import { NODE_KINDS, NODE_META, canConnect, defaultNodeData, type NodeKind, type WorkflowGraph, type WorkflowNodeData } from "@docupulse/core";
-import { Badge, Button, Icon, cn } from "@docupulse/ui";
+import { NODE_KINDS, NODE_META, canConnect, defaultNodeData, type NodeKind, type WorkflowGraph, type WorkflowNodeData } from "@vincere-studio/core";
+import { Badge, Button, Icon, cn } from "@vincere-studio/ui";
 import { nodeTypes, WorkflowIdContext, type CanvasNode } from "./nodes";
 import { TONE } from "./NodeShell";
 import { runWorkflow, saveWorkflow } from "@/app/(studio)/workflow/actions";
@@ -37,7 +37,7 @@ function toNodes(g: WorkflowGraph): CanvasNode[] {
 }
 function styledEdge(e: Edge, nodes: CanvasNode[]): Edge {
   const src = nodes.find((n) => n.id === e.source);
-  const color = src ? EDGE_COLOR[src.type as NodeKind] : "#22d3ee";
+  const color = src ? EDGE_COLOR[src.type as NodeKind] : "#8297ff";
   return { ...e, animated: true, style: { stroke: color, strokeWidth: 2.5, strokeDasharray: "8 6" } };
 }
 function toEdges(g: WorkflowGraph, nodes: CanvasNode[]): Edge[] {
@@ -256,106 +256,110 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
         onNodeDragStart={snapshot}
         onMove={() => setZoom(Math.round(getZoom() * 100))}
         fitView
-        fitViewOptions={{ padding: 0.15 }}
+        fitViewOptions={{ padding: 0.25 }}
         minZoom={0.2}
         maxZoom={2}
         deleteKeyCode={["Delete", "Backspace"]}
         proOptions={{ hideAttribution: true }}
         colorMode="dark"
         defaultEdgeOptions={{ animated: true }}
-        connectionLineStyle={{ stroke: "#22d3ee", strokeWidth: 2.5, strokeDasharray: "8 6" }}
+        connectionLineStyle={{ stroke: "#8297ff", strokeWidth: 2.5, strokeDasharray: "8 6" }}
       >
-        <Background variant={grid === "dots" ? BackgroundVariant.Dots : BackgroundVariant.Lines} gap={28} size={grid === "dots" ? 1.5 : 1} color="#2e3b52" />
+        <Background variant={grid === "dots" ? BackgroundVariant.Dots : BackgroundVariant.Lines} gap={28} size={grid === "dots" ? 1.5 : 1} color="#252836" />
         <MiniMap
           position="bottom-right"
           pannable
           zoomable
-          style={{ background: "rgba(11,15,23,0.9)", border: "1px solid #2e3b52", borderRadius: 6 }}
-          maskColor="rgba(11,15,23,0.6)"
-          nodeColor={(n) => EDGE_COLOR[n.type as NodeKind] ?? "#64748b"}
+          className="!mb-24 !mr-4 hidden md:block"
+          style={{ background: "rgba(16,18,25,0.92)", border: "1px solid #252836", borderRadius: 8, width: 168, height: 110 }}
+          maskColor="rgba(10,11,16,0.65)"
+          nodeColor={(n) => (n.selected ? "#4d6bff" : "#343849")}
+          nodeBorderRadius={4}
         />
 
-        {/* Barra superior */}
-        <Panel position="top-left" className="!m-3">
-          <div className="glass-elevated flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="flex items-center gap-2 border-r border-line pr-3">
-              <span className="font-mono text-[11px] text-fg-secondary">Flow #{id.slice(-6).toUpperCase()}:</span>
-              <span className="max-w-64 truncate font-mono text-[11px] text-primary-bright">{name}</span>
+        {/* Barra superior única: identidade do fluxo à esquerda, ações à direita; quebra linha em tela estreita. */}
+        <Panel position="top-left" className="!m-3 !right-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex min-w-0 items-center gap-2 rounded-xl border border-line bg-surface-low/95 px-3 py-2 shadow-xl backdrop-blur-md">
+              <Icon name="account_tree" className="text-[18px] text-primary-bright" />
+              <span className="max-w-[40vw] truncate font-display text-sm font-semibold text-fg sm:max-w-72">{name}</span>
               <Badge tone={liveStatus === "RUNNING" ? "cyan" : liveStatus === "DONE" ? "violet" : "success"} pill dot={liveStatus === "RUNNING"}>
-                {liveStatus === "RUNNING" ? `Executando ${job?.progress ?? 0}%` : liveStatus === "DONE" ? "Concluído" : "Online"}
+                {liveStatus === "RUNNING" ? `Executando ${job?.progress ?? 0}%` : liveStatus === "DONE" ? "Concluído" : "Pronto"}
               </Badge>
+              <span className="hidden font-mono text-[11px] text-muted lg:inline">
+                {nodes.length} nós · {edges.length} conexões
+              </span>
             </div>
-            <div className="flex items-center gap-1 border-r border-line pr-3">
-              <Button variant="icon" icon="remove" onClick={() => zoomOut()} />
-              <span className="w-12 text-center font-mono text-xs">{zoom}%</span>
-              <Button variant="icon" icon="add" onClick={() => zoomIn()} />
-              <Button variant="icon" icon="center_focus_strong" title="Enquadrar" onClick={() => fitView({ padding: 0.15, duration: 300 })} />
+            <div className="flex items-center gap-1.5 rounded-xl border border-line bg-surface-low/95 p-1.5 shadow-xl backdrop-blur-md">
+              <span className={cn("hidden px-1 font-mono text-[10px] sm:inline", dirty ? "text-warning" : "text-muted")}>
+                {dirty ? (pending ? "salvando…" : "não salvo") : savedAt ? `salvo ${new Date(savedAt).toLocaleTimeString("pt-BR", { timeStyle: "short" })}` : "salvo"}
+              </span>
+              <Button variant="icon" icon="terminal" title="Log da execução" className={cn(showLog && "bg-primary/15 text-primary-bright")} onClick={() => setShowLog((v) => !v)} />
+              <Button variant="icon" icon="ios_share" title="Exportar prompts para colar no Google Flow" onClick={exportToFlow} />
+              <Button variant="icon" icon="save" title="Salvar agora" onClick={save} disabled={pending} />
+              <Button variant="primary" size="sm" icon="motion_play" onClick={run} disabled={pending || liveStatus === "RUNNING"}>
+                Executar
+              </Button>
+            </div>
+          </div>
+        </Panel>
+
+        {/* Barra inferior: criar nós à esquerda, visão (zoom/malha) à direita. Deixa o canto do Vince livre. */}
+        <Panel position="bottom-left" className="!m-3 !right-28 md:!right-48">
+          <div className="flex flex-wrap items-end justify-between gap-2">
+            <div className="flex flex-wrap items-center gap-2 rounded-xl border border-line bg-surface-low/95 p-1.5 shadow-xl backdrop-blur-md">
+              <div className="relative">
+                <Button variant="primary" size="sm" icon="add" onClick={() => setMenuOpen((v) => !v)}>
+                  Nó
+                </Button>
+                {menuOpen && (
+                  <div className="glass-elevated absolute bottom-11 left-0 z-50 w-72 rounded-lg p-1">
+                    {NODE_KINDS.map((k) => (
+                      <button key={k} onClick={() => addNode(k)} className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm hover:bg-line/40">
+                        <Icon name={NODE_META[k].icon} className={cn("text-[18px]", TONE[NODE_META[k].tone].text)} />
+                        <span><span className="font-display font-semibold">{NODE_META[k].label}</span><br /><span className="text-[11px] text-fg-secondary">{NODE_META[k].description}</span></span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+              <div className="hidden items-center gap-1 md:flex">
+                {(["AVATAR", "PRODUCT", "SCENE", "VOICE", "RENDER"] as NodeKind[]).map((k) => (
+                  <button key={k} onClick={() => addNode(k)} title={NODE_META[k].description} className="flex items-center gap-1 rounded-md px-2 py-1 text-[11px] text-fg-secondary hover:bg-line/40 hover:text-fg">
+                    <Icon name={NODE_META[k].icon} className={cn("text-[15px]", TONE[NODE_META[k].tone].text)} />
+                    {NODE_META[k].label.split(" ")[0]}
+                  </button>
+                ))}
+              </div>
+              <div className="flex items-center gap-0.5 border-l border-line pl-1.5">
+                <Button variant="icon" icon="undo" title="Desfazer" onClick={undo} />
+                <Button variant="icon" icon="redo" title="Refazer" onClick={redo} />
+                <Button variant="icon" icon="content_copy" title="Duplicar selecionados" onClick={duplicateSelected} />
+                <Button variant="icon" icon="delete" title="Excluir selecionados (Delete)" onClick={() => { snapshot(); setNodes((ns) => ns.filter((n) => !n.selected)); setEdges((es) => es.filter((e) => !e.selected)); }} />
+              </div>
+            </div>
+            <div className="flex items-center gap-0.5 rounded-xl border border-line bg-surface-low/95 p-1.5 shadow-xl backdrop-blur-md">
+              <span className="hidden px-1.5 font-mono text-[11px] text-fg-secondary sm:inline" title="Soma das locuções">
+                <Icon name="timer" className="mr-1 align-[-3px] text-[14px] text-muted" />
+                {String(Math.floor(totalSec / 60)).padStart(2, "0")}:{String(totalSec % 60).padStart(2, "0")}
+              </span>
+              <Button variant="icon" icon="remove" title="Afastar" onClick={() => zoomOut()} />
+              <span className="w-10 text-center font-mono text-[11px] text-fg-secondary">{zoom}%</span>
+              <Button variant="icon" icon="add" title="Aproximar" onClick={() => zoomIn()} />
+              <Button variant="icon" icon="center_focus_strong" title="Enquadrar tudo" onClick={() => fitView({ padding: 0.25, duration: 300 })} />
               <Button variant="icon" icon={grid === "dots" ? "grid_4x4" : "grain"} title="Alternar malha" className={cn(grid === "lines" && "bg-primary/15 text-primary-bright")} onClick={() => setGrid(grid === "dots" ? "lines" : "dots")} />
-            </div>
-            <div className="flex items-center gap-2 font-mono text-[11px] text-fg-secondary">
-              <Icon name="memory" className="text-[16px] text-primary-bright" />
-              Node Engine: <span className="text-fg">{nodes.length} nós · {edges.length} conexões</span>
-            </div>
-          </div>
-        </Panel>
-
-        <Panel position="top-right" className="!m-3">
-          <div className="flex items-center gap-2">
-            {savedAt && !dirty && <span className="font-mono text-[10px] text-muted">salvo {new Date(savedAt).toLocaleTimeString("pt-BR")}</span>}
-            {dirty && <span className="font-mono text-[10px] text-warning">{pending ? "salvando..." : "salvando em instantes"}</span>}
-            <Button variant="icon" icon="terminal" title="Log da execução" className={cn(showLog && "bg-primary/15 text-primary-bright")} onClick={() => setShowLog((v) => !v)} />
-            <Button icon="ios_share" title="Exporta os prompts pra colar no Google Flow (labs.google/flow) e gerar externamente com motores de ponta" onClick={exportToFlow}>Exportar p/ Flow</Button>
-            <Button icon="save" onClick={save} disabled={pending}>Salvar Grafo</Button>
-            <Button variant="primary" icon="motion_play" onClick={run} disabled={pending || liveStatus === "RUNNING"}>
-              Executar Fluxo Vertical <kbd className="ml-1 rounded-sm bg-void/30 px-1 font-mono text-[10px] font-normal">F5</kbd>
-            </Button>
-          </div>
-        </Panel>
-
-        {/* Barra inferior */}
-        <Panel position="bottom-left" className="!m-3">
-          <div className="glass-elevated flex items-center gap-3 rounded-lg px-3 py-2">
-            <div className="relative">
-              <Button variant="primary" icon="add_circle" onClick={() => setMenuOpen((v) => !v)}>Adicionar Node</Button>
-              {menuOpen && (
-                <div className="glass-elevated absolute bottom-12 left-0 z-50 w-72 rounded-lg p-1">
-                  {NODE_KINDS.map((k) => (
-                    <button key={k} onClick={() => addNode(k)} className="flex w-full items-center gap-3 rounded px-3 py-2 text-left text-sm hover:bg-line/40">
-                      <Icon name={NODE_META[k].icon} className={cn("text-[18px]", TONE[NODE_META[k].tone].text)} />
-                      <span><span className="font-display font-semibold">{NODE_META[k].label}</span><br /><span className="text-[11px] text-fg-secondary">{NODE_META[k].description}</span></span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="flex items-center gap-1 border-l border-line pl-3">
-              <Button variant="icon" icon="undo" title="Desfazer" onClick={undo} />
-              <Button variant="icon" icon="redo" title="Refazer" onClick={redo} />
-              <Button variant="icon" icon="content_copy" title="Duplicar selecionados" onClick={duplicateSelected} />
-              <Button variant="icon" icon="delete" title="Excluir selecionados (Delete)" onClick={() => { snapshot(); setNodes((ns) => ns.filter((n) => !n.selected)); setEdges((es) => es.filter((e) => !e.selected)); }} />
-            </div>
-            <div className="flex items-center gap-2 border-l border-line pl-3">
-              <span className="label-mono text-muted">Biblioteca rápida:</span>
-              {(["AVATAR", "PRODUCT", "SCENE", "VOICE", "RENDER"] as NodeKind[]).map((k) => (
-                <button key={k} onClick={() => addNode(k)} className="flex items-center gap-1 rounded border border-line bg-void/60 px-2 py-1 font-mono text-[11px] text-fg-secondary hover:border-line-glow hover:text-fg">
-                  <Icon name={NODE_META[k].icon} className="text-[14px]" />{NODE_META[k].label.split(" ")[0]}
-                </button>
-              ))}
-            </div>
-            <div className="border-l border-line pl-3 font-mono text-[11px] text-fg-secondary">
-              Tempo total de fluxo <span className="text-primary-bright">{String(Math.floor(totalSec / 60)).padStart(2, "0")}m {String(totalSec % 60).padStart(2, "0")}s</span>
             </div>
           </div>
         </Panel>
         {showLog && (
-          <Panel position="top-right" className="!mt-16 !mr-3">
-            <div className="glass-elevated w-[26rem] rounded-lg p-3">
+          <Panel position="top-right" className="!mr-3 !mt-20">
+            <div className="glass-elevated w-[min(26rem,calc(100vw-1.5rem))] rounded-lg p-3">
               <div className="flex items-center justify-between">
                 <span className="label-mono text-muted">Log do Workflow Runner</span>
                 <span className={cn("font-mono text-[10px]", job?.status === "FAILED" ? "text-error" : "text-primary-bright")}>{job?.status ?? liveStatus}{job ? ` · ${job.progress}%` : ""}</span>
               </div>
               <pre className="mt-2 max-h-56 overflow-auto whitespace-pre-wrap rounded border border-line bg-void/70 p-2 font-mono text-[10px] leading-relaxed text-fg-secondary">
-                {job?.logs || (liveStatus === "RUNNING" ? "Aguardando o worker pegar o job..." : "Nenhuma execução ainda. Clique em Executar Fluxo Vertical.")}
+                {job?.logs || (liveStatus === "RUNNING" ? "Aguardando o worker pegar o job..." : "Nenhuma execução ainda. Clique em Executar.")}
                 {job?.error ? `\nERRO: ${job.error.split("\n")[0]}` : ""}
               </pre>
             </div>

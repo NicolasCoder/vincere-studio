@@ -1,8 +1,8 @@
 "use client";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
-import { FORMATS, STAGES, STAGE_META, type Stage, type VideoFormat } from "@docupulse/core";
-import { Badge, Card, Chip, Icon } from "@docupulse/ui";
+import { FORMATS, STAGES, STAGE_META, type Stage, type VideoFormat } from "@vincere-studio/core";
+import { Badge, Card, Chip, Icon } from "@vincere-studio/ui";
 import { deleteProject, moveProjectStage } from "./actions";
 
 export interface KanbanProject {

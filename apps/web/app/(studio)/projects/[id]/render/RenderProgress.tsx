@@ -1,5 +1,5 @@
 "use client";
-import { Icon, Progress } from "@docupulse/ui";
+import { Icon, Progress } from "@vincere-studio/ui";
 import { useRenderJobPoll } from "./useRenderJobPoll";
 
 /** Overlay do card de preview: substitui a barra estática por uma que se atualiza sozinha por polling. */

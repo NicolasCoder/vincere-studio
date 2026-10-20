@@ -1,7 +1,7 @@
 import { existsSync } from "node:fs";
 import path from "node:path";
-import { EdgeVoiceProvider, GeminiVoiceProvider, storageRoot } from "@docupulse/providers";
-import { Badge, Button, Card, Icon } from "@docupulse/ui";
+import { EdgeVoiceProvider, GeminiVoiceProvider, storageRoot } from "@vincere-studio/providers";
+import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
 import { previewVoice } from "@/app/(studio)/settings/preview-actions";
 
 const STYLE_DEFAULT = "Narre em português do Brasil, tom grave, ritmo lento e misterioso, como um documentário investigativo de alta produção.";

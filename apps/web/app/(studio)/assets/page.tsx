@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { prisma } from "@docupulse/db";
-import { Badge, Card, Icon } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { Badge, Card, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary } from "@/lib/data";

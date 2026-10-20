@@ -1,8 +1,8 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { prisma } from "@docupulse/db";
-import { ACT_GAP_MS } from "@docupulse/render";
-import { Badge, Button, Card, Icon } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { ACT_GAP_MS } from "@vincere-studio/render";
+import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary, fmtMs } from "@/lib/data";

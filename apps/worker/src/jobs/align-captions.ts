@@ -1,8 +1,8 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
-import { FFMPEG, absPath, hasWhisperFilter, run, storageRoot } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { FFMPEG, absPath, hasWhisperFilter, run, storageRoot } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 interface Word { text: string; startMs: number; endMs: number }

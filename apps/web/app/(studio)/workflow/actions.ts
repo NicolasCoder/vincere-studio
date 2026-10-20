@@ -1,14 +1,14 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
-import { WORKFLOW_KINDS, WorkflowGraph, templateGraph, type WorkflowKind } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { WORKFLOW_KINDS, WorkflowGraph, templateGraph, type WorkflowKind } from "@vincere-studio/core";
 
 export async function createWorkflow(formData: FormData) {
   const name = String(formData.get("name") ?? "").trim() || "Novo fluxo vertical";
   const kindRaw = String(formData.get("kind") ?? "");
   const kind: WorkflowKind = (WORKFLOW_KINDS as readonly string[]).includes(kindRaw) ? (kindRaw as WorkflowKind) : "CUSTOM";
-  // Cada tipo já entra com um template de nós encadeado (ver templateGraph em @docupulse/core),
+  // Cada tipo já entra com um template de nós encadeado (ver templateGraph em @vincere-studio/core),
   // em vez de sempre a mesma tela em branco.
   const graph = templateGraph(kind);
   const hasRender = graph.nodes.some((n) => n.type === "RENDER");

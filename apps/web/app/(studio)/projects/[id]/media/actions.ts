@@ -3,9 +3,9 @@ import path from "node:path";
 import { writeFile } from "node:fs/promises";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
-import { CAPTION_PRESET_IDS, FORMATS, sceneFileStem, type VideoFormat } from "@docupulse/core";
-import { downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { CAPTION_PRESET_IDS, FORMATS, sceneFileStem, type VideoFormat } from "@vincere-studio/core";
+import { downloadTo, getStockProviders, probeDurationMs, probeMediaInfo, projectDir, relPath, type StockAsset } from "@vincere-studio/providers";
 import { captionStyleFromForm } from "../render/caption-style";
 
 const REROLL_STOPWORDS = new Set(["the", "a", "an", "of", "in", "on", "at", "to", "for", "and", "or", "with", "from", "by", "is", "are", "this", "that", "scene", "shot", "footage", "video", "image", "close", "up", "wide", "view"]);

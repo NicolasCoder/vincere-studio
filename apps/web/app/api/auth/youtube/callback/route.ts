@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { exchangeYoutubeCode } from "@docupulse/providers";
+import { exchangeYoutubeCode } from "@vincere-studio/providers";
 
 /** O Google redireciona pra cá depois que o usuário autoriza (ou nega) na própria tela dele. */
 export async function GET(request: Request) {

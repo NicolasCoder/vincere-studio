@@ -1,4 +1,4 @@
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { ProviderError } from "./types";
 
 const BUDGET_KEY = "image_video_budget_usd";

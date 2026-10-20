@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 /** Status do fluxo + último job de execução (usado pelo polling do canvas). */
 export async function GET(_: Request, { params }: { params: Promise<{ id: string }> }) {

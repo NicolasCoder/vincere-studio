@@ -8,8 +8,8 @@ import {
   type CaptionMode,
   type EstiloLegenda,
   type VideoFormat,
-} from "@docupulse/core";
-import { Icon } from "@docupulse/ui";
+} from "@vincere-studio/core";
+import { Icon } from "@vincere-studio/ui";
 
 type SavedCaptionStyle = Partial<EstiloLegenda> & { mode?: CaptionMode };
 
@@ -97,7 +97,7 @@ export function CaptionStyleEditor({ format, savedPreset, savedStyleJson }: { fo
         {CAPTION_PRESETS.map((item) => <option key={item.id} value={item.id} className="bg-surface-low">{item.label} — {item.description}</option>)}
       </select>
 
-      <div className={`relative mt-3 overflow-hidden rounded border border-line bg-gradient-to-br from-slate-900 via-slate-700 to-amber-900 ${vertical ? "mx-auto aspect-[9/16] max-h-72" : "aspect-video w-full"}`}>
+      <div className={`relative mt-3 overflow-hidden rounded border border-line bg-gradient-to-br from-slate-900 via-slate-700 to-warning ${vertical ? "mx-auto aspect-[9/16] max-h-72" : "aspect-video w-full"}`}>
         <div className="absolute inset-0 opacity-25" style={{ backgroundImage: "radial-gradient(circle at 65% 25%, white 0, transparent 32%), linear-gradient(120deg, transparent 45%, black 100%)" }} />
         <div className={`absolute inset-x-[6%] text-center leading-tight ${positionClass}`} style={{ fontFamily: style.fonte, fontSize: `${Math.max(14, sizePct * (vertical ? 4.6 : 3.6))}px`, color: style.cor, textShadow: shadow, textTransform: style.maiusculas ? "uppercase" : "none", fontWeight: mode === "bold-center-animated" ? 900 : 600 }}>
           {mode === "bold-center-animated" ? (

@@ -1,6 +1,6 @@
 "use server";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 
 /** Tenta extrair nome/avatar do canal via meta tags og: da própria página pública — sem API/chave. */
 async function fetchChannelMeta(url: string): Promise<{ name?: string; avatarUrl?: string }> {

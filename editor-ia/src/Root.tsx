@@ -23,7 +23,7 @@ const base: ProvaProps = {
   showSafeZone: true,
 };
 
-/** 1080p30, herdado do master do DocuPulse. */
+/** 1080p30, herdado do master do Vincere Studio. */
 const video = { width: 1920, height: 1080, fps: 30, durationInFrames: 90 } as const;
 
 export const RemotionRoot: React.FC = () => {

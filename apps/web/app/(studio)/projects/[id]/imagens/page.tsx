@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
-import { prisma } from "@docupulse/db";
-import { getBudgetStatus, motoresDisponiveis } from "@docupulse/providers";
-import { Badge, Button, Card, Chip, Icon } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { getBudgetStatus, motoresDisponiveis } from "@vincere-studio/providers";
+import { Badge, Button, Card, Chip, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";

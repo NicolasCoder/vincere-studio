@@ -1,8 +1,8 @@
 "use server";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
-import { prisma } from "@docupulse/db";
-import { EDIT_LAYOUTS, INTENSIDADES, type EditLayout, type EditPlanData, type Intensidade } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { EDIT_LAYOUTS, INTENSIDADES, type EditLayout, type EditPlanData, type Intensidade } from "@vincere-studio/core";
 
 /**
  * Muda a intensidade do projeto — o multiplicador sobre os eixos do perfil (inserções e

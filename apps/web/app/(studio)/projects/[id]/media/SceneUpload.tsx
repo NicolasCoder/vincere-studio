@@ -1,6 +1,6 @@
 "use client";
 import { useRef, useTransition } from "react";
-import { Icon } from "@docupulse/ui";
+import { Icon } from "@vincere-studio/ui";
 
 /** Botão compacto: clica, escolhe o arquivo (imagem/vídeo do Flow) e sobe na hora, sem precisar da pasta inbox. */
 export function SceneUpload({ action }: { action: (formData: FormData) => void | Promise<void> }) {

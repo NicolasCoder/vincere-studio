@@ -1,5 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { checkBudget, setBudgetCapUsd } from "./budget";
 import { ProviderError } from "./types";
 

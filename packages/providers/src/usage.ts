@@ -1,4 +1,4 @@
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { ehCobravel } from "./budget";
 import type { UsageInfo } from "./types";
 

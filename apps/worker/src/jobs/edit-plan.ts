@@ -1,4 +1,4 @@
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import {
   EDIT_PLAN_PROMPT_VERSION,
   EditPlanResponseSchema,
@@ -22,9 +22,9 @@ import {
   resolveOverlaps,
   type EditInsertion,
   type EditPlanData,
-} from "@docupulse/core";
-import { ACT_GAP_MS, profileFor } from "@docupulse/render";
-import { FFMPEG, absPath, getTextProvider, recordUsage, run } from "@docupulse/providers";
+} from "@vincere-studio/core";
+import { ACT_GAP_MS, profileFor } from "@vincere-studio/render";
+import { FFMPEG, absPath, getTextProvider, recordUsage, run } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 interface Word {

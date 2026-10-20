@@ -1,4 +1,4 @@
-import { Badge, Card, Icon, Stat } from "@docupulse/ui";
+import { Badge, Card, Icon, Stat } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getSystemHealth, getUsageSummary, fmtAge } from "@/lib/data";

@@ -23,19 +23,22 @@ importers:
 
   apps/web:
     dependencies:
-      '@docupulse/core':
+      '@prisma/client':
+        specifier: ^6.16.0
+        version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@vincere-studio/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@docupulse/db':
+      '@vincere-studio/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@docupulse/providers':
+      '@vincere-studio/providers':
         specifier: workspace:*
         version: link:../../packages/providers
-      '@docupulse/render':
+      '@vincere-studio/render':
         specifier: workspace:*
         version: link:../../packages/render
-      '@docupulse/ui':
+      '@vincere-studio/ui':
         specifier: workspace:*
         version: link:../../packages/ui
       '@xyflow/react':
@@ -84,16 +87,16 @@ importers:
 
   apps/worker:
     dependencies:
-      '@docupulse/core':
+      '@vincere-studio/core':
         specifier: workspace:*
         version: link:../../packages/core
-      '@docupulse/db':
+      '@vincere-studio/db':
         specifier: workspace:*
         version: link:../../packages/db
-      '@docupulse/providers':
+      '@vincere-studio/providers':
         specifier: workspace:*
         version: link:../../packages/providers
-      '@docupulse/render':
+      '@vincere-studio/render':
         specifier: workspace:*
         version: link:../../packages/render
       tsx:
@@ -131,12 +134,12 @@ importers:
 
   packages/db:
     dependencies:
-      '@docupulse/core':
-        specifier: workspace:*
-        version: link:../core
       '@prisma/client':
         specifier: ^6.16.0
         version: 6.19.3(prisma@6.19.3(typescript@5.9.3))(typescript@5.9.3)
+      '@vincere-studio/core':
+        specifier: workspace:*
+        version: link:../core
     devDependencies:
       '@types/node':
         specifier: ^22.0.0
@@ -159,10 +162,10 @@ importers:
 
   packages/providers:
     dependencies:
-      '@docupulse/core':
+      '@vincere-studio/core':
         specifier: workspace:*
         version: link:../core
-      '@docupulse/db':
+      '@vincere-studio/db':
         specifier: workspace:*
         version: link:../db
       googleapis:
@@ -190,10 +193,10 @@ importers:
 
   packages/render:
     dependencies:
-      '@docupulse/core':
+      '@vincere-studio/core':
         specifier: workspace:*
         version: link:../core
-      '@docupulse/providers':
+      '@vincere-studio/providers':
         specifier: workspace:*
         version: link:../providers
     devDependencies:

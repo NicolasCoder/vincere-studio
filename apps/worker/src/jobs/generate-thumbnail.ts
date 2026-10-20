@@ -1,7 +1,7 @@
 import path from "node:path";
-import { prisma } from "@docupulse/db";
-import { partirManchete, quadroDe, renderizarThumbnail } from "@docupulse/render";
-import { absPath, projectDir, relPath } from "@docupulse/providers";
+import { prisma } from "@vincere-studio/db";
+import { partirManchete, quadroDe, renderizarThumbnail } from "@vincere-studio/render";
+import { absPath, projectDir, relPath } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -12,7 +12,7 @@ import type { JobContext } from "../queue";
  * atenção", mas na grade do YouTube todo mundo satura; foto escura com tipografia clara é o que
  * destaca, e é o que os canais do formato fazem. Em cima, manchete em duas alturas.
  *
- * A composição em si vive em @docupulse/render — a tela de publicação usa a mesma para a prévia
+ * A composição em si vive em @vincere-studio/render — a tela de publicação usa a mesma para a prévia
  * ao vivo, e duas cópias divergiriam no primeiro ajuste.
  *
  * payload: { projectId, sceneId?, title?, escuridao?, halo? }

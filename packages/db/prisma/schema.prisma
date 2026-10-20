@@ -1,4 +1,4 @@
-// DocuPulse.AI — schema v0.1 (Sprint 0)
+// Vincere Studio — schema v0.1 (Sprint 0)
 // SQLite local; no SaaS trocamos o provider para postgresql sem mudar os modelos.
 
 generator client {
@@ -13,18 +13,18 @@ datasource db {
 model Project {
   id             String   @id @default(cuid())
   title          String
-  format         String   // LONG_16_9 | SHORT_9_16  (ver @docupulse/core FORMATS)
+  format         String   // LONG_16_9 | SHORT_9_16  (ver @vincere-studio/core FORMATS)
   costMode       String   @default("FREE") // FREE | HYBRID | PREMIUM
   niche          String
   tone           String?
   targetDuration Int?     // segundos
   audience       String?
   hooks          String   @default("[]") // JSON string[]
-  stage          String   @default("IDEATION") // ver @docupulse/core STAGES
+  stage          String   @default("IDEATION") // ver @vincere-studio/core STAGES
   status         String   @default("DRAFT") // DRAFT | IN_PROGRESS | PUBLISHED | ARCHIVED
   costUsd        Float    @default(0)
-  visualStyle    String   @default("DARK_DOC") // ver @docupulse/core VISUAL_STYLES
-  intensidade    String   @default("equilibrado") // calmo | equilibrado | dinamico | muito-dinamico (ver @docupulse/core INTENSIDADES)
+  visualStyle    String   @default("DARK_DOC") // ver @vincere-studio/core VISUAL_STYLES
+  intensidade    String   @default("equilibrado") // calmo | equilibrado | dinamico | muito-dinamico (ver @vincere-studio/core INTENSIDADES)
   captionPreset  String   @default("auto")
   captionStyle   String   @default("{}") // JSON EstiloLegenda personalizado do projeto
   thumbnailPath      String?
@@ -212,7 +212,7 @@ model Publication {
 /// no SaaS a mesma interface é servida por BullMQ/Redis.
 model Job {
   id         String    @id @default(cuid())
-  type       String    // ver @docupulse/core JOB_TYPES
+  type       String    // ver @vincere-studio/core JOB_TYPES
   projectId  String?
   project    Project?  @relation(fields: [projectId], references: [id], onDelete: Cascade)
   payload    String    @default("{}")
@@ -309,7 +309,7 @@ model EditPlan {
   version       Int      @default(1)
   promptVersion String?
   model         String?
-  /// JSON EditPlanData (@docupulse/core)
+  /// JSON EditPlanData (@vincere-studio/core)
   data          String   @default("{}")
   insertions    Int      @default(0)
   unresolved    Int      @default(0)
@@ -318,7 +318,7 @@ model EditPlan {
   @@index([projectId, version])
 }
 
-/// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @docupulse/core WorkflowGraph).
+/// Workflow Studio (Video Canvas): grafo de nós salvo como JSON (ver @vincere-studio/core WorkflowGraph).
 model Workflow {
   id        String   @id @default(cuid())
   name      String

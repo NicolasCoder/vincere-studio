@@ -1,5 +1,5 @@
 "use client";
-import { Badge, Icon } from "@docupulse/ui";
+import { Badge, Icon } from "@vincere-studio/ui";
 import { RENDER_STAGES } from "./stages";
 import { useRenderJobPoll } from "./useRenderJobPoll";
 

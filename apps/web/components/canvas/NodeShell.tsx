@@ -1,14 +1,14 @@
 "use client";
 import { useRef, type ReactNode } from "react";
 import { Handle, Position } from "@xyflow/react";
-import { NODE_META, type NodeKind } from "@docupulse/core";
-import { Icon, cn } from "@docupulse/ui";
+import { NODE_META, type NodeKind } from "@vincere-studio/core";
+import { Icon, cn } from "@vincere-studio/ui";
 
 export const TONE = {
-  cyan: { ring: "border-primary/50", glow: "shadow-glow-cyan", text: "text-primary-bright", bg: "bg-primary/15", handle: "#22d3ee" },
-  violet: { ring: "border-secondary/50", glow: "shadow-glow-violet", text: "text-secondary-soft", bg: "bg-secondary/20", handle: "#a855f7" },
-  amber: { ring: "border-warning/50", glow: "shadow-[0_0_24px_-4px_rgba(251,191,36,0.35)]", text: "text-warning", bg: "bg-warning/15", handle: "#fbbf24" },
-  emerald: { ring: "border-success/50", glow: "shadow-[0_0_24px_-4px_rgba(52,211,153,0.35)]", text: "text-success", bg: "bg-success/15", handle: "#34d399" },
+  cyan: { ring: "border-primary/50", glow: "shadow-glow-cyan", text: "text-primary-bright", bg: "bg-primary/15", handle: "#8297ff" },
+  violet: { ring: "border-secondary/50", glow: "shadow-glow-violet", text: "text-secondary-soft", bg: "bg-secondary/20", handle: "#9a5cff" },
+  amber: { ring: "border-warning/50", glow: "shadow-[0_0_24px_-4px_rgba(226,178,94,0.3)]", text: "text-warning", bg: "bg-warning/15", handle: "#e2b25e" },
+  emerald: { ring: "border-success/50", glow: "shadow-[0_0_24px_-4px_rgba(92,201,154,0.3)]", text: "text-success", bg: "bg-success/15", handle: "#5cc99a" },
 } as const;
 
 export function NodeShell({
@@ -30,19 +30,19 @@ export function NodeShell({
   const t = TONE[meta.tone];
   return (
     <div
-      className={cn("glass-elevated rounded-lg transition-shadow", selected ? cn(t.ring, t.glow) : "border-line")}
+      className={cn("glass-elevated rounded-xl border transition-all duration-200 shadow-2xl overflow-hidden", selected ? cn(t.ring, t.glow) : "border-line/70 hover:border-line")}
       style={{ width }}
     >
-      <div className="flex items-center gap-3 border-b border-line px-4 py-3">
-        <span className={cn("grid size-7 place-items-center rounded", t.bg, t.text)}>
+      <div className="flex items-center gap-3 border-b border-line/60 bg-surface-mid/40 px-4 py-2.5 backdrop-blur-sm">
+        <span className={cn("grid size-7 place-items-center rounded-lg shadow-sm", t.bg, t.text)}>
           <Icon name={meta.icon} className="text-[18px]" />
         </span>
-        <span className="flex-1 truncate font-display text-sm font-semibold">{meta.label}</span>
-        <span className={cn("rounded-sm px-2 py-0.5 font-mono text-[10px] tracking-wider", t.bg, t.text)}>
+        <span className="flex-1 truncate font-display text-sm font-bold tracking-tight text-fg">{meta.label}</span>
+        <span className={cn("rounded px-2 py-0.5 font-mono text-[9px] font-semibold tracking-wider uppercase border border-current/20", t.bg, t.text)}>
           {isTarget ? "TARGET NODE" : `NODE #${String(index).padStart(2, "0")}`}
         </span>
       </div>
-      <div className="nodrag-scroll space-y-3 p-4">{children}</div>
+      <div className="nodrag-scroll space-y-3.5 p-4 bg-surface-low/80">{children}</div>
       {kind !== "RENDER" && (
         <Handle
           type="source"

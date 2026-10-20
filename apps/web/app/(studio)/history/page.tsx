@@ -1,6 +1,6 @@
 import Link from "next/link";
-import { FORMATS, STAGE_META, type Stage, type VideoFormat } from "@docupulse/core";
-import { Badge, Card, Chip, Icon } from "@docupulse/ui";
+import { FORMATS, STAGE_META, type Stage, type VideoFormat } from "@vincere-studio/core";
+import { Badge, Card, Chip, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary, listProjects } from "@/lib/data";

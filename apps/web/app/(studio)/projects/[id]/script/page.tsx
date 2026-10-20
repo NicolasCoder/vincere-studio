@@ -1,7 +1,7 @@
 import Link from "next/link";
-import { prisma } from "@docupulse/db";
-import { FORMATS, type RetentionResult, type VideoFormat } from "@docupulse/core";
-import { Badge, Button, Card, Chip, Icon, Stat } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { FORMATS, type RetentionResult, type VideoFormat } from "@vincere-studio/core";
+import { Badge, Button, Card, Chip, Icon, Stat } from "@vincere-studio/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { BlockEditor } from "@/components/BlockEditor";

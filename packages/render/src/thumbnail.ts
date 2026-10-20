@@ -1,6 +1,6 @@
 import path from "node:path";
 import { writeFile } from "node:fs/promises";
-import { FFMPEG, run } from "@docupulse/providers";
+import { FFMPEG, run } from "@vincere-studio/providers";
 
 /**
  * Composição da thumbnail no padrão do canal: foto tratada para escuro e manchete em duas

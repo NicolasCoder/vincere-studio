@@ -1,5 +1,5 @@
-import { prisma } from "@docupulse/db";
-import { blockTiming, estimateRetention } from "@docupulse/core";
+import { prisma } from "@vincere-studio/db";
+import { blockTiming, estimateRetention } from "@vincere-studio/core";
 
 /** Recalcula tempos, contagem de palavras, curva e métricas de um roteiro após qualquer edição. */
 export async function recomputeScript(scriptId: string) {

@@ -2,12 +2,12 @@ import { existsSync } from "node:fs";
 import { copyFile, mkdir, stat, writeFile } from "node:fs/promises";
 import { createHash } from "node:crypto";
 import path from "node:path";
-import { FFMPEG, run } from "@docupulse/providers";
+import { FFMPEG, run } from "@vincere-studio/providers";
 import type { RenderProfile } from "./profiles";
 import type { Timeline, TimelineScene } from "./timeline";
 import { buildAss } from "./captions";
 import { LUMA_PISO, planejarExposicao } from "./exposure";
-import type { EstiloLegenda } from "@docupulse/core";
+import type { EstiloLegenda } from "@vincere-studio/core";
 
 export interface RenderOptions {
   profile: RenderProfile;

@@ -4,7 +4,7 @@ import { DVP_PALETTE, captionSafeZone } from "../../../packages/core/src/edit-pl
 
 /**
  * Identidade DVP. Reexporta DVP_PALETTE de packages/core/src/edit-plan.ts — fonte única, não
- * cópia. `editor-ia` fica fora do workspace pnpm (não enxerga `@docupulse/core` pelo nome), mas
+ * cópia. `editor-ia` fica fora do workspace pnpm (não enxerga `@vincere-studio/core` pelo nome), mas
  * `edit-plan.ts` não tem nenhuma dependência própria, então o import relativo direto funciona sem
  * puxar nada além do arquivo.
  */

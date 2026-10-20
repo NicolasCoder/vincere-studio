@@ -1,6 +1,6 @@
 import path from "node:path";
 import { mkdir } from "node:fs/promises";
-import { getVoiceProvider, relPath, storageRoot } from "@docupulse/providers";
+import { getVoiceProvider, relPath, storageRoot } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 export const PREVIEW_TEXT =

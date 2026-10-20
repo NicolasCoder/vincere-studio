@@ -1,7 +1,7 @@
 "use client";
 import { useState } from "react";
-import type { FormatSpec, VideoFormat } from "@docupulse/core";
-import { Icon, cn } from "@docupulse/ui";
+import type { FormatSpec, VideoFormat } from "@vincere-studio/core";
+import { Icon, cn } from "@vincere-studio/ui";
 
 export function FormatSelector({ formats, defaultValue = "LONG_16_9" }: { formats: FormatSpec[]; defaultValue?: VideoFormat }) {
   const [value, setValue] = useState<VideoFormat>(defaultValue);

@@ -1,6 +1,6 @@
 import path from "node:path";
 import { readdir, stat } from "node:fs/promises";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { unstable_noStore as noStore } from "next/cache";
 
 /** Acesso a dados usado pelos Server Components. Sempre lê o SQLite ao vivo. */

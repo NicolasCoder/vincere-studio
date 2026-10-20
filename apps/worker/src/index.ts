@@ -1,5 +1,5 @@
-import { prisma, type Job } from "@docupulse/db";
-import type { JobType } from "@docupulse/core";
+import { prisma, type Job } from "@vincere-studio/db";
+import type { JobType } from "@vincere-studio/core";
 import { claimNext, fail, finish, makeContext } from "./queue";
 import { handlers } from "./jobs";
 

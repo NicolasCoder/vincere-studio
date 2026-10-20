@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getYoutubeAuthUrl, youtubeCredentialsConfigured } from "@docupulse/providers";
+import { getYoutubeAuthUrl, youtubeCredentialsConfigured } from "@vincere-studio/providers";
 
 /** Ponto de entrada do "Conectar canal do YouTube": manda o usuário pra tela de
  * consentimento do próprio Google (login e autorização acontecem lá, nunca aqui). */

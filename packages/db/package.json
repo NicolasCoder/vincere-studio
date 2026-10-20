@@ -1,5 +1,5 @@
 {
-  "name": "@docupulse/db",
+  "name": "@vincere-studio/db",
   "version": "0.1.0",
   "private": true,
   "type": "module",
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.16.0",
-    "@docupulse/core": "workspace:*"
+    "@vincere-studio/core": "workspace:*"
   },
   "devDependencies": {
     "prisma": "^6.16.0",

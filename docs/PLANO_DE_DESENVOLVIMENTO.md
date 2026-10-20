@@ -1,4 +1,4 @@
-# DocuPulse.AI — Arquitetura e Plano de Desenvolvimento
+# Vincere Studio — Arquitetura e Plano de Desenvolvimento
 
 Versão 0.1 · 07/09/2026 · Autor: Claude (dev principal) com Igor Ferreira
 
@@ -11,7 +11,7 @@ O pacote contém um design system completo e sete telas HTML (Tailwind via CDN, 
 | Tela | O que define | Status no ZIP |
 |---|---|---|
 | `obsidian_studio/DESIGN.md` | Design system "Obsidian Studio": paleta (cyan `#06B6D4` / violeta `#8B5CF6` sobre obsidian `#0B0F17`), tipografia (Space Grotesk, Geist, JetBrains Mono), glassmorphism, raios, espaçamentos, componentes | Completo, pronto para virar tokens |
-| `docupulse_ai_studio_workflow` | Shell do app: sidebar, topbar, stepper de 4 passos. Idêntico byte a byte ao `passo_1_topico_nicho` | Completo |
+| Referência original do workflow | Shell do app: sidebar, topbar, stepper de 4 passos. Idêntico byte a byte ao `passo_1_topico_nicho` | Completo |
 | `ideation_hub_passo_1_topico_nicho` | Passo 1: nicho, tom, duração, público, micro-hooks, geração de 3 ideias com CTR/score/gancho | Completo |
 | `ideation_hub_passo_1_formato_16_9_vs_9_16` | Variante do Passo 1 com o **seletor de formato** (Vídeo Longo 16:9 vs Vídeo Curto 9:16) e sidebar com "Histórico de Produção" e "Métricas & Desempenho" | Completo — é a versão que vale |
 | `ideation_hub_passo_2_roteiro_narrativa` | Passo 2: roteiro em 6 atos/blocos, locução com pausas, cues de B-roll e som, curva de retenção, métricas, sugestões IA, voz sugerida | Completo |
@@ -108,7 +108,7 @@ No mock, "4.850 credits" é uma moeda interna. Na fase pessoal, o app vai **medi
 ```
 PulseStudio/
 ├── apps/
-│   ├── web/                    # Next.js — UI do DocuPulse Studio OS
+│   ├── web/                    # Next.js — UI do Vincere Studio
 │   │   ├── app/
 │   │   │   ├── (studio)/       # layout com sidebar + topbar + stepper
 │   │   │   │   ├── dashboard/

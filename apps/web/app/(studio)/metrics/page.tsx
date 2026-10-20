@@ -1,7 +1,7 @@
-import { Badge, Card, Stat } from "@docupulse/ui";
+import { Badge, Card, Stat } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
-import { prisma } from "@docupulse/db";
+import { prisma } from "@vincere-studio/db";
 import { getUsageSummary, listProjects, parseJson } from "@/lib/data";
 
 export default async function MetricsPage() {

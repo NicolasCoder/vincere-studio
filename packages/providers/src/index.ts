@@ -2,15 +2,23 @@ export * from "./types";
 export * from "./schema";
 export * from "./usage";
 export { GeminiTextProvider } from "./gemini/text";
+export { OllamaTextProvider } from "./ollama/text";
+export { OpenAICompatTextProvider } from "./openai-compat/text";
 
 import type { TextProvider } from "./types";
 import { GeminiTextProvider } from "./gemini/text";
+import { OllamaTextProvider } from "./ollama/text";
+import { OpenAICompatTextProvider } from "./openai-compat/text";
 
-/** Fábrica: hoje só Gemini; Claude/OpenAI entram aqui sem mudar os jobs. */
+/** Fábrica: Gemini, Ollama (local) ou qualquer API compatível com OpenAI (NIM, OpenRouter, Hermes…). */
 export function getTextProvider(name = process.env.TEXT_PROVIDER ?? "GEMINI"): TextProvider {
-  switch (name) {
+  switch (name.toUpperCase()) {
     case "GEMINI":
       return new GeminiTextProvider();
+    case "OLLAMA":
+      return new OllamaTextProvider();
+    case "OPENAI_COMPAT":
+      return new OpenAICompatTextProvider();
     default:
       throw new Error(`Provedor de texto desconhecido: ${name}`);
   }

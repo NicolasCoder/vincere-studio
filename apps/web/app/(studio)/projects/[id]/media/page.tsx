@@ -1,13 +1,14 @@
-import { prisma } from "@docupulse/db";
-import { FORMATS, getVisualStyle, sceneFileStem, visualStyleList, type VideoFormat } from "@docupulse/core";
-import { EdgeVoiceProvider, storageRoot } from "@docupulse/providers";
-import { Badge, Button, Card, Chip, Icon, Progress, Stat } from "@docupulse/ui";
+import { prisma } from "@vincere-studio/db";
+import { FORMATS, getVisualStyle, sceneFileStem, visualStyleList, type VideoFormat } from "@vincere-studio/core";
+import { EdgeVoiceProvider, storageRoot } from "@vincere-studio/providers";
+import { Badge, Button, Card, Chip, Icon, Progress, Stat } from "@vincere-studio/ui";
 import { loadProjectShell } from "@/components/ProjectShell";
 import { JobWatcher } from "@/components/JobWatcher";
 import { ensureDefaultVoiceProfiles, fmtDuration, fmtMs, parseJson } from "@/lib/data";
 import { advanceStage } from "../../actions";
 import { alignCaptions, clearScene, generateScenePrompts, huntBroll, importInbox, rerollScene, setCaptionStyle, setVisualStyle, setVoiceProfile, synthesizeVoice, uploadSceneMedia } from "./actions";
 import { SceneUpload } from "./SceneUpload";
+import { SceneFlowButton } from "./SceneFlowButton";
 import { CaptionStyleEditor } from "../render/CaptionStyleEditor";
 import path from "node:path";
 
@@ -135,6 +136,13 @@ export default async function MediaPage({ params, searchParams }: { params: Prom
                             <div className="mt-1 flex items-center justify-between gap-2">
                               <span className="truncate font-mono text-[9px] text-muted">{s.keywords}</span>
                               <div className="flex shrink-0 items-center gap-2">
+                                <SceneFlowButton
+                                  projectId={project.id}
+                                  sceneId={s.id}
+                                  prompt={s.prompt}
+                                  preferVideo={s.preferVideo}
+                                  format={project.format}
+                                />
                                 <SceneUpload action={uploadSceneMedia.bind(null, project.id, s.id)} />
                                 {s.filePath && <form action={clearScene.bind(null, project.id, s.id)}><button className="font-mono text-[9px] text-muted hover:text-error">limpar</button></form>}
                               </div>
