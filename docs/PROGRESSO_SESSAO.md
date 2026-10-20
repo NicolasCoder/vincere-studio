@@ -101,6 +101,19 @@ Quarta rodada (20/10, madrugada) — publicado e auditado:
   teste do túnel no launcher.
 - Mobile: varredura de 18 telas em 390px sem estouro de largura; Workflow redesenhado.
 
+Quinta rodada (20/10) — voz, tipografia e saúde do projeto:
+
+- **Central de Vozes** (`/voice-studio`, `lib/voicestudio.ts`): narrar com voz clonada em
+  segundo plano (fila única, trechos por frase, WAVs unidos), qualidade rascunho/equilibrado/
+  final (= steps 8/16/32), clonar (5-30 s, Whisper preenche a transcrição), transcrever e
+  rascunho rápido com Edge TTS. Medido: VoiceStudio em CPU ≈ 40× o tempo do áudio.
+- **Texto para fala** (`lib/texto-fala.ts`): números, anos, moedas, %, ordinais por extenso.
+- **Edge TTS** quebrado na VPS (403) por versão: `msedge-tts` 2.0.7 → 2.1.0.
+- **Tipografia** (`/tipografia`, `lib/tipografia.ts`): 12 pares por nicho seguindo a referência
+  do HyperFrames, fontes validadas no Google Fonts, prévia em subset, CSS pronto e "Aplicar".
+- **Saúde do projeto** no `ProjectShell` (8 itens com próximo passo) e recuperação de mídias
+  sumidas na tela de Mídia (busca grátis via Openverse sem chave).
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**

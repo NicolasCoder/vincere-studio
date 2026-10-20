@@ -41,6 +41,7 @@ const sections: NavSection[] = [
     title: "BIBLIOTECA",
     items: [
       { href: "/skills", icon: "school", label: "Skills e receitas" },
+      { href: "/tipografia", icon: "text_fields", label: "Tipografia" },
       { href: "/references", icon: "collections_bookmark", label: "Referências" },
       { href: "/assets", icon: "video_library", label: "Mídias" },
       { href: "/channels", icon: "smart_display", label: "Canais" },

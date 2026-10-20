@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { chamarClaude } from "@/components/ClaudeButton";
@@ -37,6 +38,7 @@ const EXEMPLO: Beat[] = [
 const STORE = "vincere.copiloto.v1";
 
 export default function CopilotPage() {
+  const router = useRouter();
   const [tema, setTema] = useState("A história oculta da fundação da Nike");
   const [estilo, setEstilo] = useState<string>(ESTILOS[0].id);
   const [beats, setBeats] = useState<Beat[]>(EXEMPLO);
@@ -83,6 +85,14 @@ export default function CopilotPage() {
       pedido: `${pedidoDoNicho(estiloAtual.nicho, tema, estiloAtual.nicho.formato)} Use os beats do anexo como roteiro.`,
       anexo: JSON.stringify({ tema, nicho: estiloAtual.id, beats }, null, 2),
     });
+
+  // Leva as falas para a Central de Vozes (a página lê e limpa esta chave ao abrir).
+  const narrar = () => {
+    try {
+      localStorage.setItem("vincere.voz.texto", beats.map((b) => b.fala.trim()).filter(Boolean).join("\n\n"));
+    } catch {}
+    router.push("/voice-studio");
+  };
 
   return (
     <>
@@ -162,9 +172,14 @@ export default function CopilotPage() {
                 {beats.length} beats · {palavras} palavras · ~{segundos}s de narração
               </span>
             </div>
-            <Button variant="primary" icon="forum" onClick={enviar} disabled={beats.every((b) => !b.fala.trim())}>
-              Mandar para o Claude montar
-            </Button>
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Button variant="outline" icon="graphic_eq" onClick={narrar} disabled={beats.every((b) => !b.fala.trim())}>
+                Narrar no VoiceStudio
+              </Button>
+              <Button variant="primary" icon="forum" onClick={enviar} disabled={beats.every((b) => !b.fala.trim())}>
+                Mandar para o Claude montar
+              </Button>
+            </div>
           </div>
         </Card>
       </main>

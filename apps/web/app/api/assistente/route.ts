@@ -10,12 +10,13 @@ export const dynamic = "force-dynamic";
 // Mapa das telas: é o que o assistente pode indicar em "irPara".
 const TELAS: Record<string, string> = {
   "/dashboard": "Início: escolher um nicho e começar um vídeo; status dos motores; projetos recentes",
-  "/projects": "Projetos do banco (pipeline clássico: ideia → roteiro → mídia → render → publicação)",
+  "/projects": "Projetos do banco (pipeline clássico: ideia → roteiro → mídia → render → publicação); cada projeto tem o painel Saúde do projeto com o próximo passo",
   "/studio": "HyperFrames Studio: timeline ao vivo do projeto em C:\\Users\\Igor\\Videos-HF; editar cenas pedindo ao Claude",
-  "/copilot": "Roteiro em beats: escrever o vídeo em blocos de 5-15s e mandar o Claude montar",
+  "/copilot": "Roteiro em beats: escrever o vídeo em blocos de 5-15s, narrar no VoiceStudio ou mandar o Claude montar",
   "/flow-studio": "Gerar imagem (Nano Banana) e vídeo (Veo) no Google Flow e vincular à cena",
   "/prompts": "Biblioteca de prompts testados de imagem e vídeo, com imagem de referência",
-  "/voice-studio": "Vozes clonadas do VoiceStudio na VPS",
+  "/voice-studio": "Central de Vozes: narrar com voz clonada (qualidade rascunho/equilibrado/final, roda em segundo plano), rascunho rápido grátis (Edge TTS), clonar voz enviando um áudio de 5-30s e transcrever áudio",
+  "/tipografia": "Combinações de fontes do Google por nicho, com prévia ao vivo e CSS pronto para o HyperFrames",
   "/workflow": "Workflow nodal: avatar, produto, cenário, prompt, voz e render conectados",
   "/skills": "Skills e receitas por nicho, com exemplo de pedido",
   "/references": "Canais de referência",

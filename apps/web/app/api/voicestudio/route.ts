@@ -1,164 +1,175 @@
 import { NextResponse } from "next/server";
+import { z } from "zod";
+import { prisma } from "@vincere-studio/db";
+import { EDGE_VOICES } from "@vincere-studio/providers";
+import {
+  QUALIDADES,
+  chamarFerramenta,
+  criarTarefaNarracao,
+  lerResposta,
+  lerTarefa,
+  listarTarefas,
+} from "@/lib/voicestudio";
+import { prepararTextoParaFala } from "@/lib/texto-fala";
+
+export const dynamic = "force-dynamic";
+export const maxDuration = 300;
 
 const VOICESTUDIO_URL = process.env.VOICESTUDIO_URL || "http://127.0.0.1:3900";
-// A chave fica só no .env (nunca no código): OMNIVOICE_API_KEY.
-const OMNIVOICE_API_KEY = process.env.OMNIVOICE_API_KEY || "";
 
-async function postRpc(
-  endpoint: string,
-  headers: Record<string, string>,
-  body: Record<string, unknown>
-) {
-  const res = await fetch(endpoint, {
-    method: "POST",
-    headers,
-    body: JSON.stringify(body),
-    cache: "no-store",
-  });
-
-  const rawText = await res.text();
-  const sessionId = res.headers.get("mcp-session-id");
-
-  if (!res.ok) {
-    throw new Error(`VoiceStudio ${res.status}: ${rawText.slice(0, 300)}`);
-  }
-
-  const dataLine = rawText.split(/\r?\n/).find((l) => l.startsWith("data:"));
-  const json = JSON.parse(dataLine ? dataLine.slice(5).trim() : rawText);
-
-  if (json.error) {
-    throw new Error(`Erro do VoiceStudio: ${JSON.stringify(json.error)}`);
-  }
-
-  return { json, sessionId };
+interface Voz {
+  id: string;
+  name: string;
+  ref_text?: string;
+  language?: string;
+  kind?: string;
+  type?: string;
+  audio_url?: string;
 }
 
-function parsePythonDictList(raw: string) {
-  try {
-    // Procura por blocos que parecem dicionários Python
-    const matches = raw.match(/'id':\s*'([^']+)'/g);
-    if (!matches) return [];
-
-    // Extrai propriedades conhecidas com regex segura
-    const items = raw.split(/,\s*\{'id':/);
-    return items.map((chunk, idx) => {
-      const fixedChunk = idx > 0 ? "{'id':" + chunk : chunk;
-      const getId = fixedChunk.match(/'id':\s*'([^']+)'/)?.[1] || "";
-      const getName = fixedChunk.match(/'name':\s*'([^']+)'/)?.[1] || "Sem Nome";
-      const getRefText = fixedChunk.match(/'ref_text':\s*['"](.+?)['"],\s*'instruct'/s)?.[1] || "";
-      const getLang = fixedChunk.match(/'language':\s*'([^']+)'/)?.[1] || "pt";
-      const getAudioUrl = fixedChunk.match(/'audio_url':\s*'([^']+)'/)?.[1] || "";
-      const getKind = fixedChunk.match(/'kind':\s*'([^']+)'/)?.[1] || "clone";
-
-      return {
-        id: getId,
-        name: getName,
-        ref_text: getRefText,
-        language: getLang,
-        kind: getKind,
-        audio_url: getAudioUrl,
-        // O navegador não alcança a porta 3900; o áudio passa pelo proxy desta rota.
-        full_audio_url: getAudioUrl ? `/api/voicestudio?audio=${encodeURIComponent(getAudioUrl)}` : null,
-      };
-    }).filter((v) => v.id);
-  } catch {
-    return [];
-  }
+function erro(err: unknown, status = 502) {
+  return NextResponse.json({ ok: false, error: err instanceof Error ? err.message : String(err) }, { status });
 }
 
+// GET  /api/voicestudio                       → vozes + estado (tela e dashboard)
+// GET  /api/voicestudio?audio=/caminho         → amostra de voz (proxy; o navegador não alcança :3900)
+// GET  /api/voicestudio?action=estilos         → personalidades (narrador, casual…)
+// GET  /api/voicestudio?action=tarefa&id=…     → andamento de uma narração
+// GET  /api/voicestudio?action=tarefas         → últimas narrações
 export async function GET(req: Request) {
-  const audio = new URL(req.url).searchParams.get("audio");
+  const params = new URL(req.url).searchParams;
+  const audio = params.get("audio");
   if (audio) return proxyAudio(audio);
-  if (!OMNIVOICE_API_KEY) {
-    return NextResponse.json(
-      { ok: false, tunnelOnline: false, error: "OMNIVOICE_API_KEY ausente no .env do servidor." },
-      { status: 500 }
-    );
-  }
+  const action = params.get("action");
+
   try {
-    const baseHeaders = {
-      "content-type": "application/json",
-      accept: "application/json, text/event-stream",
-      authorization: `Bearer ${OMNIVOICE_API_KEY}`,
-      host: "127.0.0.1:3900",
-    };
-
-    // 1. Handshake Initialize
-    const initRes = await postRpc(
-      `${VOICESTUDIO_URL}/mcp/`,
-      baseHeaders,
-      {
-        jsonrpc: "2.0",
-        id: 1,
-        method: "initialize",
-        params: {
-          protocolVersion: "2025-03-26",
-          capabilities: {},
-          clientInfo: { name: "vincere-studio-web", version: "2.0.0" },
-        },
-      }
-    );
-
-    const sessionId = initRes.sessionId;
-    const callHeaders: Record<string, string> = { ...baseHeaders };
-    if (sessionId) {
-      callHeaders["mcp-session-id"] = sessionId;
+    if (action === "tarefa") {
+      const t = await lerTarefa(params.get("id") ?? "");
+      return t ? NextResponse.json({ ok: true, tarefa: t }) : NextResponse.json({ ok: false, error: "Tarefa não encontrada" }, { status: 404 });
+    }
+    if (action === "tarefas") return NextResponse.json({ ok: true, tarefas: await listarTarefas() });
+    if (action === "estilos") {
+      return NextResponse.json({ ok: true, estilos: lerResposta(await chamarFerramenta("list_personalities", {})) });
     }
 
-    // 2. Notificação Initialized
-    await fetch(`${VOICESTUDIO_URL}/mcp/`, {
-      method: "POST",
-      headers: callHeaders,
-      body: JSON.stringify({
-        jsonrpc: "2.0",
-        method: "notifications/initialized",
-        params: {},
-      }),
-      cache: "no-store",
-    });
-
-    // 3. Chamada da ferramenta list_voices
-    const callRes = await postRpc(
-      `${VOICESTUDIO_URL}/mcp/`,
-      callHeaders,
-      {
-        jsonrpc: "2.0",
-        id: 2,
-        method: "tools/call",
-        params: {
-          name: "list_voices",
-          arguments: {},
-        },
-      }
-    );
-
-    const textContent = (callRes.json.result?.content || [])
-      .filter((c: { type: string; text?: string }) => c.type === "text")
-      .map((c: { text?: string }) => c.text)
-      .join("\n");
-
-    const voices = parsePythonDictList(textContent);
-
-    return NextResponse.json({
-      ok: true,
-      tunnelOnline: true,
-      voices,
-      vps: "143.95.167.129",
-      tunnelPort: 3900,
-    });
-  } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : String(err);
-    return NextResponse.json(
-      {
-        ok: false,
-        tunnelOnline: false,
-        error: message,
-        vps: "143.95.167.129",
-        tunnelPort: 3900,
-      },
-      { status: 502 }
-    );
+    const bruto = await chamarFerramenta("list_voices", {});
+    let lista: Voz[];
+    try {
+      lista = lerResposta<Voz[]>(bruto);
+    } catch {
+      lista = extrairVozes(bruto); // plano B: repr Python com aspas que o conversor não cobre
+    }
+    const vozes = lista.map((v) => ({
+      id: v.id,
+      name: v.name,
+      ref_text: v.ref_text ?? "",
+      language: v.language ?? "pt",
+      kind: v.kind ?? v.type ?? "clone",
+      full_audio_url: v.audio_url ? `/api/voicestudio?audio=${encodeURIComponent(v.audio_url)}` : null,
+    }));
+    return NextResponse.json({ ok: true, tunnelOnline: true, voices: vozes, qualidades: QUALIDADES, edgeVoices: EDGE_VOICES });
+  } catch (err) {
+    return NextResponse.json({ ok: false, tunnelOnline: false, error: err instanceof Error ? err.message : String(err) }, { status: 502 });
   }
+}
+
+const gerarSchema = z.object({
+  action: z.literal("gerar"),
+  texto: z.string().trim().min(2).max(20_000),
+  vozId: z.string().regex(/^[A-Za-z0-9_-]{4,40}$/),
+  qualidade: z.enum(["rascunho", "equilibrado", "final"]).default("equilibrado"),
+  velocidade: z.number().min(0.5).max(2).optional(),
+  estilo: z.string().max(200).optional(),
+  idioma: z.string().max(10).optional(),
+});
+
+const clonarSchema = z.object({
+  action: z.literal("clonar"),
+  nome: z.string().trim().min(2).max(60),
+  audioBase64: z.string().min(1000).max(15_000_000),
+  textoReferencia: z.string().max(2000).optional(),
+  idioma: z.string().max(10).optional(),
+});
+
+const transcreverSchema = z.object({
+  action: z.literal("transcrever"),
+  audioBase64: z.string().min(1000).max(40_000_000),
+  idioma: z.string().max(10).optional(),
+});
+
+const rascunhoSchema = z.object({
+  action: z.literal("rascunho"),
+  texto: z.string().trim().min(2).max(5000),
+  vozEdge: z.string().regex(/^pt-BR-[A-Za-z]+Neural$/),
+});
+
+const prepararSchema = z.object({ action: z.literal("preparar"), texto: z.string().max(20_000) });
+
+// POST { action: "preparar" | "gerar" | "clonar" | "transcrever" | "rascunho", … }
+export async function POST(req: Request) {
+  const body = await req.json().catch(() => null);
+  try {
+    switch (body?.action) {
+      case "preparar": {
+        const { texto } = prepararSchema.parse(body);
+        return NextResponse.json({ ok: true, textoFalado: prepararTextoParaFala(texto) });
+      }
+      case "gerar": {
+        const d = gerarSchema.parse(body);
+        return NextResponse.json({ ok: true, tarefa: await criarTarefaNarracao(d) });
+      }
+      case "clonar": {
+        const d = clonarSchema.parse(body);
+        const resp = await chamarFerramenta(
+          "clone_voice",
+          { name: d.nome, ref_audio_base64: d.audioBase64, ref_text: d.textoReferencia ?? "", language: d.idioma || "pt" },
+          5 * 60_000,
+        );
+        return NextResponse.json({ ok: true, voz: lerResposta(resp) });
+      }
+      case "transcrever": {
+        const d = transcreverSchema.parse(body);
+        const resp = await chamarFerramenta("transcribe", { audio_base64: d.audioBase64, ...(d.idioma ? { language: d.idioma } : {}) }, 5 * 60_000);
+        return NextResponse.json({ ok: true, resultado: lerResposta(resp) });
+      }
+      case "rascunho": {
+        // Edge TTS no worker (o pacote só resolve lá): segundos em vez de minutos, para testar ritmo.
+        const d = rascunhoSchema.parse(body);
+        const job = await prisma.job.create({
+          data: {
+            type: "PREVIEW_VOICE",
+            payload: JSON.stringify({
+              provider: "EDGE_TTS",
+              voiceId: d.vozEdge,
+              text: prepararTextoParaFala(d.texto),
+              cacheKey: `rascunho-${Date.now()}`,
+            }),
+          },
+        });
+        return NextResponse.json({ ok: true, jobId: job.id });
+      }
+      default:
+        return NextResponse.json({ ok: false, error: "Ação desconhecida" }, { status: 400 });
+    }
+  } catch (err) {
+    if (err instanceof z.ZodError) return erro(new Error(`Dados inválidos: ${err.issues.map((i) => i.path.join(".")).join(", ")}`), 400);
+    return erro(err);
+  }
+}
+
+/** Extrai campos conhecidos de cada {'id': …} por regex, sem depender de JSON válido. */
+function extrairVozes(raw: string): Voz[] {
+  return raw
+    .split(/(?=\{'id':)/)
+    .map((c) => ({
+      id: c.match(/'id':\s*'([^']+)'/)?.[1] ?? "",
+      name: c.match(/'name':\s*'([^']+)'/)?.[1] ?? "Sem nome",
+      ref_text: c.match(/'ref_text':\s*['"](.+?)['"],\s*'/s)?.[1] ?? "",
+      language: c.match(/'language':\s*'([^']+)'/)?.[1] ?? "pt",
+      kind: c.match(/'kind':\s*'([^']+)'/)?.[1] ?? "clone",
+      audio_url: c.match(/'audio_url':\s*'([^']+)'/)?.[1],
+    }))
+    .filter((v) => v.id);
 }
 
 async function proxyAudio(audioPath: string) {
@@ -167,7 +178,7 @@ async function proxyAudio(audioPath: string) {
     return new NextResponse("Caminho de áudio inválido", { status: 400 });
   }
   const res = await fetch(`${VOICESTUDIO_URL}${audioPath}`, {
-    headers: { authorization: `Bearer ${OMNIVOICE_API_KEY}` },
+    headers: { authorization: `Bearer ${process.env.OMNIVOICE_API_KEY || ""}` },
     cache: "no-store",
   }).catch(() => null);
   if (!res || !res.ok || !res.body) {
@@ -179,16 +190,4 @@ async function proxyAudio(audioPath: string) {
       "Cache-Control": "private, max-age=3600",
     },
   });
-}
-
-// A síntese pelo VoiceStudio ainda não foi ligada aqui: responder claro em vez de 405 mudo.
-export async function POST() {
-  return NextResponse.json(
-    {
-      ok: false,
-      error:
-        "Síntese pelo VoiceStudio ainda não está ligada nesta tela. Gere a narração pelo projeto (Projetos → Roteiro → Narração).",
-    },
-    { status: 501 }
-  );
 }
