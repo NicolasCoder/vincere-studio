@@ -4,12 +4,14 @@ import { useState } from "react";
 import { Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude } from "@/components/ClaudeButton";
 import { NICHOS, pedidoDoNicho, type Formato, type Nicho } from "@/lib/nichos";
+import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
 
 export function NichoLauncher() {
   const [sel, setSel] = useState<Nicho | null>(null);
   const [tema, setTema] = useState("");
   const [formato, setFormato] = useState<Formato>("9:16");
   const [notas, setNotas] = useState("");
+  const [idiomaId, setIdiomaId] = useState("pt-BR");
 
   const escolher = (n: Nicho) => {
     setSel(n);
@@ -87,16 +89,25 @@ export function NichoLauncher() {
               ))}
             </div>
           </div>
-          <input
-            value={notas}
-            onChange={(e) => setNotas(e.target.value)}
-            placeholder="Notas opcionais: tom, duração, referência, público…"
-            className="field w-full px-3 py-2 text-sm"
-          />
+          <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+            <input
+              value={notas}
+              onChange={(e) => setNotas(e.target.value)}
+              placeholder="Notas opcionais: tom, duração, referência, público…"
+              className="field w-full px-3 py-2 text-sm"
+            />
+            <select value={idiomaId} onChange={(e) => setIdiomaId(e.target.value)} className="field px-3 py-2 text-sm" title="Idioma e mercado do vídeo">
+              {IDIOMAS.map((i) => (
+                <option key={i.id} value={i.id}>
+                  {i.bandeira} {i.nome}
+                </option>
+              ))}
+            </select>
+          </div>
           <button
             type="button"
             disabled={tema.trim().length < 3}
-            onClick={() => chamarClaude({ pedido: pedidoDoNicho(sel, tema.trim(), formato, notas.trim() || undefined) })}
+            onClick={() => chamarClaude({ pedido: pedidoDoNicho(sel, tema.trim(), formato, notas.trim() || undefined, idiomaPorId(idiomaId)) })}
             className="flex h-10 w-full items-center justify-center gap-2 rounded bg-primary text-sm font-bold text-void disabled:opacity-40 sm:w-auto sm:px-6"
           >
             <Icon name="forum" className="text-[18px]" />

@@ -180,7 +180,9 @@ export async function criarTarefaNarracao(input: {
   // Divide o texto ORIGINAL (o que a legenda mostra) e prepara cada trecho para a fala: assim
   // trecho falado e trecho exibido se correspondem 1:1 e as legendas saem alinhadas.
   const trechosOriginais = dividirEmTrechos(limparMarcacoes(input.texto));
-  const trechos = trechosOriginais.map(prepararTextoParaFala);
+  // Números/moedas por extenso só em português; em outros idiomas o motor já lê bem.
+  const ehPortugues = !input.idioma || input.idioma.startsWith("pt");
+  const trechos = ehPortugues ? trechosOriginais.map(prepararTextoParaFala) : trechosOriginais;
   const textoFalado = trechos.join(" ");
   const agora = new Date().toISOString();
   const tarefa: TarefaVoz = {
@@ -231,7 +233,7 @@ export async function criarTarefaNarracao(input: {
     tarefa.arquivo = rel;
     tarefa.duracaoS = Math.round(duracao * 10) / 10;
 
-    const palavras = alinharPalavras(trechosOriginais, duracoes, PAUSA_MS / 1000);
+    const palavras = alinharPalavras(trechosOriginais, duracoes, PAUSA_MS / 1000, ehPortugues);
     const total = duracao + PAUSA_MS * Math.max(0, trechos.length - 1) / 1000;
     const base = `voicestudio/narracoes/${tarefa.id}`;
     await fs.writeFile(

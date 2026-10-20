@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from "react";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { Icon, cn } from "@vincere-studio/ui";
+import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
 
 // Central de Vozes: tudo do VoiceStudio (VPS) sem abrir a porta 3900. O servidor do Vincere fala
 // com o VoiceStudio; aqui só há formulários, prévias e acompanhamento.
@@ -86,7 +87,13 @@ export default function VoiceStudioPage() {
   const [velocidade, setVelocidade] = useState(1);
   const [estilo, setEstilo] = useState("");
 
+  const [idiomaId, setIdiomaId] = useState("pt-BR");
+  const idioma = idiomaPorId(idiomaId);
   const [vozEdge, setVozEdge] = useState("pt-BR-AntonioNeural");
+  // Trocar o idioma troca as vozes do rascunho.
+  useEffect(() => {
+    setVozEdge(idiomaPorId(idiomaId).vozesEdge[0].id);
+  }, [idiomaId]);
   const [rascunhoUrl, setRascunhoUrl] = useState<string | null>(null);
 
   const [nomeClone, setNomeClone] = useState("");
@@ -126,6 +133,11 @@ export default function VoiceStudioPage() {
         setTexto(t);
         localStorage.removeItem(TEXTO_KEY);
       }
+      const lingua = localStorage.getItem("vincere.voz.idioma");
+      if (lingua) {
+        setIdiomaId(lingua);
+        localStorage.removeItem("vincere.voz.idioma");
+      }
     } catch {}
   }, [carregar, carregarTarefas]);
 
@@ -143,11 +155,11 @@ export default function VoiceStudioPage() {
       return;
     }
     const id = setTimeout(async () => {
-      const r = await post({ action: "preparar", texto });
+      const r = await post({ action: "preparar", texto, idioma: idioma.codigo });
       if (r.ok) setTextoFalado(r.textoFalado);
     }, 500);
     return () => clearTimeout(id);
-  }, [texto]);
+  }, [texto, idioma.codigo]);
 
   useEffect(() => () => {
     if (urlClone) URL.revokeObjectURL(urlClone);
@@ -156,7 +168,7 @@ export default function VoiceStudioPage() {
   const gerar = async () => {
     setOcupado(true);
     setMsg(null);
-    const r = await post({ action: "gerar", texto, vozId, qualidade, velocidade, ...(estilo ? { estilo } : {}) });
+    const r = await post({ action: "gerar", texto, vozId, qualidade, velocidade, idioma: idioma.codigo, ...(estilo ? { estilo } : {}) });
     setOcupado(false);
     if (!r.ok) return setMsg({ tipo: "erro", texto: r.error });
     setMsg({ tipo: "ok", texto: "Narração na fila. Pode sair desta tela: ela continua sendo gerada no servidor." });
@@ -285,7 +297,16 @@ export default function VoiceStudioPage() {
         {(aba === "narrar" || aba === "rascunho") && (
           <section className="grid gap-4 lg:grid-cols-[1fr_320px]">
             <div className="space-y-3 rounded-lg border border-line bg-surface-low p-4">
-              <label className="label-mono block text-muted">Texto da narração</label>
+              <div className="flex flex-wrap items-center justify-between gap-2">
+                <label className="label-mono block text-muted">Texto da narração</label>
+                <select value={idiomaId} onChange={(e) => setIdiomaId(e.target.value)} className="field h-8 px-2 text-xs" title="Idioma do vídeo">
+                  {IDIOMAS.map((i) => (
+                    <option key={i.id} value={i.id}>
+                      {i.bandeira} {i.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
               <textarea
                 value={texto}
                 onChange={(e) => setTexto(e.target.value)}
@@ -357,7 +378,7 @@ export default function VoiceStudioPage() {
                 <div>
                   <label className="label-mono mb-1 block text-muted">Voz do rascunho</label>
                   <select value={vozEdge} onChange={(e) => setVozEdge(e.target.value)} className="field w-full px-3 py-2 text-sm">
-                    {vozesEdge.map((v) => (
+                    {idioma.vozesEdge.map((v) => (
                       <option key={v.id} value={v.id}>
                         {v.label}
                       </option>

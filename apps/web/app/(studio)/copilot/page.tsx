@@ -7,6 +7,7 @@ import { PageHeader } from "@/components/PageHeader";
 import { chamarClaude } from "@/components/ClaudeButton";
 import { Button, Card, Icon } from "@vincere-studio/ui";
 import { NICHOS, pedidoDoNicho } from "@/lib/nichos";
+import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
 
 interface Beat {
   id: number;
@@ -41,6 +42,7 @@ export default function CopilotPage() {
   const router = useRouter();
   const [tema, setTema] = useState("A história oculta da fundação da Nike");
   const [estilo, setEstilo] = useState<string>(ESTILOS[0].id);
+  const [idiomaId, setIdiomaId] = useState("pt-BR");
   const [beats, setBeats] = useState<Beat[]>(EXEMPLO);
   const [loaded, setLoaded] = useState(false);
 
@@ -51,6 +53,7 @@ export default function CopilotPage() {
       if (saved?.beats?.length) {
         setTema(saved.tema);
         setEstilo(saved.estilo);
+        if (saved.idiomaId) setIdiomaId(saved.idiomaId);
         setBeats(saved.beats);
       }
     } catch {}
@@ -60,9 +63,9 @@ export default function CopilotPage() {
   useEffect(() => {
     if (!loaded) return;
     try {
-      localStorage.setItem(STORE, JSON.stringify({ tema, estilo, beats }));
+      localStorage.setItem(STORE, JSON.stringify({ tema, estilo, idiomaId, beats }));
     } catch {}
-  }, [loaded, tema, estilo, beats]);
+  }, [loaded, tema, estilo, idiomaId, beats]);
 
   const update = (id: number, field: keyof Beat, val: string) =>
     setBeats((prev) => prev.map((b) => (b.id === id ? { ...b, [field]: val } : b)));
@@ -82,13 +85,14 @@ export default function CopilotPage() {
 
   const enviar = () =>
     chamarClaude({
-      pedido: `${pedidoDoNicho(estiloAtual.nicho, tema, estiloAtual.nicho.formato)} Use os beats do anexo como roteiro.`,
-      anexo: JSON.stringify({ tema, nicho: estiloAtual.id, beats }, null, 2),
+      pedido: `${pedidoDoNicho(estiloAtual.nicho, tema, estiloAtual.nicho.formato, undefined, idiomaPorId(idiomaId))} Use os beats do anexo como roteiro.`,
+      anexo: JSON.stringify({ tema, nicho: estiloAtual.id, idioma: idiomaId, beats }, null, 2),
     });
 
   // Leva as falas para a Central de Vozes (a página lê e limpa esta chave ao abrir).
   const narrar = () => {
     try {
+      localStorage.setItem("vincere.voz.idioma", idiomaId);
       localStorage.setItem("vincere.voz.texto", beats.map((b) => b.fala.trim()).filter(Boolean).join("\n\n"));
     } catch {}
     router.push("/voice-studio");
@@ -121,7 +125,7 @@ export default function CopilotPage() {
         </ol>
 
         <Card className="space-y-4 p-4 sm:p-5">
-          <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
+          <div className="grid gap-3 sm:grid-cols-[1fr_auto_auto]">
             <div>
               <label className="label-mono mb-1 block text-muted">Tema do vídeo</label>
               <input value={tema} onChange={(e) => setTema(e.target.value)} className="field w-full px-3 py-2 text-base font-semibold" />
@@ -132,6 +136,16 @@ export default function CopilotPage() {
                 {ESTILOS.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.label}
+                  </option>
+                ))}
+              </select>
+            </div>
+            <div>
+              <label className="label-mono mb-1 block text-muted">Idioma</label>
+              <select value={idiomaId} onChange={(e) => setIdiomaId(e.target.value)} className="field w-full px-3 py-2 text-sm">
+                {IDIOMAS.map((i) => (
+                  <option key={i.id} value={i.id}>
+                    {i.bandeira} {i.nome}
                   </option>
                 ))}
               </select>

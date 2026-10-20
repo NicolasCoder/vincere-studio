@@ -122,7 +122,7 @@ export interface PalavraTempo {
  * "mil novecentos e sessenta e dois") e vírgulas/pontos ganham respiro. A legenda mostra
  * a palavra como foi escrita. Formato do subtitles-studio: { word, start, end } em segundos.
  */
-export function alinharPalavras(trechosOriginais: string[], duracoesS: number[], pausaS: number): PalavraTempo[] {
+export function alinharPalavras(trechosOriginais: string[], duracoesS: number[], pausaS: number, portugues = true): PalavraTempo[] {
   const saida: PalavraTempo[] = [];
   let base = 0;
   trechosOriginais.forEach((trecho, i) => {
@@ -132,7 +132,7 @@ export function alinharPalavras(trechosOriginais: string[], duracoesS: number[],
     const ini = Math.min(0.08, dur * 0.05);
     const fim = Math.max(ini, dur - Math.min(0.15, dur * 0.06));
     const pesos = palavras.map((p) => {
-      const falada = prepararTextoParaFala(p).replace(/[^\p{L}\p{N}]/gu, "");
+      const falada = (portugues ? prepararTextoParaFala(p) : p).replace(/[^\p{L}\p{N}]/gu, "");
       const respiro = /[.!?…]$/.test(p) ? 8 : /[,;:]$/.test(p) ? 4 : 0;
       return { fala: Math.max(2, falada.length), respiro };
     });

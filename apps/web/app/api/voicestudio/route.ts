@@ -100,10 +100,12 @@ const transcreverSchema = z.object({
 const rascunhoSchema = z.object({
   action: z.literal("rascunho"),
   texto: z.string().trim().min(2).max(5000),
-  vozEdge: z.string().regex(/^pt-BR-[A-Za-z]+Neural$/),
+  vozEdge: z.string().regex(/^[a-z]{2}-[A-Z0-9]{2,3}-[A-Za-z]+Neural$/),
 });
 
-const prepararSchema = z.object({ action: z.literal("preparar"), texto: z.string().max(20_000) });
+const prepararSchema = z.object({ action: z.literal("preparar"), texto: z.string().max(20_000), idioma: z.string().max(10).optional() });
+
+const ehPt = (idioma?: string) => !idioma || idioma.startsWith("pt");
 
 // POST { action: "preparar" | "gerar" | "clonar" | "transcrever" | "rascunho", … }
 export async function POST(req: Request) {
@@ -111,8 +113,8 @@ export async function POST(req: Request) {
   try {
     switch (body?.action) {
       case "preparar": {
-        const { texto } = prepararSchema.parse(body);
-        return NextResponse.json({ ok: true, textoFalado: prepararTextoParaFala(texto) });
+        const { texto, idioma } = prepararSchema.parse(body);
+        return NextResponse.json({ ok: true, textoFalado: ehPt(idioma) ? prepararTextoParaFala(texto) : texto });
       }
       case "gerar": {
         const d = gerarSchema.parse(body);
@@ -141,7 +143,8 @@ export async function POST(req: Request) {
             payload: JSON.stringify({
               provider: "EDGE_TTS",
               voiceId: d.vozEdge,
-              text: prepararTextoParaFala(d.texto),
+              // Por extenso só em português; a voz Edge define o idioma.
+              text: d.vozEdge.startsWith("pt-") ? prepararTextoParaFala(d.texto) : d.texto,
               cacheKey: `rascunho-${Date.now()}`,
             }),
           },

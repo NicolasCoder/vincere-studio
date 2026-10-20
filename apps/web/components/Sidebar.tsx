@@ -25,6 +25,7 @@ const sections: NavSection[] = [
       { href: "/dashboard", icon: "home", label: "Início" },
       { href: "/projects", icon: "movie", label: "Projetos" },
       { href: "/studio", icon: "movie_filter", label: "HyperFrames Studio", accent: true },
+      { href: "/tendencias", icon: "trending_up", label: "Tendências" },
       { href: "/copilot", icon: "edit_note", label: "Roteiro em beats" },
     ],
   },

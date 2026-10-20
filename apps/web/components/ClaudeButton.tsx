@@ -21,6 +21,8 @@ interface Msg {
   content: string;
   irPara?: string | null;
   acaoClaude?: string | null;
+  lembrou?: string | null;
+  nota?: 1 | -1;
 }
 
 /** Outras telas abrem a aba do Claude já preenchida: chamarClaude({ pedido, anexo }). */
@@ -97,7 +99,7 @@ export function ClaudeButton() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [aba, setAba] = useState<"conversar" | "claude">("conversar");
+  const [aba, setAba] = useState<"conversar" | "claude" | "memoria">("conversar");
 
   // Conversa com o Vince
   const [msgs, setMsgs] = useState<Msg[]>([BOAS_VINDAS]);
@@ -172,8 +174,20 @@ export function ClaudeButton() {
       setErro(r?.error ?? "Sem resposta do assistente.");
       return;
     }
-    setMsgs((m) => [...m, { role: "assistant", content: r.resposta, irPara: r.irPara, acaoClaude: r.acaoClaude }]);
+    setMsgs((m) => [...m, { role: "assistant", content: r.resposta, irPara: r.irPara, acaoClaude: r.acaoClaude, lembrou: r.lembrou }]);
     if (vozLigada) falar(r.resposta);
+  };
+
+  // 👍/👎: a pergunta que originou a resposta vai junto, para o Vince saber o que evitar.
+  const avaliar = (indice: number, nota: 1 | -1) => {
+    const resposta = msgs[indice];
+    const pergunta = [...msgs.slice(0, indice)].reverse().find((m) => m.role === "user")?.content ?? "";
+    setMsgs((ms) => ms.map((m, j) => (j === indice ? { ...m, nota } : m)));
+    fetch("/api/vince", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "feedback", pergunta, resposta: resposta.content, nota }),
+    }).catch(() => {});
   };
 
   const enviarPedido = async (texto = pedido, extra = anexo) => {
@@ -262,14 +276,14 @@ export function ClaudeButton() {
             </button>
           </header>
 
-          <nav className="grid grid-cols-2 border-b border-line text-xs">
-            {(["conversar", "claude"] as const).map((a) => (
+          <nav className="grid grid-cols-3 border-b border-line text-xs">
+            {(["conversar", "claude", "memoria"] as const).map((a) => (
               <button
                 key={a}
                 onClick={() => setAba(a)}
                 className={cn("py-2.5 font-semibold", aba === a ? "border-b-2 border-primary text-fg" : "text-muted hover:text-fg")}
               >
-                {a === "conversar" ? "Conversar" : `Pedidos ao Claude${ativos ? ` (${ativos})` : ""}`}
+                {a === "conversar" ? "Conversar" : a === "memoria" ? "Memória" : `Pedidos${ativos ? ` (${ativos})` : ""}`}
               </button>
             ))}
           </nav>
@@ -286,6 +300,11 @@ export function ClaudeButton() {
                       )}
                     >
                       <p className="whitespace-pre-wrap">{m.content}</p>
+                      {m.lembrou && (
+                        <p className="flex items-center gap-1 text-[11px] text-success">
+                          <Icon name="bookmark_added" className="text-[14px]" /> Anotei: {m.lembrou}
+                        </p>
+                      )}
                       {(m.irPara || m.acaoClaude) && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {m.irPara && (
@@ -304,6 +323,24 @@ export function ClaudeButton() {
                               Mandar o Claude fazer
                             </button>
                           )}
+                        </div>
+                      )}
+                      {m.role === "assistant" && i > 0 && (
+                        <div className="flex gap-1 pt-0.5">
+                          {([1, -1] as const).map((n) => (
+                            <button
+                              key={n}
+                              onClick={() => avaliar(i, n)}
+                              disabled={!!m.nota}
+                              className={cn(
+                                "grid size-6 place-items-center rounded text-muted hover:text-fg disabled:cursor-default",
+                                m.nota === n && (n === 1 ? "text-success" : "text-error"),
+                              )}
+                              title={n === 1 ? "Boa resposta" : "Resposta ruim (o Vince evita na próxima)"}
+                            >
+                              <Icon name={n === 1 ? "thumb_up" : "thumb_down"} className="text-[14px]" filled={m.nota === n} />
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
@@ -348,7 +385,7 @@ export function ClaudeButton() {
                 </button>
               )}
             </>
-          ) : (
+          ) : aba === "claude" ? (
             <>
               <div className="space-y-2 border-b border-line p-4">
                 <p className="text-[11px] text-muted">
@@ -402,9 +439,71 @@ export function ClaudeButton() {
                 )}
               </div>
             </>
+          ) : (
+            <MemoriaVince />
           )}
         </aside>
       )}
     </>
+  );
+}
+
+
+/** Aba "Memória": o que o Vince sabe do Igor. Tudo aqui entra no prompt de cada conversa. */
+function MemoriaVince() {
+  const [itens, setItens] = useState<Array<{ id: string; texto: string; origem: string; criadoEm: string }>>([]);
+  const [novo, setNovo] = useState("");
+  const [notas, setNotas] = useState({ boas: 0, ruins: 0 });
+
+  const carregar = useCallback(async () => {
+    const r = await fetch("/api/vince", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+    if (r?.ok) {
+      setItens(r.itens);
+      setNotas({ boas: r.feedback.filter((f: { nota: number }) => f.nota === 1).length, ruins: r.feedback.filter((f: { nota: number }) => f.nota === -1).length });
+    }
+  }, []);
+  useEffect(() => {
+    carregar();
+  }, [carregar]);
+
+  const post = async (body: Record<string, unknown>) => {
+    await fetch("/api/vince", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) }).catch(() => {});
+    carregar();
+  };
+
+  return (
+    <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
+      <p className="text-muted">
+        O Vince não treina um modelo: ele lê esta lista em toda conversa. Ele anota sozinho quando você conta uma preferência, e as respostas com 👎 ({notas.ruins}) viram exemplos do que evitar
+        {notas.boas ? `; as com 👍 (${notas.boas}), do que repetir` : ""}.
+      </p>
+      <form
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (novo.trim().length >= 4) post({ action: "lembrar", texto: novo.trim() }).then(() => setNovo(""));
+        }}
+        className="flex gap-2"
+      >
+        <input value={novo} onChange={(e) => setNovo(e.target.value)} placeholder="Ensine algo: ex. meu público principal é do México" className="field h-9 flex-1 px-3 text-xs" />
+        <button type="submit" className="rounded bg-primary px-3 text-xs font-semibold text-void">
+          Anotar
+        </button>
+      </form>
+      {itens.length === 0 ? (
+        <p className="py-6 text-center text-muted">Nada anotado ainda.</p>
+      ) : (
+        <ul className="space-y-1.5">
+          {itens.map((i) => (
+            <li key={i.id} className="flex items-start gap-2 rounded border border-line bg-void/50 p-2">
+              <Icon name={i.origem === "manual" ? "edit_note" : "bookmark_added"} className="mt-0.5 text-[14px] text-primary-bright" />
+              <span className="flex-1 text-fg">{i.texto}</span>
+              <button onClick={() => post({ action: "esquecer", id: i.id })} className="text-muted hover:text-error" title="Esquecer">
+                <Icon name="close" className="text-[14px]" />
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }

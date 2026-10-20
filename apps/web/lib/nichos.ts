@@ -2,6 +2,8 @@
 // os estilos do Roteiro em beats e as receitas da biblioteca de skills.
 // Novo nicho = nova entrada aqui; nada mais precisa mudar.
 
+import { IDIOMA_PADRAO, type Idioma } from "./idiomas";
+
 export type Formato = "9:16" | "16:9" | "1:1";
 
 export interface Nicho {
@@ -124,9 +126,13 @@ export const NICHOS: Nicho[] = [
 export const nichoPorId = (id: string) => NICHOS.find((n) => n.id === id);
 
 /** Pedido padrão ao Claude para começar um vídeo de um nicho. */
-export function pedidoDoNicho(n: Nicho, tema: string, formato: Formato, notas?: string) {
+export function pedidoDoNicho(n: Nicho, tema: string, formato: Formato, notas?: string, idioma?: Idioma) {
+  const lingua = idioma ?? IDIOMA_PADRAO;
   return [
-    `Novo vídeo — nicho "${n.nome}", formato ${formato}.`,
+    `Novo vídeo — nicho "${n.nome}", formato ${formato}, idioma ${lingua.nome} (público ${lingua.mercados.join("/")}).`,
+    lingua.codigo !== "pt"
+      ? `Roteiro, narração, legendas e textos na tela em ${lingua.nome}, nativos (não traduzidos ao pé da letra), com referências culturais desse público.`
+      : "",
     `Tema: ${tema}.`,
     notas ? `Notas: ${notas}.` : "",
     `Entre por ${n.skill} e siga: ${n.passos.join(" → ")}.`,

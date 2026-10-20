@@ -4,6 +4,8 @@ import { OpenAICompatTextProvider, getTextProvider, recordUsage, type TextProvid
 import { NICHOS } from "@/lib/nichos";
 import { SKILLS } from "@/lib/skills-catalog";
 import { PROMPTS, PROMPT_CATEGORIAS } from "@/lib/prompt-library";
+import { IDIOMAS } from "@/lib/idiomas";
+import { contextoDaMemoria, lembrar } from "@/lib/vince-memoria";
 
 export const dynamic = "force-dynamic";
 
@@ -17,6 +19,7 @@ const TELAS: Record<string, string> = {
   "/prompts": "Biblioteca de prompts testados de imagem e vídeo, com imagem de referência",
   "/voice-studio": "Central de Vozes: narrar com voz clonada (qualidade rascunho/equilibrado/final, roda em segundo plano), rascunho rápido grátis (Edge TTS), clonar voz enviando um áudio de 5-30s e transcrever áudio",
   "/tipografia": "Combinações de fontes do Google por nicho, com prévia ao vivo e CSS pronto para o HyperFrames",
+  "/tendencias": "Pesquisa de tendências com dados reais (vidIQ, buscas, Reddit/X, notícias) por idioma/mercado: temas e nichos fora do óbvio, com evidência e botão para virar vídeo",
   "/workflow": "Workflow nodal: avatar, produto, cenário, prompt, voz e render conectados",
   "/skills": "Skills e receitas por nicho, com exemplo de pedido",
   "/references": "Canais de referência",
@@ -39,6 +42,9 @@ Regras:
   incluindo a skill a usar. Você não executa nada sozinho.
 - Use "irPara" quando uma tela resolver a dúvida.
 - Renders e mídias pesadas ficam no C: (Videos-HF), nunca no Google Drive.
+- O Igor produz em VÁRIOS idiomas e mercados (${IDIOMAS.map((i) => i.nome).join(", ")}). Converse com ele em português, mas quando o assunto for o vídeo, considere o idioma/mercado dele e sugira o que funciona nesse público.
+- Tendência/tema "em alta" só com dado real: mande para /tendencias ou crie acaoClaude de pesquisa. Nunca invente que algo está em alta.
+- MEMÓRIA: quando o Igor contar uma preferência, decisão, fato sobre ele, o canal, o público ou o estilo ("meu público é do México", "não gosto de legenda amarela"), preencha "lembrar" com uma frase curta e objetiva para guardar. Não use "lembrar" para pedidos pontuais.
 
 TELAS:
 ${Object.entries(TELAS).map(([k, v]) => `- ${k}: ${v}`).join("\n")}
@@ -52,6 +58,7 @@ ${SKILLS.map((s) => `- ${s.comando} [${s.motor}]: ${s.quando}`).join("\n")}
 BIBLIOTECA DE PROMPTS (/prompts): ${PROMPT_CATEGORIAS.map((c) => `${c.nome}: ${PROMPTS.filter((p) => p.categoria === c.id).map((p) => p.titulo).join(", ")}`).join(" | ")}`;
 
 const RespostaSchema = z.object({
+  lembrar: z.string().nullable().optional(),
   resposta: z.string(),
   irPara: z.string().nullable().optional(),
   acaoClaude: z.string().nullable().optional(),
@@ -74,7 +81,7 @@ export async function POST(req: Request) {
     .slice(-12)
     .map((m) => `${m.role === "user" ? "Igor" : "Vince"}: ${m.content}`)
     .join("\n");
-  const prompt = `Tela atual: ${pagina ?? "desconhecida"} (${TELAS[pagina ?? ""] ?? "—"})\n\nConversa:\n${conversa}\n\nResponda como Vince em JSON {resposta, irPara, acaoClaude}.`;
+  const prompt = `Tela atual: ${pagina ?? "desconhecida"} (${TELAS[pagina ?? ""] ?? "—"})\n\nConversa:\n${conversa}\n\nResponda como Vince em JSON {resposta, irPara, acaoClaude, lembrar}.`;
 
   // Ordem: LLM configurada → reserva grátis e sem chave (Pollinations). O Vince nunca fica mudo
   // por falta de chave ou cota esgotada.
@@ -82,17 +89,19 @@ export async function POST(req: Request) {
     () => getTextProvider(process.env.ASSISTENTE_PROVIDER || process.env.TEXT_PROVIDER || "GEMINI"),
     () => new OpenAICompatTextProvider("https://text.pollinations.ai", "", "openai", "https://text.pollinations.ai/openai"),
   ];
+  const memoria = await contextoDaMemoria();
   let ultimoErro: unknown = null;
   for (const criar of candidatos) {
     try {
       const { data, usage } = await criar().generateJson(prompt, RespostaSchema, {
-        system: SYSTEM,
+        system: [SYSTEM, memoria].filter(Boolean).join("\n\n"),
         temperature: 0.4,
         maxOutputTokens: 800,
       });
       await recordUsage(null, usage).catch(() => {});
       const irPara = data.irPara && TELAS[data.irPara] ? data.irPara : null;
-      return NextResponse.json({ ok: true, resposta: data.resposta, irPara, acaoClaude: data.acaoClaude || null });
+      const lembrou = data.lembrar ? await lembrar(data.lembrar) : null;
+      return NextResponse.json({ ok: true, resposta: data.resposta, irPara, acaoClaude: data.acaoClaude || null, lembrou: lembrou?.texto ?? null });
     } catch (err) {
       ultimoErro = err;
     }
