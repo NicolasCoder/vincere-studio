@@ -12,14 +12,13 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 
 ## Estado deixado em 20/10/2026 (Claude) — ler primeiro
 
-- Todo o trabalho da vistoria está **só no working tree**, sem commit (regra: validar antes).
-  Detalhes em `docs/PROGRESSO_SESSAO.md` (sessão 19/10 noite).
-- **Primeiro passo:** o Igor roda `bash scripts/deploy-vps.sh --restore-db` (recupera os 8
-  projetos apagados na VPS, aplica segurança e faz o build, que valida os tipos). Se o build
-  passar: commit em branch nova, CI (`.github/workflows/ci.yml`) e PR para a `main` junto com IGO-7.
-- Depois: conferir desktop e celular (`http://192.168.15.11:3210`), mover o repo para fora do
-  Google Drive (conserta `node_modules` local) e liberar disco no C: (LDPlayer pendente de
-  desinstalação pelo Igor).
+- Handoff completo (feito, pendente, como retomar): Obsidian
+  `SOFTWARE/VINCERE/memoria/sessao-2026-10-20.md`.
+- Branch `feat/vincere-2-vistoria`, 6 commits sem push (5236ecf … b5323ec); tudo já publicado na
+  VPS com `scripts/deploy-vps.sh`. Push/PR só com o OK do Igor.
+- Pendências do Igor: chaves de IA no `.env` da VPS (`scripts/env-vps.sh`), aprovar a prévia da
+  Nike (gerar com `scripts/hf.ps1 previa -Projeto nike-história`, render na VPS), LDPlayer, RAM.
+- Pendência técnica: reescrever `scripts/auto-pull.ps1` (caminho antigo e branch errado).
 
 ## Estado deixado em 20/09/2026
 
