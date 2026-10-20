@@ -170,8 +170,8 @@ export default function FlowStudioPage() {
 
   return (
     <>
-      <Topbar crumbs={["Flow Studio", "Mídia IA"]} />
-      <main className="space-y-6 p-6">
+      <Topbar crumbs={["Gerar com IA", "Imagem e vídeo (Flow)"]} />
+      <main className="space-y-6 p-4 sm:p-6">
         <PageHeader
           icon="auto_awesome"
           title="Flow Studio & Mídia IA"
@@ -217,7 +217,7 @@ export default function FlowStudioPage() {
               </div>
             </div>
 
-            <div className="flex items-center gap-2">
+            <div className="flex flex-wrap items-center gap-2">
               <Button
                 variant="outline"
                 size="sm"
@@ -252,14 +252,14 @@ export default function FlowStudioPage() {
         </Card>
 
         {/* Studio Sub-Navigation */}
-        <div className="flex border-b border-line gap-2">
+        <div className="flex gap-1 overflow-x-auto border-b border-line sm:gap-2">
           <button
             onClick={() => {
               setActiveTab("image");
               setTipo("imagem");
               setModelo("pro");
             }}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
               activeTab === "image"
                 ? "border-primary text-primary-bright"
                 : "border-transparent text-muted hover:text-fg"
@@ -274,7 +274,7 @@ export default function FlowStudioPage() {
               setTipo("video");
               setModelo("lower_priority");
             }}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
               activeTab === "video"
                 ? "border-primary text-primary-bright"
                 : "border-transparent text-muted hover:text-fg"
@@ -285,7 +285,7 @@ export default function FlowStudioPage() {
           </button>
           <button
             onClick={() => setActiveTab("cinema")}
-            className={`flex items-center gap-2 border-b-2 px-4 py-2.5 text-sm font-medium transition-colors ${
+            className={`flex shrink-0 items-center gap-2 whitespace-nowrap border-b-2 px-3 py-2.5 text-sm font-medium transition-colors sm:px-4 ${
               activeTab === "cinema"
                 ? "border-primary text-primary-bright"
                 : "border-transparent text-muted hover:text-fg"
@@ -467,6 +467,7 @@ export default function FlowStudioPage() {
                     type="submit"
                     variant="primary"
                     icon="auto_awesome"
+                    className="whitespace-normal text-center"
                     disabled={isSubmitting || !prompt.trim()}
                   >
                     {isSubmitting ? "Enviando à Fila..." : `Gerar ${tipo === "imagem" ? "Imagem" : "Vídeo"} no Google Flow`}

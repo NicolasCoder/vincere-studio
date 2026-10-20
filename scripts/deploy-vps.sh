@@ -7,6 +7,7 @@
 #   - next escuta só em 127.0.0.1 (acesso continua pelo túnel e pelo celular)
 #   - OMNIVOICE_API_KEY e HYPERFRAMES_URL no .env
 #   - encerra HyperFrames órfão na VPS (o preview mora no PC e chega pelo túnel)
+#   - LAN_PIN: PIN exigido no acesso pela rede Wi-Fi (cópia em C:/Users/Igor/vincere-pin-celular.txt)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
@@ -60,6 +61,8 @@ echo "== 4/6 Ajustes de operação e segurança"
 set -euo pipefail
 cd /opt/vincere-studio
 grep -q '^HYPERFRAMES_URL=' .env || echo 'HYPERFRAMES_URL="http://[::1]:3010"' >> .env
+# PIN para acesso pela rede Wi-Fi (middleware). Gerado uma vez; o valor não aparece no terminal.
+grep -q '^LAN_PIN=' .env || echo "LAN_PIN=\"$(shuf -i 10000000-99999999 -n 1)\"" >> .env
 grep -q -- '--hostname 127.0.0.1' ecosystem.config.cjs || \
   sed -i "s#args: 'start --port 3210'#args: 'start --port 3210 --hostname 127.0.0.1'#" ecosystem.config.cjs
 pkill -f 'hyperframes preview' || true
@@ -67,7 +70,12 @@ if [[ $RESTORE_DB == 1 ]]; then
   pm2 stop vincere-web vincere-worker
   # Mescla com o app parado: base = PC (projetos), por cima o banco vivo da VPS.
   python3 -c "import sqlite3;s=sqlite3.connect('storage/docupulse.db');d=sqlite3.connect('/tmp/vincere-vps.db');s.backup(d)"
-  python3 scripts/db-merge.py /tmp/vincere-pc.db /tmp/vincere-vps.db storage/docupulse.db.novo
+  if ! python3 scripts/db-merge.py /tmp/vincere-pc.db /tmp/vincere-vps.db storage/docupulse.db.novo; then
+    rm -f storage/docupulse.db.novo
+    pm2 start vincere-web vincere-worker
+    echo "!! Mesclagem reprovada — banco intocado, app religada." >&2
+    exit 1
+  fi
   rm -f storage/docupulse.db-wal storage/docupulse.db-shm
   mv storage/docupulse.db.novo storage/docupulse.db
 fi
@@ -80,6 +88,11 @@ if ! "${SSH[@]}" "cd $APP && pnpm install --frozen-lockfile --prefer-offline && 
 cd "$APP"
 tar -xzf "$BK/codigo.tgz"
 rm -rf apps/web/.next && cp -a "$BK/next" apps/web/.next
+if [[ $RESTORE_DB == 1 ]]; then
+  pm2 stop vincere-web vincere-worker >/dev/null 2>&1 || true
+  rm -f storage/docupulse.db-wal storage/docupulse.db-shm
+  cp -a "$BK/docupulse.db" storage/docupulse.db
+fi
 pm2 startOrRestart ecosystem.config.cjs --update-env
 EOF
   exit 1
@@ -92,9 +105,14 @@ cd /opt/vincere-studio
 pm2 delete vincere-web vincere-worker >/dev/null 2>&1 || true
 pm2 start ecosystem.config.cjs --update-env >/dev/null
 pm2 save >/dev/null
+# Mantém só os 5 backups de deploy mais recentes (cada um guarda um .next inteiro, ~400 MB).
+ls -dt /root/backups/deploy-* 2>/dev/null | tail -n +6 | xargs -r rm -rf
 sleep 6
 curl -fsS http://127.0.0.1:3210/api/health; echo
 curl -fsS http://127.0.0.1:3210/api/hyperframes; echo
 ss -ltn | grep ':3210'
 EOF
+# Cópia do PIN do celular no PC, fora do Google Drive (não é exibida aqui).
+"${SSH[@]}" "grep -oP '^LAN_PIN=\"?\K[0-9]+' $APP/.env" > "C:/Users/Igor/vincere-pin-celular.txt" 2>/dev/null || true
+echo "PIN do celular salvo em C:/Users/Igor/vincere-pin-celular.txt"
 echo "Publicado. Backup em $BK"

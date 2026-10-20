@@ -51,10 +51,11 @@ export default function HyperFramesStudioPage() {
       setEngineOnline(data.running);
       if (data.projects && data.projects.length > 0) {
         setAvailableProjects(data.projects);
-        // If current project not in list, pick first
-        if (!data.projects.some((p: any) => p.name === activeProject)) {
-          setActiveProject(data.projects[0].name);
-        }
+        // Forma funcional: o intervalo de 6s guarda o closure inicial, então comparar com
+        // `activeProject` direto desfaria a escolha do usuário a cada ciclo.
+        setActiveProject((atual) =>
+          data.projects.some((p: { name: string }) => p.name === atual) ? atual : data.projects[0].name,
+        );
       }
     } catch {
       setEngineOnline(false);
@@ -77,10 +78,10 @@ export default function HyperFramesStudioPage() {
   // A web roda na VPS e não enxerga o disco do PC: o projeto é criado no PC (terminal ou
   // pedindo ao Claude), e o HyperFrames passa a listá-lo sozinho.
   const createCommand = slug
-    ? `cd C:\Users\Igor\Videos-HF; npx hyperframes init ${slug}`
+    ? `cd C:\\Users\\Igor\\Videos-HF; npx hyperframes init ${slug}`
     : "";
   const claudePrompt = slug && selectedProfile
-    ? `Crie o projeto HyperFrames "${slug}" em C:\Users\Igor\Videos-HF no perfil "${selectedProfile.tipo}" (${selectedProfile.largura}x${selectedProfile.altura}) usando a skill ${selectedProfile.skill}.`
+    ? `Crie o projeto HyperFrames "${slug}" em C:\\Users\\Igor\\Videos-HF no perfil "${selectedProfile.tipo}" (${selectedProfile.largura}x${selectedProfile.altura}) usando a skill ${selectedProfile.skill}.`
     : "";
 
   const copy = (text: string) => {

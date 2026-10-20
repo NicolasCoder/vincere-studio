@@ -119,15 +119,27 @@ export async function runWorkflow(ctx: JobContext) {
             const genInput = { prompt, negativePrompt: d.negative?.trim() || undefined, referenceImagePaths: refs, aspectRatio };
             let result: Awaited<ReturnType<typeof generateImageGemini>>;
             let engineLabel: string;
-            if (d.imageProvider === "POLLINATIONS") {
+            // Só "GEMINI" usa o motor pago. FLOW (fila assíncrona do Google Flow) não cabe numa
+            // execução síncrona e MINIMAX não está integrado: ambos caem no gratuito, nunca no pago.
+            if ((d.imageProvider ?? "GEMINI") !== "GEMINI") {
               result = await generateImagePollinations(genInput);
-              engineLabel = "Pollinations.ai (grátis)";
+              engineLabel =
+                d.imageProvider === "POLLINATIONS"
+                  ? "Pollinations.ai (grátis)"
+                  : `Pollinations.ai (grátis — ${d.imageProvider} não roda dentro da execução; gere no Flow Studio e vincule)`;
             } else {
-              const estimatedCost = estimateImageCostUsd();
-              await checkBudget(estimatedCost); // não gasta nada se estourar o orçamento — lança antes de chamar a API paga
-              result = await generateImageGemini(genInput);
-              await recordImageUsage(null, "GEMINI_IMAGE", estimatedCost);
-              engineLabel = "Gemini (Nano Banana)";
+              try {
+                const estimatedCost = estimateImageCostUsd();
+                await checkBudget(estimatedCost); // não gasta nada se estourar o orçamento — lança antes de chamar a API paga
+                result = await generateImageGemini(genInput);
+                await recordImageUsage(null, "GEMINI_IMAGE", estimatedCost);
+                engineLabel = "Gemini (Nano Banana)";
+              } catch (geminiErr) {
+                // Mesma reserva da prévia de keyframe: sem chave, sem faturamento ou orçamento estourado → grátis.
+                const why = geminiErr instanceof Error ? geminiErr.message : String(geminiErr);
+                result = await generateImagePollinations(genInput);
+                engineLabel = `Pollinations.ai (grátis — Gemini indisponível: ${why})`;
+              }
             }
             const ext = result.mimeType.includes("png") ? "png" : "jpg";
             const shotFile = path.join(outDir, `prompt-${node.id}-${Date.now()}.${ext}`);

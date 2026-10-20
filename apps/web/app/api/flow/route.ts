@@ -6,6 +6,97 @@ import path from "node:path";
 
 const FLOW_DAEMON_URL = process.env.FLOW_DAEMON_URL || "http://127.0.0.1:9334";
 
+// IDs que chegam do navegador vão para path.join, URL do daemon e Prisma: só formatos esperados.
+const ID_RE = /^[a-z0-9]{20,40}$/i; // cuid do Prisma
+const JOB_RE = /^[A-Za-z0-9-]{8,64}$/; // uuid do daemon
+
+// Cenas esperando um job do Flow terminar: jobId → destino. Vinculadas sozinhas quando o job conclui.
+const LINKS_FILE = () => path.join(storageRoot(), "flow-links.json");
+type FlowLink = { projectId: string; sceneId?: string; prompt?: string; createdAt: string };
+
+async function readLinks(): Promise<Record<string, FlowLink>> {
+  try {
+    return JSON.parse(await fs.readFile(LINKS_FILE(), "utf8"));
+  } catch {
+    return {};
+  }
+}
+
+async function writeLinks(links: Record<string, FlowLink>) {
+  const tmp = `${LINKS_FILE()}.${process.pid}.${Date.now()}.tmp`;
+  await fs.writeFile(tmp, JSON.stringify(links, null, 2), "utf8");
+  await fs.rename(tmp, LINKS_FILE());
+}
+
+/** Baixa o resultado do job e grava na cena (ou no banco de imagens do projeto). */
+async function assignJob(jobId: string, projectId: string, sceneId?: string, prompt?: string) {
+  if (!JOB_RE.test(jobId) || !ID_RE.test(projectId) || (sceneId && !ID_RE.test(sceneId))) {
+    throw new Error("IDs inválidos");
+  }
+  const project = await prisma.project.findUnique({ where: { id: projectId }, select: { id: true } });
+  if (!project) throw new Error("Projeto não encontrado");
+  if (sceneId) {
+    const scene = await prisma.scene.findFirst({ where: { id: sceneId, block: { script: { projectId } } }, select: { id: true } });
+    if (!scene) throw new Error("A cena não pertence a este projeto");
+  }
+
+  const fileRes = await fetch(`${FLOW_DAEMON_URL}/jobs/${jobId}/file`, { signal: AbortSignal.timeout(20000) });
+  if (!fileRes.ok) throw new Error("Não foi possível baixar o arquivo gerado do Flow");
+
+  const contentType = fileRes.headers.get("content-type") || "";
+  const isVideo = contentType.includes("video") || contentType.includes("mp4");
+  const ext = isVideo ? ".mp4" : contentType.includes("jpeg") ? ".jpg" : ".png";
+  const fileName = `flow_${jobId}${ext}`;
+  const sub = sceneId ? "scenes" : "generated";
+  const targetDir = path.join(storageRoot(), "projects", projectId, sub);
+  await fs.mkdir(targetDir, { recursive: true });
+  await fs.writeFile(path.join(targetDir, fileName), Buffer.from(await fileRes.arrayBuffer()));
+  const relativePath = `projects/${projectId}/${sub}/${fileName}`;
+
+  if (sceneId) {
+    await prisma.scene.update({
+      where: { id: sceneId },
+      data: {
+        filePath: relativePath,
+        source: "GENERATED",
+        provider: isVideo ? "Google Flow (Veo 3.1)" : "Google Flow (Nano Banana Pro)",
+        mediaType: isVideo ? "video" : "image",
+      },
+    });
+  } else {
+    await prisma.generatedImage.create({
+      data: { projectId, prompt: prompt || "Gerado no Google Flow", engine: "FLOW", filePath: relativePath, costUsd: 0 },
+    });
+  }
+  return { relativePath, isVideo };
+}
+
+/** Confere os jobs com destino pendente e vincula os que terminaram. Barato quando não há pendências. */
+async function syncLinks() {
+  const links = await readLinks();
+  const ids = Object.keys(links);
+  if (ids.length === 0) return { pendentes: 0, vinculados: 0 };
+  let vinculados = 0;
+  for (const jobId of ids) {
+    const st = await fetch(`${FLOW_DAEMON_URL}/jobs/${jobId}`, { signal: AbortSignal.timeout(4000) })
+      .then((r) => (r.ok ? r.json() : null))
+      .catch(() => null);
+    const status = st?.status ?? st?.job?.status;
+    const link = links[jobId];
+    if (status === "completed") {
+      try {
+        await assignJob(jobId, link.projectId, link.sceneId, link.prompt);
+        vinculados++;
+      } catch {}
+      delete links[jobId];
+    } else if (status === "failed" || status === "cancelled" || Date.now() - Date.parse(link.createdAt) > 6 * 3600_000) {
+      delete links[jobId];
+    }
+  }
+  await writeLinks(links);
+  return { pendentes: Object.keys(links).length, vinculados };
+}
+
 export async function GET(req: Request) {
   const { searchParams } = new URL(req.url);
   const action = searchParams.get("action") || "status";
@@ -48,10 +139,14 @@ export async function GET(req: Request) {
       return NextResponse.json({ ok: true, projects });
     }
 
+    if (action === "sync") {
+      return NextResponse.json({ ok: true, ...(await syncLinks()) });
+    }
+
     if (action === "file") {
       const jobId = searchParams.get("jobId");
-      if (!jobId) {
-        return new NextResponse("Job ID missing", { status: 400 });
+      if (!jobId || !JOB_RE.test(jobId)) {
+        return new NextResponse("Job ID inválido", { status: 400 });
       }
       const fileRes = await fetch(`${FLOW_DAEMON_URL}/jobs/${jobId}/file`, {
         signal: AbortSignal.timeout(15000),
@@ -124,48 +219,7 @@ export async function POST(req: Request) {
         return NextResponse.json({ ok: false, error: "jobId e projectId são obrigatórios" }, { status: 400 });
       }
 
-      const fileRes = await fetch(`${FLOW_DAEMON_URL}/jobs/${jobId}/file`, {
-        signal: AbortSignal.timeout(20000),
-      });
-      if (!fileRes.ok) {
-        return NextResponse.json({ ok: false, error: "Não foi possível baixar o arquivo gerado do Flow" }, { status: 404 });
-      }
-
-      const contentType = fileRes.headers.get("content-type") || "";
-      const isVideo = contentType.includes("video") || contentType.includes("mp4");
-      const ext = isVideo ? ".mp4" : ".png";
-      const fileName = `flow_${jobId.slice(0, 8)}${ext}`;
-
-      const targetDir = path.join(storageRoot(), "projects", projectId, sceneId ? "scenes" : "generated");
-      await fs.mkdir(targetDir, { recursive: true });
-      const targetPath = path.join(targetDir, fileName);
-
-      const arrayBuf = await fileRes.arrayBuffer();
-      await fs.writeFile(targetPath, Buffer.from(arrayBuf));
-
-      const relativePath = `projects/${projectId}/${sceneId ? "scenes" : "generated"}/${fileName}`;
-
-      if (sceneId) {
-        await prisma.scene.update({
-          where: { id: sceneId },
-          data: {
-            filePath: relativePath,
-            source: "GENERATED",
-            provider: isVideo ? "Google Flow (Veo 3.1)" : "Google Flow (Nano Banana Pro)",
-            mediaType: isVideo ? "video" : "image",
-          },
-        });
-      } else {
-        await prisma.generatedImage.create({
-          data: {
-            projectId,
-            prompt: prompt || "Gerado no Google Flow",
-            engine: "FLOW",
-            filePath: relativePath,
-            costUsd: 0,
-          },
-        });
-      }
+      const { relativePath } = await assignJob(String(jobId), String(projectId), sceneId ? String(sceneId) : undefined, prompt);
 
       return NextResponse.json({
         ok: true,
@@ -206,6 +260,18 @@ export async function POST(req: Request) {
       }
 
       const data = await res.json();
+      const jobId = data.job_id || data.id;
+      const { targetProjectId, targetSceneId } = body;
+      if (jobId && targetProjectId && ID_RE.test(String(targetProjectId)) && (!targetSceneId || ID_RE.test(String(targetSceneId)))) {
+        const links = await readLinks();
+        links[jobId] = {
+          projectId: String(targetProjectId),
+          sceneId: targetSceneId ? String(targetSceneId) : undefined,
+          prompt: jobData.prompt,
+          createdAt: new Date().toISOString(),
+        };
+        await writeLinks(links);
+      }
       return NextResponse.json({ ok: true, ...data });
     }
 

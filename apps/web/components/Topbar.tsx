@@ -2,7 +2,7 @@ import { Icon } from "@vincere-studio/ui";
 
 export function Topbar({ crumbs, costUsd = 0 }: { crumbs: string[]; costUsd?: number }) {
   return (
-    <header className="sticky top-12 z-10 flex h-14 lg:top-0 items-center gap-4 border-b border-line bg-void/80 px-4 backdrop-blur-md sm:px-6">
+    <header className="sticky top-12 z-10 hidden h-14 items-center lg:top-0 lg:flex gap-4 border-b border-line bg-void/80 px-4 backdrop-blur-md sm:px-6">
       <div className="hidden items-center gap-2 text-xs text-fg-secondary sm:flex">
         {crumbs.map((c, i) => (
           <span key={i} className="flex items-center gap-2">

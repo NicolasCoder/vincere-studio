@@ -87,6 +87,20 @@ Terceira rodada (20/10):
 - `cleanup-vps.sh` versionado e corrigido (não apaga containers de outros serviços nem pastas
   `work` recentes); CI em `.github/workflows/ci.yml`; rótulo "Meta de consistência facial".
 
+Quarta rodada (20/10, madrugada) — publicado e auditado:
+
+- Deploy feito: 8 projetos restaurados, web só em 127.0.0.1, música/modelos/prévias enviados.
+- **`.env` da VPS estava sem nenhuma chave** (cópia do `.env.example`): Gemini, Pexels,
+  ElevenLabs etc. vazios. Vince usa reserva grátis (Pollinations) até o Igor repor as chaves
+  com `scripts/env-vps.sh`. 89 de 159 cenas apontam para `.mp4` que não existem mais (nem no PC).
+- `/code-review high` (10 achados) corrigido: contrato do Flow no keyframe, worker não cai mais
+  no Gemini pago com FLOW/MINIMAX (e tem reserva grátis), MiniMax desligado, `/api/flow` valida
+  IDs e vincula a cena sozinho (`flow-links.json`), PIN no acesso pela rede (`middleware.ts`,
+  `LAN_PIN`), caixa de pedidos serializada, `db-merge.py` por colunas nomeadas com
+  rollback do banco, CI com banco próprio, barras do comando no Studio, closure do Studio,
+  teste do túnel no launcher.
+- Mobile: varredura de 18 telas em 390px sem estouro de largura; Workflow redesenhado.
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**

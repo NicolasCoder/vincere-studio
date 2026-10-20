@@ -25,7 +25,8 @@ if (-not (Test-Port 9334)) {
   Start-Hidden "python.exe" "flow_queue_daemon.py" "C:\Users\Igor\flow-studio-mcp"
 } else { Write-Host "Flow daemon (9334) ja ativo." }
 
-if (-not (Test-Port 3210)) {
+# Só o 127.0.0.1 conta: o lan-proxy também escuta 3210 (no IP da rede) e mascararia um túnel caído.
+if (-not (Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 3210 -State Listen -ErrorAction SilentlyContinue)) {
   Write-Host "Abrindo tunel SSH com a VPS (3210)..."
   Start-Hidden "ssh.exe" "-p 22022 -i C:/Users/Igor/.ssh/claude_vps_ed25519 -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -N -L 3210:127.0.0.1:3210 -R 9334:127.0.0.1:9334 -R 3010:127.0.0.1:3010 root@143.95.167.129" $repo
 } else { Write-Host "Tunel (3210) ja ativo." }

@@ -23,7 +23,9 @@ const MOTOR_COR: Record<Motor, string> = {
 /** Prévia animada leve (CSS puro) do que a skill produz. */
 function SkillPreview({ kind }: { kind: Preview }) {
   return (
-    <div className={cn("skill-preview relative h-24 overflow-hidden rounded-md border border-line bg-void", `pv-${kind}`)} aria-hidden="true">
+    // A classe da animação (pv-zoom, pv-stamp…) fica só no elemento interno: no contêiner, ela
+    // escalava/girava o cartão inteiro e estourava a largura da página no celular.
+    <div className="skill-preview relative h-24 overflow-hidden rounded-md border border-line bg-void" aria-hidden="true">
       {kind === "slash" && (
         <>
           <span className="pv-word">DOSSIÊ</span>
@@ -101,22 +103,25 @@ export function SystemSkillsCatalog() {
           </h3>
           <p className="text-xs text-muted">Siga na ordem. Cada passo é um pedido ao Claude.</p>
         </div>
-        <div className="grid gap-3 md:grid-cols-2">
-          {RECEITAS.map((r) => (
-            <div key={r.titulo} className="rounded-lg border border-line bg-surface-low p-4">
-              <div className="mb-3 font-display text-sm font-semibold text-fg">{r.titulo}</div>
-              <ol className="flex flex-wrap items-center gap-1.5 text-[11px]">
+        <div className="grid gap-2 md:grid-cols-2">
+          {RECEITAS.map((r, idx) => (
+            <details key={r.titulo} open={idx === 0} className="group rounded-lg border border-line bg-surface-low open:border-primary/40">
+              <summary className="flex cursor-pointer list-none items-center justify-between gap-2 px-4 py-3 font-display text-sm font-semibold text-fg">
+                <span>{r.titulo}</span>
+                <span className="flex items-center gap-1 text-[11px] font-normal text-muted">
+                  {r.passos.length} passos
+                  <Icon name="expand_more" className="text-[18px] transition-transform group-open:rotate-180" />
+                </span>
+              </summary>
+              <ol className="space-y-1.5 px-4 pb-4 text-xs">
                 {r.passos.map((p, i) => (
-                  <li key={p} className="flex items-center gap-1.5">
-                    <span className="rounded border border-line bg-void/60 px-2 py-1 text-fg-secondary">
-                      <span className="mr-1 font-mono text-primary-bright">{i + 1}</span>
-                      {p}
-                    </span>
-                    {i < r.passos.length - 1 && <Icon name="arrow_forward" className="text-[12px] text-muted" />}
+                  <li key={p} className="flex items-start gap-2 text-fg-secondary">
+                    <span className="grid size-5 shrink-0 place-items-center rounded-full bg-primary/15 font-mono text-[10px] text-primary-bright">{i + 1}</span>
+                    <span className="pt-0.5">{p}</span>
                   </li>
                 ))}
               </ol>
-            </div>
+            </details>
           ))}
         </div>
       </section>

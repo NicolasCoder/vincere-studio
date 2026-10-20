@@ -185,7 +185,6 @@ function PromptNode({ id, data, selected }: NodeProps<CanvasNode>) {
           <option value="POLLINATIONS" className="bg-surface-low text-fg">⚡ Pollinations.ai (Grátis / Instantâneo - Sem Chave)</option>
           <option value="FLOW" className="bg-surface-low text-fg">⚡ Google Flow Studio (Nano Banana / Veo 3.1)</option>
           <option value="GEMINI" className="bg-surface-low text-fg">💎 Gemini · Nano Banana (Exige Faturamento)</option>
-          <option value="MINIMAX" className="bg-surface-low text-fg">🎬 MiniMax (Hailuo AI / Vídeo Cinematográfico)</option>
         </select>
       </div>
       <div className="nodrag flex items-center justify-between gap-2 pt-1">

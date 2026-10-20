@@ -61,12 +61,14 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
       const enqueueRes = await fetch(`${FLOW_DAEMON_URL}/enqueue`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
+        // Mesmo contrato de /api/flow: o daemon lê tipo/proporcao/modelo (sem `tipo` ele gera vídeo).
         body: JSON.stringify({
-          project: `wf_${id.slice(0, 8)}`,
+          workspace: "Vincere Studio",
+          tipo: "imagem",
+          modelo: "pro",
           prompt,
-          mode: "image",
-          engine: "nano-banana-2",
-          aspect_ratio: aspectRatio === "16:9" ? "16:9" : "9:16",
+          proporcao: aspectRatio ?? "9:16",
+          wait: false,
         }),
         signal: AbortSignal.timeout(8000),
       });
@@ -90,10 +92,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
             const fileRes = await fetch(`${FLOW_DAEMON_URL}/jobs/${jobId}/file`, { signal: AbortSignal.timeout(10000) });
             if (fileRes.ok) {
               const buf = Buffer.from(await fileRes.arrayBuffer());
+              const ct = fileRes.headers.get("content-type") ?? "";
+              const ext = ct.includes("jpeg") ? "jpg" : ct.includes("webp") ? "webp" : "png";
               const dir = path.join(storageRoot(), "workflows", id, "keyframes");
               await mkdir(dir, { recursive: true });
               const safeNodeId = nodeId.replace(/[^a-zA-Z0-9_-]/g, "") || "node";
-              const filePath = path.join(dir, `${safeNodeId}-flow-${Date.now()}.png`);
+              const filePath = path.join(dir, `${safeNodeId}-flow-${Date.now()}.${ext}`);
               await writeFile(filePath, buf);
               return NextResponse.json({ imageUrl: relPath(filePath), warning: fallbackNotice });
             }
@@ -111,39 +115,12 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
     }
 
     if (imageProvider === "MINIMAX") {
-      const apiKey = process.env.MINIMAX_API_KEY;
-      if (!apiKey) {
-        throw new Error(
-          "Chave MINIMAX_API_KEY não configurada. Adicione sua chave da MiniMax no arquivo .env ou em Configurações para gerar vídeos diretamente via Hailuo/MiniMax."
-        );
-      }
-      // Chamada à API da MiniMax Video Generation
-      const mmRes = await fetch("https://api.minimax.chat/v1/video_generation", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${apiKey}`,
-        },
-        body: JSON.stringify({
-          model: "video-01",
-          prompt,
-          prompt_optimizer: true,
-        }),
-        signal: AbortSignal.timeout(15000),
-      });
-
-      if (!mmRes.ok) {
-        const mmErr = await mmRes.text();
-        throw new Error(`MiniMax API respondeu com status ${mmRes.status}: ${mmErr}`);
-      }
-
-      const mmData = await mmRes.json();
-      return NextResponse.json({
-        imageUrl: null,
-        status: "queued",
-        jobId: mmData.task_id,
-        message: `Tarefa de vídeo MiniMax criada com sucesso (Task ID: ${mmData.task_id}).`,
-      });
+      // MiniMax é pago e não passa pela trava de orçamento nem baixa o resultado: fica desligado
+      // até ser integrado de verdade (checkBudget + recordUsage + acompanhamento da tarefa).
+      return NextResponse.json(
+        { error: "MiniMax ainda não está integrado. Use Flow (créditos da conta Google) ou Pollinations (grátis)." },
+        { status: 501 },
+      );
     }
 
     let result: Awaited<ReturnType<typeof generateImageGemini>>;

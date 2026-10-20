@@ -8,6 +8,10 @@ on:
 jobs:
   verificar:
     runs-on: ubuntu-latest
+    env:
+      # Banco descartável só da CI. O smoke test das páginas e o build leem este DATABASE_URL
+      # (o .env do PC não existe aqui); os testes de db/providers usam o .env.test versionado.
+      DATABASE_URL: file:${{ github.workspace }}/ci.db
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -17,8 +21,7 @@ jobs:
           cache: pnpm
       - run: pnpm install --frozen-lockfile
       - run: pnpm db:generate
+      - run: pnpm --filter @vincere-studio/db exec prisma db push --skip-generate
       - run: pnpm typecheck
       - run: pnpm test
       - run: pnpm build
-        env:
-          DATABASE_URL: file:./ci.db
