@@ -4,6 +4,8 @@ import { useState, useEffect } from "react";
 import { PageHeader } from "@/components/PageHeader";
 import { Button, Card, Icon } from "@vincere-studio/ui";
 import { chamarClaude, HF_PROJECT_KEY } from "@/components/ClaudeButton";
+import { NICHOS } from "@/lib/nichos";
+import { PreviasPanel } from "./PreviasPanel";
 
 const PROFILES = [
   { id: "1", tipo: "Curto Vertical (Estilo Igor)", largura: 1080, altura: 1920, rota: "/general-video", estilo: "igor", skill: "/editar-igor", desc: "Shorts dinâmicos de alta retenção para Reels/TikTok" },
@@ -35,6 +37,15 @@ export default function HyperFramesStudioPage() {
   const [showNewModal, setShowNewModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
   const [selectedProfileId, setSelectedProfileId] = useState("1");
+  const [templates, setTemplates] = useState<Array<{ nome: string; nicho?: string; origem?: string; formato?: string }>>([]);
+  const [templateSel, setTemplateSel] = useState("");
+
+  useEffect(() => {
+    fetch("/api/hyperframes?action=templates", { cache: "no-store" })
+      .then((r) => r.json())
+      .then((r) => r?.ok && setTemplates(r.templates))
+      .catch(() => {});
+  }, []);
   const [search, setSearch] = useState("");
   const [iframeKey, setIframeKey] = useState(1);
 
@@ -77,11 +88,10 @@ export default function HyperFramesStudioPage() {
   const selectedProfile = PROFILES.find((p) => p.id === selectedProfileId);
   // A web roda na VPS e não enxerga o disco do PC: o projeto é criado no PC (terminal ou
   // pedindo ao Claude), e o HyperFrames passa a listá-lo sozinho.
-  const createCommand = slug
-    ? `cd C:\\Users\\Igor\\Videos-HF; npx hyperframes init ${slug}`
-    : "";
+  const hfScript = `powershell -File "G:\\Meu Drive\\Vincere Studio\\scripts\\hf.ps1"`;
+  const createCommand = slug ? `${hfScript} novo -Nome ${slug}${templateSel ? ` -Template ${templateSel}` : ""}` : "";
   const claudePrompt = slug && selectedProfile
-    ? `Crie o projeto HyperFrames "${slug}" em C:\\Users\\Igor\\Videos-HF no perfil "${selectedProfile.tipo}" (${selectedProfile.largura}x${selectedProfile.altura}) usando a skill ${selectedProfile.skill}.`
+    ? `Crie o projeto HyperFrames "${slug}" em C:\\Users\\Igor\\Videos-HF no perfil "${selectedProfile.tipo}" (${selectedProfile.largura}x${selectedProfile.altura}) usando a skill ${selectedProfile.skill}.${templateSel ? ` Parta do template "${templateSel}" (${hfScript} novo -Nome ${slug} -Template ${templateSel}) e mantenha a linguagem visual dele.` : ""}`
     : "";
 
   const copy = (text: string) => {
@@ -177,6 +187,27 @@ export default function HyperFramesStudioPage() {
           <Button
             size="sm"
             variant="outline"
+            icon="bookmark_add"
+            title="Salva a linguagem visual deste projeto como ponto de partida para os próximos do mesmo nicho"
+            onClick={() => {
+              const nicho = window.prompt(`Nicho do template (${NICHOS.map((n) => n.id).join(", ")}):`, "dossie") ?? "";
+              if (!nicho) return;
+              const nome = `${nicho}-${activeProject}`
+                .normalize("NFD")
+                .replace(/[̀-ͯ]/g, "")
+                .replace(/[^a-z0-9_-]/gi, "-")
+                .toLowerCase();
+              chamarClaude({
+                pedido: `Salve o projeto ${activeProject} como template do nicho "${nicho}": ${hfScript} template -Projeto ${activeProject} -Nome ${nome} -Nicho ${nicho}. Antes, confira que as composições não dependem de arquivos de voz/B-roll que não vão junto.`,
+              });
+            }}
+          >
+            Salvar como template
+          </Button>
+
+          <Button
+            size="sm"
+            variant="outline"
             icon="auto_awesome"
             onClick={() => setShowCatalog(!showCatalog)}
           >
@@ -194,6 +225,8 @@ export default function HyperFramesStudioPage() {
           </a>
         </div>
       </div>
+
+      <PreviasPanel projeto={activeProject} />
 
       <p className="rounded-lg border border-line bg-surface-low px-3 py-2 text-[11px] text-muted sm:hidden">
         No celular, o melhor é revisar em <strong className="text-fg">Abrir em Tela Cheia</strong> e pedir ajustes pelo
@@ -347,6 +380,22 @@ export default function HyperFramesStudioPage() {
                   ))}
                 </div>
               </div>
+
+              {templates.length > 0 && (
+                <div>
+                  <label className="label-mono mb-1.5 block text-muted">Começar de um template (opcional)</label>
+                  <select value={templateSel} onChange={(e) => setTemplateSel(e.target.value)} className="field w-full px-3 py-2 text-sm">
+                    <option value="">Projeto em branco</option>
+                    {templates.map((t) => (
+                      <option key={t.nome} value={t.nome}>
+                        {t.nome}
+                        {t.nicho ? ` · ${t.nicho}` : ""}
+                        {t.origem ? ` (de ${t.origem})` : ""}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               {slug && (
                 <div className="space-y-2 rounded border border-line bg-surface-low p-3 text-[11px]">

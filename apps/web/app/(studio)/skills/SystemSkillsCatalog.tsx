@@ -10,7 +10,7 @@ import { SKILLS, type Motor, type Preview } from "@/lib/skills-catalog";
 
 const RECEITAS = NICHOS.map((n) => ({ titulo: `${n.nome} · ${n.formato}`, passos: n.passos }));
 
-const MOTORES: Array<Motor | "Todos"> = ["Todos", "HyperFrames", "Legendas", "Pesquisa", "Google Flow", "Remotion"];
+const MOTORES: Array<Motor | "Todos"> = ["Todos", "HyperFrames", "Remotion", "Google Flow", "Legendas", "Pesquisa", "Código", "Imagem", "Estratégia"];
 
 const MOTOR_COR: Record<Motor, string> = {
   HyperFrames: "border-primary/40 bg-primary/10 text-primary-bright",
@@ -18,6 +18,9 @@ const MOTOR_COR: Record<Motor, string> = {
   Pesquisa: "border-success/40 bg-success/10 text-success",
   "Google Flow": "border-secondary/50 bg-secondary/15 text-secondary-soft",
   Remotion: "border-line bg-surface-mid text-fg-secondary",
+  Código: "border-line-bright bg-void text-fg",
+  Imagem: "border-secondary/40 bg-secondary/10 text-secondary-soft",
+  Estratégia: "border-warning/30 bg-transparent text-warning",
 };
 
 /** Prévia animada leve (CSS puro) do que a skill produz. */
@@ -84,6 +87,7 @@ function SkillPreview({ kind }: { kind: Preview }) {
 export function SystemSkillsCatalog() {
   const [motor, setMotor] = useState<Motor | "Todos">("Todos");
   const [copied, setCopied] = useState<string | null>(null);
+  const [busca, setBusca] = useState("");
 
   const copy = (text: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
@@ -91,7 +95,10 @@ export function SystemSkillsCatalog() {
     setTimeout(() => setCopied(null), 2000);
   };
 
-  const lista = motor === "Todos" ? SKILLS : SKILLS.filter((s) => s.motor === motor);
+  const q = busca.trim().toLowerCase();
+  const lista = SKILLS.filter(
+    (s) => (motor === "Todos" || s.motor === motor) && (!q || `${s.nome} ${s.comando} ${s.quando}`.toLowerCase().includes(q)),
+  );
 
   return (
     <div className="space-y-10">
@@ -138,6 +145,12 @@ export function SystemSkillsCatalog() {
             </p>
           </div>
           <div className="flex flex-wrap gap-1.5">
+            <input
+              value={busca}
+              onChange={(e) => setBusca(e.target.value)}
+              placeholder="Buscar skill…"
+              className="field h-8 w-full px-3 text-xs sm:w-48"
+            />
             {MOTORES.map((m) => (
               <button
                 key={m}

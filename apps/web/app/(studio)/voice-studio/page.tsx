@@ -32,6 +32,7 @@ interface Tarefa {
   vozId: string;
   qualidade: string;
   arquivo?: string;
+  legendas?: { words: string; srt: string };
   duracaoS?: number;
   erro?: string;
 }
@@ -484,6 +485,20 @@ export default function VoiceStudioPage() {
                         <a href={`/api/media/${t.arquivo}?download=1`} className="rounded border border-line px-2.5 py-1 text-[11px] text-fg-secondary hover:text-fg">
                           Baixar WAV
                         </a>
+                        {t.legendas && (
+                          <>
+                            <a
+                              href={`/api/media/${t.legendas.words}?download=1`}
+                              title="Palavras com tempo: entrada do subtitles-studio e das legendas do HyperFrames"
+                              className="rounded border border-primary/40 px-2.5 py-1 text-[11px] text-primary-bright hover:bg-primary/10"
+                            >
+                              Legenda (words.json)
+                            </a>
+                            <a href={`/api/media/${t.legendas.srt}?download=1`} className="rounded border border-line px-2.5 py-1 text-[11px] text-fg-secondary hover:text-fg">
+                              SRT
+                            </a>
+                          </>
+                        )}
                       </div>
                     )}
                   </div>

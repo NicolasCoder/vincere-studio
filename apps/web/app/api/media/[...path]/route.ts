@@ -4,7 +4,7 @@ import { Readable } from "node:stream";
 import { NextResponse } from "next/server";
 import { storageRoot } from "@vincere-studio/providers";
 
-const TYPES: Record<string, string> = { ".wav": "audio/wav", ".mp3": "audio/mpeg", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".json": "application/json" };
+const TYPES: Record<string, string> = { ".wav": "audio/wav", ".mp3": "audio/mpeg", ".mp4": "video/mp4", ".webm": "video/webm", ".mov": "video/quicktime", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".webp": "image/webp", ".md": "text/markdown; charset=utf-8", ".txt": "text/plain; charset=utf-8", ".json": "application/json", ".srt": "application/x-subrip; charset=utf-8" };
 
 /** Serve arquivos da pasta storage (mídia gerada) com suporte a Range para áudio/vídeo. */
 export async function GET(req: Request, { params }: { params: Promise<{ path: string[] }> }) {

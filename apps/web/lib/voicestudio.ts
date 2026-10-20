@@ -2,7 +2,7 @@ import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
 import { storageRoot } from "@vincere-studio/providers";
-import { dividirEmTrechos, prepararTextoParaFala } from "@/lib/texto-fala";
+import { alinharPalavras, dividirEmTrechos, gerarSrt, limparMarcacoes, prepararTextoParaFala } from "@/lib/texto-fala";
 
 // Cliente do VoiceStudio (container na VPS, MCP em :3900). Tudo de voz passa por aqui no
 // servidor; o navegador nunca fala com a porta 3900 nem vê a chave.
@@ -93,6 +93,7 @@ export interface TarefaVoz {
   vozId: string;
   qualidade: Qualidade;
   arquivo?: string; // relativo ao storage, servido por /api/media/…
+  legendas?: { words: string; srt: string }; // words.json (subtitles-studio/HyperFrames) e .srt
   duracaoS?: number;
   erro?: string;
 }
@@ -128,7 +129,10 @@ export async function listarTarefas(limite = 12): Promise<TarefaVoz[]> {
 }
 
 /** Junta WAVs PCM do mesmo formato (mesmo motor) com um pequeno silêncio entre trechos. */
-export function juntarWavs(wavs: Buffer[], pausaMs = 180): Buffer {
+/** Silêncio entre trechos; entra no áudio e no cálculo das legendas. */
+const PAUSA_MS = 180;
+
+export function juntarWavs(wavs: Buffer[], pausaMs = PAUSA_MS): Buffer {
   const lerChunks = (b: Buffer) => {
     let fmt: Buffer | null = null;
     let data: Buffer | null = null;
@@ -173,8 +177,11 @@ export async function criarTarefaNarracao(input: {
   estilo?: string;
   idioma?: string;
 }): Promise<TarefaVoz> {
-  const textoFalado = prepararTextoParaFala(input.texto);
-  const trechos = dividirEmTrechos(textoFalado);
+  // Divide o texto ORIGINAL (o que a legenda mostra) e prepara cada trecho para a fala: assim
+  // trecho falado e trecho exibido se correspondem 1:1 e as legendas saem alinhadas.
+  const trechosOriginais = dividirEmTrechos(limparMarcacoes(input.texto));
+  const trechos = trechosOriginais.map(prepararTextoParaFala);
+  const textoFalado = trechos.join(" ");
   const agora = new Date().toISOString();
   const tarefa: TarefaVoz = {
     id: crypto.randomUUID(),
@@ -194,6 +201,7 @@ export async function criarTarefaNarracao(input: {
     tarefa.status = "gerando";
     await salvarTarefa(tarefa);
     const wavs: Buffer[] = [];
+    const duracoes: number[] = [];
     let duracao = 0;
     for (const trecho of trechos) {
       const resp = lerResposta<{ wav_base64?: string; audio_duration_s?: number }>(
@@ -213,6 +221,7 @@ export async function criarTarefaNarracao(input: {
       if (!resp.wav_base64) throw new Error("O VoiceStudio não devolveu o áudio (modo de saída diferente de 'resources').");
       wavs.push(Buffer.from(resp.wav_base64, "base64"));
       duracao += resp.audio_duration_s ?? 0;
+      duracoes.push(resp.audio_duration_s ?? 0);
       tarefa.feitos++;
       await salvarTarefa(tarefa);
     }
@@ -221,6 +230,16 @@ export async function criarTarefaNarracao(input: {
     await fs.writeFile(path.join(storageRoot(), rel), juntarWavs(wavs));
     tarefa.arquivo = rel;
     tarefa.duracaoS = Math.round(duracao * 10) / 10;
+
+    const palavras = alinharPalavras(trechosOriginais, duracoes, PAUSA_MS / 1000);
+    const total = duracao + PAUSA_MS * Math.max(0, trechos.length - 1) / 1000;
+    const base = `voicestudio/narracoes/${tarefa.id}`;
+    await fs.writeFile(
+      path.join(storageRoot(), `${base}.words.json`),
+      JSON.stringify({ clip: `${tarefa.id}.wav`, duration: Math.round(total * 1000) / 1000, text: trechosOriginais.join(" "), words: palavras }, null, 2),
+    );
+    await fs.writeFile(path.join(storageRoot(), `${base}.srt`), gerarSrt(palavras));
+    tarefa.legendas = { words: `${base}.words.json`, srt: `${base}.srt` };
     tarefa.status = "pronto";
     await salvarTarefa(tarefa);
   };

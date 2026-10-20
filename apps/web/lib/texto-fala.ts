@@ -104,3 +104,76 @@ export function dividirEmTrechos(texto: string, max = 320): string[] {
   if (atual.trim()) trechos.push(atual.trim());
   return trechos;
 }
+
+/** Tira marcações do roteiro ([fx: …], [motion: …], [ING: …]) mantendo o texto que aparece na tela. */
+export function limparMarcacoes(texto: string): string {
+  return texto.replace(/\[(?:fx|motion|ING)[^\]]*\]/gi, " ").replace(/\s+/g, " ").trim();
+}
+
+export interface PalavraTempo {
+  word: string;
+  start: number;
+  end: number;
+}
+
+/**
+ * Tempo de cada palavra sem transcrição: sabemos o texto exato e a duração de cada trecho
+ * gerado. Dentro do trecho, cada palavra pesa o tamanho dela FALADA ("1962" pesa como
+ * "mil novecentos e sessenta e dois") e vírgulas/pontos ganham respiro. A legenda mostra
+ * a palavra como foi escrita. Formato do subtitles-studio: { word, start, end } em segundos.
+ */
+export function alinharPalavras(trechosOriginais: string[], duracoesS: number[], pausaS: number): PalavraTempo[] {
+  const saida: PalavraTempo[] = [];
+  let base = 0;
+  trechosOriginais.forEach((trecho, i) => {
+    const dur = duracoesS[i] ?? 0;
+    const palavras = trecho.split(/\s+/).filter(Boolean);
+    // Margens do motor de voz: um respiro antes da 1ª palavra e depois da última.
+    const ini = Math.min(0.08, dur * 0.05);
+    const fim = Math.max(ini, dur - Math.min(0.15, dur * 0.06));
+    const pesos = palavras.map((p) => {
+      const falada = prepararTextoParaFala(p).replace(/[^\p{L}\p{N}]/gu, "");
+      const respiro = /[.!?…]$/.test(p) ? 8 : /[,;:]$/.test(p) ? 4 : 0;
+      return { fala: Math.max(2, falada.length), respiro };
+    });
+    const total = pesos.reduce((s, w) => s + w.fala + w.respiro, 0) || 1;
+    const porUnidade = (fim - ini) / total;
+    let t = ini;
+    palavras.forEach((p, j) => {
+      const start = base + t;
+      t += pesos[j].fala * porUnidade;
+      saida.push({ word: p, start: Math.round(start * 1000) / 1000, end: Math.round((base + t) * 1000) / 1000 });
+      t += pesos[j].respiro * porUnidade;
+    });
+    base += dur + pausaS;
+  });
+  return saida;
+}
+
+function tempoSrt(s: number) {
+  const ms = Math.max(0, Math.round(s * 1000));
+  const h = Math.floor(ms / 3_600_000);
+  const m = Math.floor((ms % 3_600_000) / 60_000);
+  const seg = Math.floor((ms % 60_000) / 1000);
+  const mil = ms % 1000;
+  const p = (n: number, d = 2) => String(n).padStart(d, "0");
+  return `${p(h)}:${p(m)}:${p(seg)},${p(mil, 3)}`;
+}
+
+/** SRT com linhas curtas (até 5 palavras ou ~32 caracteres), quebrando em pontuação forte. */
+export function gerarSrt(palavras: PalavraTempo[]): string {
+  const blocos: PalavraTempo[][] = [];
+  let atual: PalavraTempo[] = [];
+  for (const w of palavras) {
+    atual.push(w);
+    const texto = atual.map((x) => x.word).join(" ");
+    if (atual.length >= 5 || texto.length >= 32 || /[.!?…]$/.test(w.word)) {
+      blocos.push(atual);
+      atual = [];
+    }
+  }
+  if (atual.length) blocos.push(atual);
+  return blocos
+    .map((b, i) => `${i + 1}\n${tempoSrt(b[0].start)} --> ${tempoSrt(b[b.length - 1].end)}\n${b.map((x) => x.word).join(" ")}\n`)
+    .join("\n");
+}

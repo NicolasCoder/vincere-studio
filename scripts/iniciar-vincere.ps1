@@ -1,4 +1,4 @@
-# Sobe, no PC, tudo que o Vincere Studio (rodando na VPS) precisa — sem duplicar nada.
+﻿# Sobe, no PC, tudo que o Vincere Studio (rodando na VPS) precisa — sem duplicar nada.
 # Cada serviço só é iniciado se a porta dele ainda não estiver ocupada.
 #   3210  túnel SSH: web da VPS no PC + repassa 3010/9334 do PC para a VPS
 #   3010  HyperFrames preview (C:\Users\Igor\Videos-HF)
