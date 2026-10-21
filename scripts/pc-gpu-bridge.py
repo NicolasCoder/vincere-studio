@@ -28,6 +28,7 @@ import tempfile
 import time
 import urllib.error
 import urllib.request
+import hmac
 import wave
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
@@ -505,12 +506,12 @@ def run_sharingan_analyze(payload: dict) -> dict:
         burst_code = f"""
 import sys
 from pathlib import Path
-sys.path.insert(0, r"{SHARINGAN_SCRIPT.parent}")
+sys.path.insert(0, {json.dumps(str(SHARINGAN_SCRIPT.parent))})
 from common import load, dump
 import contact_sheet, local_vlm
 
-out = Path(r"{out_dir.resolve()}")
-video = r"{Path(video_path).resolve()}"
+out = Path({json.dumps(str(out_dir.resolve()))})
+video = {json.dumps(str(Path(video_path).resolve()))}
 analysis = load(out / "analysis.json")
 brief_md = (out / "brief.md").read_text(encoding="utf-8")
 shots = load(out / "parts" / "shots.json")
@@ -527,7 +528,7 @@ burst = contact_sheet.extract_adaptive_motion_frames_720p(
 if burst:
     local_vlm.run_local_vlm_pipeline(
         video_path=video, analysis=analysis, brief_md=brief_md, gridded_frames=burst,
-        local_out_dir=out / "local_qwen_adaptive_merged", base_url=r"{OLLAMA_BASE}", model=r"{vlm_model}"
+        local_out_dir=out / "local_qwen_adaptive_merged", base_url={json.dumps(OLLAMA_BASE)}, model={json.dumps(vlm_model)}
     )
 """
         subprocess.run([py, "-c", burst_code], capture_output=True, text=True, timeout=900)
@@ -549,12 +550,12 @@ def run_sharingan_forensic_query(payload: dict) -> dict:
     py = get_best_python(REELS_PYTHON)
     code = f"""
 import sys, json
-sys.path.insert(0, r"{SHARINGAN_SCRIPT.parent}")
+sys.path.insert(0, {json.dumps(str(SHARINGAN_SCRIPT.parent))})
 import local_vlm
 res = local_vlm.call_local_vlm(
     prompt={json.dumps(prompt)},
     image_paths={json.dumps(image_paths)},
-    base_url=r"{OLLAMA_BASE}",
+    base_url={json.dumps(OLLAMA_BASE)},
     model={json.dumps(model)},
     temperature=0.1,
     max_tokens=1200
@@ -622,8 +623,8 @@ import cv2, numpy as np
 from PIL import Image
 from playwright.sync_api import sync_playwright
 
-html_path = Path(r"{html_path.resolve()}")
-out_mp4 = Path(r"{out_mp4.resolve()}")
+html_path = Path({json.dumps(str(html_path.resolve()))})
+out_mp4 = Path({json.dumps(str(out_mp4.resolve()))})
 out_mp4.parent.mkdir(parents=True, exist_ok=True)
 W, H, FPS, TOTAL = {width}, {height}, {fps}, {total_frames}
 
@@ -664,7 +665,44 @@ print("RENDER_JSON:" + json.dumps({{"ok": True, "outMp4": str(out_mp4), "frames"
     raise RuntimeError(f"Erro ao renderizar HTML/GSAP no PC: {(proc.stderr or proc.stdout or '')[-400:]}")
 
 
+# --- Segurança -------------------------------------------------------------------------------
+# O servidor só aceita chamadas com o token (PC_GPU_TOKEN), sem cabeçalho Origin (um site aberto
+# no navegador não consegue chamar a ponte) e com Host local. Os caminhos recebidos precisam estar
+# dentro das pastas permitidas: o projeto, a pasta temporária e PC_GPU_ALLOWED_DIRS.
+BRIDGE_TOKEN = os.environ.get("PC_GPU_TOKEN", "")
+CAMPOS_CAMINHO = ("audioPath", "inputWav", "outputWav", "modelPth", "videoPath", "outDir", "htmlPath", "outMp4", "refAnalysisPath", "renderAnalysisPath")
+
+
+def _raizes_permitidas() -> list:
+    raizes = [ROOT_DIR, Path(tempfile.gettempdir())]
+    storage = os.environ.get("STORAGE_DIR")
+    if storage:
+        raizes.append(Path(storage))
+    for extra in os.environ.get("PC_GPU_ALLOWED_DIRS", "").split(os.pathsep):
+        if extra.strip():
+            raizes.append(Path(extra.strip()))
+    return [r.resolve() for r in raizes]
+
+
+def _checar_caminho(valor) -> None:
+    texto = str(valor)
+    if not texto or any(c in texto for c in ('"', "'", "\n", "\r", "\0")):
+        raise ValueError(f"Caminho recusado: {texto[:60]!r}")
+    alvo = Path(texto).resolve()
+    if not any(alvo == r or r in alvo.parents for r in _raizes_permitidas()):
+        raise ValueError(f"Caminho fora das pastas permitidas: {texto[:80]} (use PC_GPU_ALLOWED_DIRS)")
+
+
+def validar_payload(payload: dict) -> None:
+    for campo in CAMPOS_CAMINHO:
+        if payload.get(campo):
+            _checar_caminho(payload[campo])
+    for item in payload.get("imagePaths") or []:
+        _checar_caminho(item)
+
+
 def dispatch(action: str, payload: dict) -> dict:
+    validar_payload(payload)
     if action == "status":
         return get_status()
     if action == "transcribe":
@@ -702,13 +740,26 @@ class BridgeHandler(BaseHTTPRequestHandler):
         self.end_headers()
         self.wfile.write(raw)
 
+    def _autorizado(self) -> bool:
+        if self.headers.get("Origin"):
+            return False
+        host = (self.headers.get("Host") or "").rsplit(":", 1)[0].strip("[]")
+        if host not in ("127.0.0.1", "localhost", "::1"):
+            return False
+        token = self.headers.get("X-Bridge-Token") or ""
+        return bool(BRIDGE_TOKEN) and hmac.compare_digest(token, BRIDGE_TOKEN)
+
     def do_GET(self):
+        if not self._autorizado():
+            return self._send(403, {"ok": False, "error": "Não autorizado"})
         try:
             self._send(200, get_status())
         except Exception as e:
             self._send(500, {"ok": False, "error": str(e)})
 
     def do_POST(self):
+        if not self._autorizado():
+            return self._send(403, {"ok": False, "error": "Não autorizado"})
         try:
             length = int(self.headers.get("Content-Length", "0"))
             body = json.loads(self.rfile.read(length).decode("utf-8")) if length > 0 else {}
@@ -731,6 +782,9 @@ def main():
     args = ap.parse_args()
 
     if args.serve:
+        if not BRIDGE_TOKEN:
+            print("[Vincere PC GPU Bridge] Defina PC_GPU_TOKEN (um segredo longo, o mesmo no .env do Vincere) antes de iniciar.", flush=True)
+            sys.exit(2)
         srv = ThreadingHTTPServer(("127.0.0.1", args.port), BridgeHandler)
         print(f"[Vincere PC GPU Bridge] Escutando em http://127.0.0.1:{args.port}", flush=True)
         srv.serve_forever()

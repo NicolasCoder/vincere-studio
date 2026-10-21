@@ -216,9 +216,17 @@ export default function TendenciasPage() {
                     <span>
                       Concorrência: <span className={COR_CONCORRENCIA[s.concorrencia]}>{s.concorrencia}</span>
                     </span>
-                    <button onClick={() => criarVideo(s)} className="rounded bg-primary/15 px-3 py-1.5 font-semibold text-primary-bright hover:bg-primary/25">
-                      Criar vídeo
-                    </button>
+                    <span className="flex gap-2">
+                      <a
+                        href={`/copiloto?tema=${encodeURIComponent(s.titulo)}&nicho=${encodeURIComponent(s.nicho)}&formato=${s.formato === "16:9" ? "LONG_16_9" : "SHORT_9_16"}&angulo=${encodeURIComponent(s.tema ?? "")}&ganchos=${encodeURIComponent(s.ganchos.join("|"))}`}
+                        className="rounded bg-primary px-3 py-1.5 font-semibold text-void hover:brightness-110"
+                      >
+                        Levar ao Copiloto
+                      </a>
+                      <button onClick={() => criarVideo(s)} className="rounded bg-primary/15 px-3 py-1.5 font-semibold text-primary-bright hover:bg-primary/25">
+                        Pedir ao Claude
+                      </button>
+                    </span>
                   </div>
                 </article>
               ))}

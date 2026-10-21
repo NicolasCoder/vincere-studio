@@ -10,13 +10,13 @@ import { prisma } from "@vincere-studio/db";
 import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@vincere-studio/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
+import { AtualizarVersao } from "@/components/AtualizarVersao";
 
 const PROVIDERS = [
   ["GEMINI_API_KEY", "Gemini API — texto e voz", "aistudio.google.com — nível gratuito, sem cobrança"],
   ["GEMINI_IMAGE_API_KEY", "Gemini API — imagens (Nano Banana)", "projeto com faturamento; usada só nos modos Híbrido/Premium"],
   ["PEXELS_API_KEY", "Pexels (fotos e vídeos de acervo)", "pexels.com/api — gratuito"],
   ["PIXABAY_API_KEY", "Pixabay (fotos, vídeos, música)", "pixabay.com/api — gratuito"],
-  ["ELEVENLABS_API_KEY", "ElevenLabs (voz premium)", "elevenlabs.io → perfil → API Keys · 10k créditos/mês grátis"],
   ["CLOUDFLARE_ACCOUNT_ID", "Cloudflare — ID da conta", "dash.cloudflare.com → a conta → o ID aparece na URL"],
   ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "token com permissão Workers AI · cota diária gratuita, sem cartão"],
   ["HUGGINGFACE_TOKEN", "Hugging Face (FLUX, imagens grátis)", "huggingface.co → Settings → Access Tokens · gratuito"],
@@ -113,7 +113,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             <form action={createVoiceProfile} className="space-y-2 rounded border border-line bg-void/40 p-3 text-sm">
               <div className="label-mono text-muted">Novo perfil</div>
               <input name="name" required placeholder="Nome (ex.: Narrador Dark)" className="field w-full px-3 py-2" />
-              <select name="provider" className="field w-full px-3 py-2"><option value="GEMINI_TTS" className="bg-surface-low">Gemini TTS (free tier)</option><option value="EDGE_TTS" className="bg-surface-low">Edge TTS (grátis, sem chave)</option><option value="ELEVENLABS" className="bg-surface-low">ElevenLabs (premium · 10k créditos grátis/mês)</option></select>
+              <select name="provider" className="field w-full px-3 py-2"><option value="GEMINI_TTS" className="bg-surface-low">Gemini TTS (free tier)</option><option value="EDGE_TTS" className="bg-surface-low">Edge TTS (grátis, sem chave)</option><option value="VOICESTUDIO" className="bg-surface-low">VoiceStudio (voz clonada · PC com GPU ou nuvem)</option></select>
               <input name="voiceId" list="voice-ids" placeholder="Voz: Charon · pt-BR-AntonioNeural · ou Voice ID do ElevenLabs" defaultValue="Charon" className="field w-full px-3 py-2" />
               <input name="fallbackVoiceId" placeholder="Voz de reserva equivalente (opcional)" className="field w-full px-3 py-2 text-xs" />
               <datalist id="voice-ids">{["Charon", "Fenrir", "Enceladus", "Orus", "Kore", "Aoede", "Leda", "Puck", ...edgeVoices.map((v) => v.id)].map((v) => <option key={v} value={v} />)}</datalist>
@@ -157,17 +157,17 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </div>
           )}
         </Card>
-        <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
-          <Card className="p-5">
-            <h3 className="font-display text-lg font-semibold">Provedores (chaves no .env)</h3>
-            <p className="mt-1 text-xs text-fg-secondary">As chaves ficam no arquivo <code>.env</code> na raiz. Esta tela mostra se cada uma está presente.</p>
-            <div className="mt-4 space-y-2">
-              {PROVIDERS.map(([k, n, h]) => {
-                const set = !!process.env[k];
-                return <div key={k} className="flex items-center gap-3 rounded border border-line bg-void/40 p-3 text-sm"><Icon name={set ? "check_circle" : "radio_button_unchecked"} className={set ? "text-success" : "text-muted"} /><div className="flex-1"><div className="font-medium">{n}</div><div className="font-mono text-[11px] text-muted">{k} · {h}</div></div><Badge tone={set ? "success" : "neutral"}>{set ? "OK" : "vazio"}</Badge></div>;
-              })}
-            </div>
-          </Card>
+        <Card className="p-5">
+          <h3 className="font-display text-lg font-semibold"><Icon name="system_update_alt" className="mr-1 align-middle text-primary-bright" />Atualizações</h3>
+          <p className="mt-1 text-xs text-fg-secondary">Cada componente tem o seu botão. O HyperFrames atualiza aqui mesmo (pede o token de admin); os demais mostram o comando.</p>
+          <div className="mt-4 flex flex-wrap gap-3">
+            <AtualizarVersao id="hyperframes" />
+            <AtualizarVersao id="voicestudio" />
+            <AtualizarVersao id="flow" />
+            <AtualizarVersao id="vincere" />
+          </div>
+        </Card>
+        <div className="grid grid-cols-1 gap-6">
           <div className="space-y-6">
             <Card className="p-5">
               <h3 className="font-display text-lg font-semibold">Padrões do estúdio</h3>
@@ -175,14 +175,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
                 <div className="flex justify-between rounded border border-line bg-void/40 p-3"><span>Modo de custo padrão</span><span className="font-mono text-primary-bright">{COST_MODES[(settings.defaultCostMode as keyof typeof COST_MODES) ?? "FREE"]?.label ?? "Gratuito"}</span></div>
                 <div className="flex justify-between rounded border border-line bg-void/40 p-3"><span>Voz padrão</span><span className="font-mono text-primary-bright">{settings.defaultVoice ?? "gemini:Charon"}</span></div>
                 <div className="flex justify-between rounded border border-line bg-void/40 p-3"><span>Pasta de mídia</span><span className="font-mono text-primary-bright">{process.env.STORAGE_DIR ?? "./storage"}</span></div>
-              </div>
-            </Card>
-            <Card className="p-5">
-              <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold">Worker & fila de jobs</h3><form action={enqueueDemoJob}><Button type="submit" variant="primary" size="sm" icon="play_arrow">Enfileirar job de teste</Button></form></div>
-              <p className="mt-1 text-xs text-fg-secondary">O worker (<code>apps/worker</code>) precisa estar rodando (<code>pnpm dev</code> sobe os dois). Recarregue para ver o progresso.</p>
-              <div className="mt-3 divide-y divide-line rounded border border-line bg-void/40">
-                {jobs.length === 0 && <div className="p-3 text-xs text-muted">Nenhum job.</div>}
-                {jobs.map((j) => <div key={j.id} className="flex items-center gap-3 p-3 font-mono text-xs"><Badge tone={j.status === "DONE" ? "success" : j.status === "FAILED" ? "error" : j.status === "RUNNING" ? "cyan" : "neutral"}>{j.status}</Badge><span className="flex-1">{j.type} · {j.message ?? "—"}</span><span className="text-primary-bright">{j.progress}%</span></div>)}
               </div>
             </Card>
           </div>

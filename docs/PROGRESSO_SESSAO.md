@@ -135,6 +135,30 @@ Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Com
     - **Aba 3 (Palco HTML5/GSAP Interativo, Comparativo 3-Vias & 12 QC Gates):** palco `1080×1920` ao vivo em iframe com scrubber determinístico (`window.__timelines.main.seek(t)`), botão de renderização Playwright + FFmpeg no PC, player de vídeos comparativos 2-vias e 3-vias (`Original vs Híbrido vs Qwen2.5-VL Local`) e executor ao vivo dos **12 Portões de Qualidade (`sharingan.py compare`)**.
     - **Aba 4 (Economia de Tokens & Telemetria GPU `US$ 0.00`):** painel detalhado (`token_savings_report_merged.json`) comparando o custo local (`US$ 0.00`) contra equivalentes em APIs pagas (`Claude Opus 4.6`, `Sonnet 4`, `GPT-4o`) e listando as janelas de `Adaptive High-Motion Burst`.
 
+## Oitava rodada (21/10, Claude) — esteira do Copiloto, métricas de canais e segurança
+
+- **Copiloto virou esteira** (`/copiloto`, `apps/web/app/(studio)/copiloto/`): Ideia → Roteiro → Narração →
+  Cenas & B-roll → Bruto → HyperFrames, sobre os mesmos jobs dos Projetos. "Tema pronto: organizar os beats"
+  pula as ideias (vem de Tendências via "Levar ao Copiloto"); modo livre começa direto no HyperFrames; cada
+  etapa chama skills pela caixa de pedidos do Vince. `/copilot` redireciona para a esteira.
+- **Narração**: ElevenLabs saiu da interface (código legado mantido para perfis antigos); novo provedor
+  `VOICESTUDIO` (`packages/providers/src/voice/voicestudio.ts`) narra pela API do próprio Vincere, com reserva Edge.
+  **Ainda sem teste de ponta a ponta** (precisa do VoiceStudio e do worker ligados).
+- **Métricas**: painel de canais (seu + concorrentes da Biblioteca de Referências) com gráficos SVG minimalistas,
+  histórico em `Setting` (`canal:*`), chave `YOUTUBE_API_KEY`. Chip de custo do Topbar removido.
+- **Fora da web**: tela Saúde e a lista de chaves do `.env` saíram do Settings. O Console Admin
+  (`scripts/admin/Console Admin Vincere.bat`) mostra saúde da VPS, logs, limpeza, compactação do banco, backup,
+  chaves preenchidas (sem valores) e reinício.
+- **Atualizar versão**: `/api/atualizar` + botão no HyperFrames Studio e em Configurações; comandos fixos em
+  `lib/atualizacoes.ts`, exige `ADMIN_TOKEN` (≥12 caracteres).
+- **Segurança da ponte de GPU** (`scripts/pc-gpu-bridge.py`): exige `PC_GPU_TOKEN`, recusa requisições com
+  `Origin` (sites no navegador) e `Host` não local, valida caminhos contra pastas permitidas
+  (`PC_GPU_ALLOWED_DIRS`) e passa caminhos para o código Python por `json.dumps` (antes eram interpolados).
+- **Para o Nicolas (estrutural, não feito aqui)**: mover o HyperFrames para a VPS (hoje o preview mora no PC e vem
+  por túnel reverso; `deploy-vps.sh` encerra qualquer `hyperframes preview` na VPS), "perfil de execução"
+  (local / nuvem / PC forte), pasta de projetos e de mídia por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`),
+  voz clonada do VoiceStudio como provedor completo do pipeline e edição por voz com LLM/agente configurável.
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**

@@ -23,11 +23,11 @@ const sections: NavSection[] = [
     title: "CRIAR",
     items: [
       { href: "/dashboard", icon: "home", label: "Início" },
-      { href: "/projects", icon: "movie", label: "Projetos (Dark & Doc)" },
+      { href: "/copiloto", icon: "psychology", label: "Copiloto (esteira)", badge: "Novo", accent: true },
+      { href: "/projects", icon: "movie", label: "Biblioteca de projetos" },
       { href: "/talking-head", icon: "person_pin", label: "Talking Head & Reels", badge: "Novo", live: true },
       { href: "/studio", icon: "movie_filter", label: "HyperFrames Studio", accent: true },
       { href: "/tendencias", icon: "trending_up", label: "Tendências" },
-      { href: "/copilot", icon: "edit_note", label: "Roteiro em beats" },
     ],
   },
   {
@@ -54,7 +54,6 @@ const sections: NavSection[] = [
   {
     title: "SISTEMA",
     items: [
-      { href: "/health", icon: "monitor_heart", label: "Saúde" },
       { href: "/settings", icon: "settings", label: "Configurações" },
       { href: "/docs", icon: "help_outline", label: "Ajuda" },
     ],

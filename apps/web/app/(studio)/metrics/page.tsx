@@ -3,9 +3,14 @@ import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { prisma } from "@vincere-studio/db";
 import { getUsageSummary, listProjects, parseJson } from "@/lib/data";
+import { listarCanaisMonitorados, temChaveYoutube } from "@/lib/canais-stats";
+import { CanaisDashboard } from "./CanaisDashboard";
 
-export default async function MetricsPage() {
-  const [projects, usage, byProvider] = await Promise.all([
+export default async function MetricsPage({ searchParams }: { searchParams: Promise<{ ok?: string; erro?: string }> }) {
+  const sp = await searchParams;
+  const aviso = sp.ok ? "Dados atualizados." : sp.erro === "url" ? "Use o link do canal no formato youtube.com/@nome ou youtube.com/channel/UC…" : sp.erro === "chave" ? "Canal salvo, mas falta a chave do YouTube para buscar os números." : undefined;
+  const [canais, projects, usage, byProvider] = await Promise.all([
+    listarCanaisMonitorados(),
     listProjects(),
     getUsageSummary(),
     prisma.usage.groupBy({ by: ["provider", "unit"], _sum: { quantity: true, costUsd: true } }),
@@ -16,7 +21,8 @@ export default async function MetricsPage() {
     <>
       <Topbar crumbs={["Métricas & Desempenho"]} costUsd={usage.costUsd} />
       <main className="space-y-6 p-6">
-        <PageHeader icon="monitoring" title="Métricas & Desempenho" subtitle="Desempenho real dos vídeos (YouTube Analytics, Sprint 6) e consumo de API por provedor." right={<Badge tone="cyan" pill dot>Live</Badge>} />
+        <PageHeader icon="monitoring" title="Métricas & Desempenho" subtitle="Desempenho dos canais (o seu e os concorrentes), dos vídeos publicados e o consumo de API por provedor." right={<Badge tone="cyan" pill dot>Live</Badge>} />
+        <CanaisDashboard canais={canais} temChave={temChaveYoutube()} aviso={aviso} />
         <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
           <Stat label="Vídeos publicados" value={published.length} />
           <Stat label="Views totais" value={views.toLocaleString("pt-BR")} />

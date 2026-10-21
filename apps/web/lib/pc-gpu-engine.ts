@@ -97,7 +97,7 @@ export async function callPcGpuBridge<T = Record<string, unknown>>(
   try {
     const res = await fetch(BRIDGE_HTTP_URL, {
       method: action === "status" && Object.keys(payload).length === 0 ? "GET" : "POST",
-      headers: { "content-type": "application/json" },
+      headers: { "content-type": "application/json", "x-bridge-token": process.env.PC_GPU_TOKEN ?? "" },
       body: action === "status" && Object.keys(payload).length === 0 ? undefined : JSON.stringify({ action, ...payload }),
       signal: AbortSignal.timeout(Math.min(timeoutMs, action === "status" ? 2000 : timeoutMs)),
       cache: "no-store",

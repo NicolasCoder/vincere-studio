@@ -6,6 +6,7 @@ import { Button, Card, Icon } from "@vincere-studio/ui";
 import { chamarClaude, HF_PROJECT_KEY } from "@/components/ClaudeButton";
 import { NICHOS } from "@/lib/nichos";
 import { PreviasPanel } from "./PreviasPanel";
+import { AtualizarVersao } from "@/components/AtualizarVersao";
 
 const PROFILES = [
   { id: "1", tipo: "Curto Vertical (Estilo Igor)", largura: 1080, altura: 1920, rota: "/general-video", estilo: "igor", skill: "/editar-igor", desc: "Shorts dinâmicos de alta retenção para Reels/TikTok" },
@@ -174,6 +175,8 @@ export default function HyperFramesStudioPage() {
           >
             Pedir ao Claude
           </Button>
+
+          <AtualizarVersao id="hyperframes" />
 
           <Button
             size="sm"

@@ -25,6 +25,16 @@ if (-not (Test-Port 9334)) {
   Start-Hidden "python.exe" "flow_queue_daemon.py" "C:\Users\Igor\flow-studio-mcp"
 } else { Write-Host "Flow daemon (9334) ja ativo." }
 
+# A ponte de GPU nao inicia sem PC_GPU_TOKEN. Le do .env; se nao existir, gera um e grava la
+# (o Vincere le o mesmo .env). Na VPS, coloque o mesmo valor no .env dela (scripts/env-vps.sh).
+$envFile = Join-Path $repo ".env"
+$tokenLinha = if (Test-Path $envFile) { Select-String -Path $envFile -Pattern '^PC_GPU_TOKEN="?([^"\r\n]+)' | Select-Object -First 1 } else { $null }
+if ($tokenLinha) { $env:PC_GPU_TOKEN = $tokenLinha.Matches[0].Groups[1].Value }
+else {
+  $rb = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($rb); $env:PC_GPU_TOKEN = (($rb | ForEach-Object { $_.ToString('x2') }) -join '')
+  Add-Content -Path $envFile -Value ("PC_GPU_TOKEN=`"" + $env:PC_GPU_TOKEN + "`"")
+  Write-Host "PC_GPU_TOKEN gerado e salvo no .env (copie o mesmo valor para o .env da VPS)."
+}
 if (-not (Test-Port 9335)) {
   Write-Host "Iniciando PC GPU Bridge (9335 - RTX 3060 / RVC V2 / Whisper CUDA / Sharingan Qwen2.5-VL)..."
   Start-Hidden "python.exe" "scripts\pc-gpu-bridge.py --serve --port 9335" $repo

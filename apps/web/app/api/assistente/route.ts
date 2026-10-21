@@ -14,7 +14,7 @@ const TELAS: Record<string, string> = {
   "/dashboard": "Início: escolher um nicho e começar um vídeo; status dos motores; projetos recentes",
   "/projects": "Projetos do banco (pipeline clássico: ideia → roteiro → mídia → render → publicação); cada projeto tem o painel Saúde do projeto com o próximo passo",
   "/studio": "HyperFrames Studio: timeline ao vivo do projeto em C:\\Users\\Igor\\Videos-HF; editar cenas pedindo ao Claude",
-  "/copilot": "Roteiro em beats: escrever o vídeo em blocos de 5-15s, narrar no VoiceStudio ou mandar o Claude montar",
+  "/copiloto": "Copiloto (esteira de criação): ideia → roteiro em beats → narração → cenas e B-roll → bruto, que segue para o HyperFrames; chama skills em cada etapa",
   "/flow-studio": "Gerar imagem (Nano Banana) e vídeo (Veo) no Google Flow e vincular à cena",
   "/prompts": "Biblioteca de prompts testados de imagem e vídeo, com imagem de referência",
   "/voice-studio": "Central de Vozes: narrar com voz clonada (qualidade rascunho/equilibrado/final, roda em segundo plano), rascunho rápido grátis (Edge TTS), clonar voz enviando um áudio de 5-30s e transcrever áudio",

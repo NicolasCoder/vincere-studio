@@ -15,7 +15,7 @@ export function VoiceGallery({ back, busy, elevenProfiles = [] }: { back: string
     { provider: "GEMINI_TTS", title: "Gemini TTS", note: "free tier · controlado por instrução de estilo", voices: gemini },
     { provider: "EDGE_TTS", title: "Edge TTS", note: "grátis, sem chave, sem estilo por instrução", voices: edge },
     { provider: "ELEVENLABS", title: "ElevenLabs", note: process.env.ELEVENLABS_API_KEY ? "premium · 10k créditos/mês grátis" : "configure ELEVENLABS_API_KEY", voices: elevenProfiles.map((p) => ({ id: p.voiceId, label: p.name, description: p.voiceId, style: p.style })) },
-  ];
+  ].filter((g) => g.provider !== "ELEVENLABS" || elevenProfiles.length > 0); // ElevenLabs só aparece para perfis antigos
   return (
     <Card className="p-5" id="vozes">
       <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="graphic_eq" className="mr-1 align-middle text-primary-bright" />Galeria de vozes</h3><span className="font-mono text-[10px] text-muted">Prévia: frase de teste do nicho (~12s)</span></div>
