@@ -1,20 +1,19 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { PageHeader } from "@/components/PageHeader";
-import { Button, Card, Icon } from "@vincere-studio/ui";
+import { useState, useEffect, useCallback, useRef } from "react";
+import { Badge, Button, Card, Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude, HF_PROJECT_KEY } from "@/components/ClaudeButton";
 import { NICHOS } from "@/lib/nichos";
 import { PreviasPanel } from "./PreviasPanel";
 import { AtualizarVersao } from "@/components/AtualizarVersao";
 
 const PROFILES = [
-  { id: "1", tipo: "Curto Vertical (Estilo Igor)", largura: 1080, altura: 1920, rota: "/general-video", estilo: "igor", skill: "/editar-igor", desc: "Shorts dinâmicos de alta retenção para Reels/TikTok" },
-  { id: "4", tipo: "Documentário Narrado (Dossiê)", largura: 1080, altura: 1920, rota: "/faceless-explainer", estilo: "documentario", skill: "/editar-documentario-narrado", desc: "Histórias, marcas e investigações (estilo Nike/True Crime)" },
+  { id: "1", tipo: "Curto Vertical (9:16 Reels / Shorts)", largura: 1080, altura: 1920, rota: "/general-video", estilo: "igor", skill: "/editar-igor", desc: "Shorts dinâmicos de alta retenção para Reels/TikTok" },
+  { id: "4", tipo: "Documentário Narrado (Dossiê 9:16)", largura: 1080, altura: 1920, rota: "/faceless-explainer", estilo: "documentario", skill: "/editar-documentario-narrado", desc: "Histórias, marcas e investigações (estilo Nike/True Crime)" },
   { id: "5", tipo: "Corte de Desenho / Filme / Anime", largura: 1080, altura: 1920, rota: "/embedded-captions", estilo: "legenda", skill: "/caosanimado-video-pipeline", desc: "Cortes acelerados com legendas cinéticas e SFX" },
-  { id: "6", tipo: "Reel de Oferta / Comercial", largura: 1080, altura: 1920, rota: "/general-video", estilo: "oferta", skill: "/reel-de-oferta", desc: "Anúncios para produtos gerados no Flow ou e-commerce" },
-  { id: "2", tipo: "Longo Horizontal (YouTube)", largura: 1920, altura: 1080, rota: "/general-video", estilo: "profissional", skill: "/anthropic-skills:edicao-profissional", desc: "Documentários e ensaios em 16:9 cinema" },
-  { id: "3", tipo: "Motion Graphic Puro", largura: 1920, altura: 1080, rota: "/motion-graphics", estilo: "motion", skill: "/motion-aplicar-da-biblioteca", desc: "Intros de marca, tipografia animada e lower-thirds" },
+  { id: "6", tipo: "Reel de Oferta / Comercial UGC", largura: 1080, altura: 1920, rota: "/general-video", estilo: "oferta", skill: "/reel-de-oferta", desc: "Anúncios para produtos gerados no Flow ou e-commerce" },
+  { id: "2", tipo: "Longo Horizontal (16:9 YouTube)", largura: 1920, altura: 1080, rota: "/general-video", estilo: "profissional", skill: "/anthropic-skills:edicao-profissional", desc: "Documentários e ensaios em 16:9 cinema" },
+  { id: "3", tipo: "Motion Graphic Puro (16:9)", largura: 1920, altura: 1080, rota: "/motion-graphics", estilo: "motion", skill: "/motion-aplicar-da-biblioteca", desc: "Intros de marca, tipografia animada e lower-thirds" },
 ];
 
 const MOTIONS_CATALOG = [
@@ -30,16 +29,59 @@ const MOTIONS_CATALOG = [
   { name: "carimbo-data", tag: "Dossiê", desc: "Carimbo de borracha rotacionado que bate na mesa 3D", cue: "[motion: carimbo-data @0 texto='1971 SEGREDO']" },
 ];
 
+interface HfSelection {
+  label?: string;
+  tagName?: string;
+  currentTime?: number;
+  textContent?: string | null;
+  sourceFile?: string;
+  target?: {
+    id?: string | null;
+    hfId?: string;
+    selector?: string;
+  };
+  inlineStyles?: Record<string, string>;
+}
+
+interface AgentTaskItem {
+  id: string;
+  status: "pendente" | "fazendo" | "feito" | "erro";
+  pedido: string;
+  resposta?: string;
+}
+
 export default function HyperFramesStudioPage() {
-  const [activeProject, setActiveProject] = useState("nike-história");
+  const [activeProject, setActiveProject] = useState("referenciamotion-pro");
+  const [activeProjectDir, setActiveProjectDir] = useState("");
   const [availableProjects, setAvailableProjects] = useState<Array<{ name: string; path: string }>>([]);
   const [engineOnline, setEngineOnline] = useState(false);
+  const [switchingProject, setSwitchingProject] = useState(false);
+  const [selection, setSelection] = useState<HfSelection | null>(null);
+  const [detectedAgents, setDetectedAgents] = useState<{
+    agyPath: string | null;
+    claudePath: string | null;
+    preferred: "agy" | "claude" | "inbox";
+  }>({ agyPath: null, claudePath: null, preferred: "agy" });
+  const [selectedAgent, setSelectedAgent] = useState<"auto" | "agy" | "claude">("auto");
+
+  // Barra integrada do Agente no Studio
+  const [agentPrompt, setAgentPrompt] = useState("");
+  const [agentRunning, setAgentRunning] = useState(false);
+  const [activeTask, setActiveTask] = useState<AgentTaskItem | null>(null);
+  const [listeningMic, setListeningMic] = useState(false);
+  const recRef = useRef<{ stop: () => void } | null>(null);
+
+  // Modais e gavetas
   const [showCatalog, setShowCatalog] = useState(false);
   const [showNewModal, setShowNewModal] = useState(false);
   const [newProjectName, setNewProjectName] = useState("");
+  const [newProjectPrompt, setNewProjectPrompt] = useState("");
+  const [creatingProject, setCreatingProject] = useState(false);
   const [selectedProfileId, setSelectedProfileId] = useState("1");
   const [templates, setTemplates] = useState<Array<{ nome: string; nicho?: string; origem?: string; formato?: string }>>([]);
   const [templateSel, setTemplateSel] = useState("");
+  const [search, setSearch] = useState("");
+  const [iframeKey, setIframeKey] = useState(1);
 
   useEffect(() => {
     fetch("/api/hyperframes?action=templates", { cache: "no-store" })
@@ -47,8 +89,6 @@ export default function HyperFramesStudioPage() {
       .then((r) => r?.ok && setTemplates(r.templates))
       .catch(() => {});
   }, []);
-  const [search, setSearch] = useState("");
-  const [iframeKey, setIframeKey] = useState(1);
 
   useEffect(() => {
     try {
@@ -56,29 +96,140 @@ export default function HyperFramesStudioPage() {
     } catch {}
   }, [activeProject]);
 
-  const fetchStatus = async () => {
+  const fetchStatus = useCallback(async (firstBoot = false) => {
     try {
-      const res = await fetch("/api/hyperframes");
+      const res = await fetch(`/api/hyperframes?autoStart=${firstBoot ? "true" : "false"}`, {
+        cache: "no-store",
+      });
       const data = await res.json();
-      setEngineOnline(data.running);
+      setEngineOnline(Boolean(data.running));
+      if (data.activeProject) {
+        setActiveProject(data.activeProject);
+      }
+      if (data.activeProjectDir) {
+        setActiveProjectDir(data.activeProjectDir);
+      }
       if (data.projects && data.projects.length > 0) {
         setAvailableProjects(data.projects);
-        // Forma funcional: o intervalo de 6s guarda o closure inicial, então comparar com
-        // `activeProject` direto desfaria a escolha do usuário a cada ciclo.
-        setActiveProject((atual) =>
-          data.projects.some((p: { name: string }) => p.name === atual) ? atual : data.projects[0].name,
-        );
+      }
+      setSelection(data.selection ?? null);
+      if (data.agents) {
+        setDetectedAgents(data.agents);
       }
     } catch {
       setEngineOnline(false);
     }
+  }, []);
+
+  // Ao abrir a página, auto-inicia o HyperFrames localmente e mantém polling de seleção (2.5s)
+  useEffect(() => {
+    fetchStatus(true);
+    const interval = setInterval(() => fetchStatus(false), 2500);
+    return () => clearInterval(interval);
+  }, [fetchStatus]);
+
+  // Acompanha andamento quando o Agente (agy / claude) está operando
+  useEffect(() => {
+    if (!activeTask || (activeTask.status !== "pendente" && activeTask.status !== "fazendo")) return;
+    const t = setInterval(async () => {
+      const r = await fetch("/api/claude", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
+      if (!r?.ok || !Array.isArray(r.items)) return;
+      const found = r.items.find((i: AgentTaskItem) => i.id === activeTask.id);
+      if (found) {
+        setActiveTask(found);
+        if (found.status === "feito" || found.status === "erro") {
+          setAgentRunning(false);
+          setIframeKey((k) => k + 1);
+        }
+      }
+    }, 2000);
+    return () => clearInterval(t);
+  }, [activeTask]);
+
+  const handleSwitchProject = async (projectName: string) => {
+    setActiveProject(projectName);
+    setSwitchingProject(true);
+    setSelection(null);
+    try {
+      const res = await fetch("/api/hyperframes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "switch", project: projectName }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        setEngineOnline(Boolean(data.running));
+        if (data.activeProjectDir) setActiveProjectDir(data.activeProjectDir);
+        setIframeKey((k) => k + 1);
+      }
+    } finally {
+      setSwitchingProject(false);
+    }
   };
 
-  useEffect(() => {
-    fetchStatus();
-    const interval = setInterval(fetchStatus, 6000);
-    return () => clearInterval(interval);
-  }, []);
+  const handleSendToAgent = async (customPrompt?: string) => {
+    const promptToSend = (customPrompt ?? agentPrompt).trim();
+    if (promptToSend.length < 3 || agentRunning) return;
+    setAgentRunning(true);
+    try {
+      const res = await fetch("/api/claude", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pedido: promptToSend,
+          pagina: "/studio",
+          projetoHf: activeProject,
+          projectDir: activeProjectDir,
+          engine: selectedAgent,
+          selection: selection
+            ? {
+                label: selection.label,
+                tagName: selection.tagName,
+                selector: selection.target?.selector || (selection.target?.id ? `#${selection.target.id}` : undefined),
+                hfId: selection.target?.hfId,
+                currentTime: selection.currentTime,
+                textContent: selection.textContent,
+                sourceFile: selection.sourceFile,
+                inlineStyles: selection.inlineStyles,
+              }
+            : null,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok && data.item) {
+        setActiveTask(data.item);
+        if (!customPrompt) setAgentPrompt("");
+      } else {
+        setAgentRunning(false);
+      }
+    } catch {
+      setAgentRunning(false);
+    }
+  };
+
+  const toggleVoiceDictation = () => {
+    if (listeningMic) {
+      recRef.current?.stop();
+      return;
+    }
+    const W = window as unknown as { SpeechRecognition?: new () => any; webkitSpeechRecognition?: new () => any };
+    const SR = W.SpeechRecognition ?? W.webkitSpeechRecognition;
+    if (!SR) return;
+    const rec = new SR();
+    rec.lang = "pt-BR";
+    rec.interimResults = false;
+    rec.onresult = (ev: any) => {
+      const transcript = Array.from(ev.results as ArrayLike<any>)
+        .slice(ev.resultIndex)
+        .map((r) => r[0].transcript)
+        .join(" ");
+      setAgentPrompt((prev) => (prev ? `${prev} ${transcript}` : transcript).trim());
+    };
+    rec.onend = () => setListeningMic(false);
+    rec.start();
+    recRef.current = rec;
+    setListeningMic(true);
+  };
 
   const slug = newProjectName
     .toLowerCase()
@@ -86,23 +237,50 @@ export default function HyperFramesStudioPage() {
     .replace(/[̀-ͯ]/g, "")
     .replace(/[^a-z0-9_-]/g, "-")
     .replace(/^-+|-+$/g, "");
-  const selectedProfile = PROFILES.find((p) => p.id === selectedProfileId);
-  // A web roda na VPS e não enxerga o disco do PC: o projeto é criado no PC (terminal ou
-  // pedindo ao Claude), e o HyperFrames passa a listá-lo sozinho.
-  const hfScript = `powershell -File "G:\\Meu Drive\\Vincere Studio\\scripts\\hf.ps1"`;
-  const createCommand = slug ? `${hfScript} novo -Nome ${slug}${templateSel ? ` -Template ${templateSel}` : ""}` : "";
-  const claudePrompt = slug && selectedProfile
-    ? `Crie o projeto HyperFrames "${slug}" em C:\\Users\\Igor\\Videos-HF no perfil "${selectedProfile.tipo}" (${selectedProfile.largura}x${selectedProfile.altura}) usando a skill ${selectedProfile.skill}.${templateSel ? ` Parta do template "${templateSel}" (${hfScript} novo -Nome ${slug} -Template ${templateSel}) e mantenha a linguagem visual dele.` : ""}`
-    : "";
+  const selectedProfile = PROFILES.find((p) => p.id === selectedProfileId) ?? PROFILES[0];
+
+  const handleCreateProjectLocal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!slug || creatingProject) return;
+    setCreatingProject(true);
+    try {
+      const res = await fetch("/api/hyperframes", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: "create",
+          name: slug,
+          width: selectedProfile.largura,
+          height: selectedProfile.altura,
+          template: templateSel || undefined,
+          prompt: newProjectPrompt.trim() || undefined,
+          engine: selectedAgent,
+        }),
+      });
+      const data = await res.json();
+      if (data.ok) {
+        if (data.projects) setAvailableProjects(data.projects);
+        setActiveProject(data.project);
+        setActiveProjectDir(data.projectDir);
+        setEngineOnline(Boolean(data.running));
+        setShowNewModal(false);
+        setNewProjectName("");
+        setNewProjectPrompt("");
+        setIframeKey((k) => k + 1);
+      }
+    } finally {
+      setCreatingProject(false);
+    }
+  };
 
   const copy = (text: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
   };
 
-  // Mesmo host do navegador: no PC vira localhost, no celular vira o IP do PC na rede.
-  const [hfHost, setHfHost] = useState("localhost");
+  const [hfHost, setHfHost] = useState("127.0.0.1");
   useEffect(() => {
-    setHfHost(window.location.hostname);
+    const h = window.location.hostname;
+    setHfHost(h === "localhost" ? "127.0.0.1" : h);
   }, []);
 
   const studioUrl = `http://${hfHost}:3010/#project/${encodeURIComponent(activeProject)}`;
@@ -111,57 +289,64 @@ export default function HyperFramesStudioPage() {
     (m) =>
       m.name.toLowerCase().includes(search.toLowerCase()) ||
       m.desc.toLowerCase().includes(search.toLowerCase()) ||
-      m.tag.toLowerCase().includes(search.toLowerCase())
+      m.tag.toLowerCase().includes(search.toLowerCase()),
   );
 
+  const selectionSummary = selection
+    ? `${selection.target?.selector || (selection.target?.id ? `#${selection.target.id}` : selection.label || selection.tagName || "Elemento")}${
+        selection.currentTime !== undefined ? ` · ${Number(selection.currentTime).toFixed(2)}s` : ""
+      }`
+    : null;
+
   return (
-    <div className="flex flex-col h-[calc(100vh-4.5rem)] space-y-3 p-4 sm:p-6">
-      {/* Studio Header & Project Bar */}
-      <div className="flex flex-wrap items-center justify-between gap-3 bg-surface-low border border-line rounded-lg px-4 py-3">
+    <div className="flex flex-col h-[calc(100vh-3.5rem)] space-y-2.5 p-3 sm:p-5">
+      {/* 1. Barra Superior Minimalista do HyperFrames Studio */}
+      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-surface-low/80 backdrop-blur-xl px-4 py-2.5">
         <div className="flex items-center gap-3">
-          <div className="grid size-9 place-items-center rounded bg-primary/10 text-primary-bright">
-            <Icon name="movie_filter" className="text-[20px]" />
+          <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary-bright">
+            <Icon name="movie_filter" className="text-[18px]" />
           </div>
           <div>
             <div className="flex items-center gap-2">
-              <span className="font-display font-bold text-sm text-fg">HyperFrames Studio</span>
+              <span className="font-display font-semibold text-sm text-fg">HyperFrames Studio</span>
               <span
-                className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[10px] font-mono ${
+                className={cn(
+                  "inline-flex items-center gap-1.5 rounded-full border px-2 py-0.5 text-[10px] font-medium",
                   engineOnline
-                    ? "border-success/40 bg-success/10 text-success"
-                    : "border-warning/40 bg-warning/10 text-warning"
-                }`}
+                    ? "border-success/30 bg-success/10 text-success"
+                    : "border-warning/30 bg-warning/10 text-warning",
+                )}
               >
-                <span className={`size-1.5 rounded-full ${engineOnline ? "bg-success" : "bg-warning animate-pulse"}`} />
-                {engineOnline ? "Porta 3010 Online" : "Motor Desconectado"}
+                <span className={cn("size-1.5 rounded-full", engineOnline ? "bg-success" : "bg-warning animate-pulse")} />
+                {switchingProject
+                  ? "Alternando projeto..."
+                  : engineOnline
+                    ? "Local :3010 Ativo"
+                    : "Iniciando Motor Local..."}
               </span>
             </div>
-            <p className="text-[11px] text-muted">Timeline interativa viva · Seleção de elemento por clique</p>
           </div>
         </div>
 
-        {/* Project Selector & Actions */}
+        {/* Seletor de Projeto + Ações */}
         <div className="flex flex-wrap items-center gap-2">
-          {/* Project Dropdown */}
-          <div className="flex items-center gap-1.5 bg-surface-mid/80 border border-line rounded px-2.5 py-1 text-xs">
-            <span className="text-muted font-mono text-[10px] uppercase">Projeto:</span>
+          <div className="flex items-center gap-1.5 rounded-lg border border-white/[0.08] bg-void/60 px-2.5 py-1 text-xs">
+            <span className="text-muted text-[10px] uppercase tracking-wider">Projeto:</span>
             <select
               value={activeProject}
-              onChange={(e) => {
-                setActiveProject(e.target.value);
-                setIframeKey((k) => k + 1);
-              }}
+              disabled={switchingProject}
+              onChange={(e) => handleSwitchProject(e.target.value)}
               className="bg-transparent font-display font-medium text-fg focus:outline-none cursor-pointer"
             >
               {availableProjects.length > 0 ? (
                 availableProjects.map((p) => (
                   <option key={p.name} value={p.name} className="bg-surface-elevated text-fg">
-                    🎬 {p.name}
+                    {p.name}
                   </option>
                 ))
               ) : (
-                <option value="nike-história" className="bg-surface-elevated text-fg">
-                  🎬 nike-história
+                <option value={activeProject} className="bg-surface-elevated text-fg">
+                  {activeProject}
                 </option>
               )}
             </select>
@@ -169,18 +354,7 @@ export default function HyperFramesStudioPage() {
 
           <Button
             size="sm"
-            variant="primary"
-            icon="forum"
-            onClick={() => chamarClaude({ pedido: `No projeto ${activeProject}: ` })}
-          >
-            Pedir ao Claude
-          </Button>
-
-          <AtualizarVersao id="hyperframes" />
-
-          <Button
-            size="sm"
-            variant="outline"
+            variant="secondary"
             icon="add"
             onClick={() => setShowNewModal(true)}
           >
@@ -189,55 +363,174 @@ export default function HyperFramesStudioPage() {
 
           <Button
             size="sm"
-            variant="outline"
-            icon="bookmark_add"
-            title="Salva a linguagem visual deste projeto como ponto de partida para os próximos do mesmo nicho"
-            onClick={() => {
-              const nicho = window.prompt(`Nicho do template (${NICHOS.map((n) => n.id).join(", ")}):`, "dossie") ?? "";
-              if (!nicho) return;
-              const nome = `${nicho}-${activeProject}`
-                .normalize("NFD")
-                .replace(/[̀-ͯ]/g, "")
-                .replace(/[^a-z0-9_-]/gi, "-")
-                .toLowerCase();
-              chamarClaude({
-                pedido: `Salve o projeto ${activeProject} como template do nicho "${nicho}": ${hfScript} template -Projeto ${activeProject} -Nome ${nome} -Nicho ${nicho}. Antes, confira que as composições não dependem de arquivos de voz/B-roll que não vão junto.`,
-              });
-            }}
-          >
-            Salvar como template
-          </Button>
-
-          <Button
-            size="sm"
-            variant="outline"
+            variant="secondary"
             icon="auto_awesome"
             onClick={() => setShowCatalog(!showCatalog)}
           >
             Catálogo ({MOTIONS_CATALOG.length})
           </Button>
 
+          <AtualizarVersao id="hyperframes" />
+
           <a
             href={studioUrl}
             target="_blank"
             rel="noreferrer"
-            className="inline-flex items-center gap-1.5 rounded border border-primary/40 bg-primary/10 px-3 py-1.5 text-xs font-semibold text-primary-bright hover:bg-primary/20 transition-colors"
+            className="apple-press inline-flex h-8 items-center gap-1.5 rounded-lg border border-white/[0.08] bg-white/[0.04] px-3 text-xs font-medium text-fg-secondary hover:border-white/[0.18] hover:text-fg"
           >
             <Icon name="open_in_new" className="text-[14px]" />
-            Abrir em Tela Cheia
+            <span>Tela Cheia</span>
           </a>
         </div>
       </div>
 
+      {/* 2. Barra Integrada de Conexão com o Agente (Antigravity agy / Claude Code + Elemento Selecionado no HyperFrames) */}
+      <div className="rounded-xl border border-white/[0.08] bg-surface-low/70 backdrop-blur-xl px-3.5 py-2.5 space-y-2">
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Seletor do Agente Operador */}
+            <div className="inline-flex items-center gap-1.5 rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] font-medium text-primary-bright">
+              <Icon name="terminal" className="text-[14px]" />
+              <span>Agente:</span>
+              <select
+                value={selectedAgent}
+                onChange={(e) => setSelectedAgent(e.target.value as "auto" | "agy" | "claude")}
+                className="bg-transparent font-semibold text-fg focus:outline-none cursor-pointer"
+              >
+                <option value="auto" className="bg-surface-elevated text-fg">
+                  Auto ({detectedAgents.agyPath ? "Antigravity agy" : detectedAgents.claudePath ? "Claude Code" : "Fila"})
+                </option>
+                <option value="agy" className="bg-surface-elevated text-fg">
+                  Antigravity CLI (agy) {detectedAgents.agyPath ? "✓" : ""}
+                </option>
+                <option value="claude" className="bg-surface-elevated text-fg">
+                  Claude Code CLI {detectedAgents.claudePath ? "✓" : ""}
+                </option>
+              </select>
+            </div>
+
+            {/* Pílula ao vivo do elemento clicado dentro do HyperFrames Studio */}
+            {selectionSummary ? (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-emerald-500/35 bg-emerald-500/10 px-2.5 py-1 font-mono text-[11px] text-emerald-300">
+                <Icon name="ads_click" className="text-[14px]" />
+                <span>Alvo selecionado: <strong>{selectionSummary}</strong></span>
+                {selection?.textContent && (
+                  <span className="text-emerald-200/75 truncate max-w-44">
+                    (&ldquo;{selection.textContent}&rdquo;)
+                  </span>
+                )}
+              </span>
+            ) : (
+              <span className="inline-flex items-center gap-1.5 rounded-lg border border-white/[0.06] bg-void/40 px-2.5 py-1 text-[11px] text-muted">
+                <Icon name="touch_app" className="text-[14px] text-primary-bright" />
+                <span>Clique em qualquer elemento na timeline/canvas abaixo para o Agente editar direto no alvo</span>
+              </span>
+            )}
+          </div>
+
+          {/* Atalhos Rápidos de Operação do Agente */}
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              disabled={agentRunning}
+              onClick={() =>
+                handleSendToAgent(
+                  "Corrija todos os avisos de lint do HyperFrames neste index.html (substitua animações de left/top/margin por transform x/y/scale e garanta data-composition-id='main').",
+                )
+              }
+              className="apple-press rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[11px] text-fg-secondary hover:border-white/[0.16] hover:text-fg disabled:opacity-40"
+            >
+              Corrigir Lint (GSAP)
+            </button>
+            <button
+              type="button"
+              onClick={() => chamarClaude({ pedido: `No projeto ${activeProject}: ` })}
+              className="apple-press rounded-lg border border-white/[0.07] bg-white/[0.03] px-2.5 py-1 text-[11px] text-fg-secondary hover:border-white/[0.16] hover:text-fg"
+            >
+              Histórico / Vince
+            </button>
+          </div>
+        </div>
+
+        {/* Input direto para o Agente editar o projeto HyperFrames */}
+        <form
+          onSubmit={(e) => {
+            e.preventDefault();
+            handleSendToAgent();
+          }}
+          className="flex items-center gap-2"
+        >
+          <input
+            value={agentPrompt}
+            onChange={(e) => setAgentPrompt(e.target.value)}
+            placeholder={
+              selectionSummary
+                ? `O que o Agente deve fazer no elemento ${selectionSummary}? (Ex.: mudar texto, animar entrada com spring, trocar cor...)`
+                : `Peça ao Agente (${detectedAgents.agyPath ? "Antigravity agy" : "Claude"}) para editar "${activeProject}"...`
+            }
+            className="field h-9 flex-1 px-3 text-xs"
+          />
+          <button
+            type="button"
+            onClick={toggleVoiceDictation}
+            className={cn(
+              "apple-press grid size-9 shrink-0 place-items-center rounded-lg border",
+              listeningMic
+                ? "border-error bg-error/20 text-error animate-pulse"
+                : "border-white/[0.08] bg-void/50 text-fg-secondary hover:text-fg",
+            )}
+            title="Ditar instrução por voz"
+          >
+            <Icon name="mic" className="text-[16px]" />
+          </button>
+          <button
+            type="submit"
+            disabled={agentRunning || agentPrompt.trim().length < 3}
+            className="apple-press inline-flex h-9 shrink-0 items-center gap-1.5 rounded-lg gradient-cta px-4 text-xs font-semibold text-fg shadow-glow-cta hover:brightness-110 disabled:opacity-40"
+          >
+            <Icon name={agentRunning ? "sync" : "bolt"} className={cn("text-[15px]", agentRunning && "animate-spin")} />
+            <span>{agentRunning ? "Agente Operando..." : "Executar no Projeto"}</span>
+          </button>
+        </form>
+
+        {/* Feedback em tempo real da tarefa do Agente */}
+        {activeTask && (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/[0.06] bg-void/60 px-3 py-1.5 text-[11px]">
+            <div className="flex items-center gap-2 min-w-0">
+              <Badge
+                tone={
+                  activeTask.status === "feito"
+                    ? "success"
+                    : activeTask.status === "erro"
+                      ? "warning"
+                      : "cyan"
+                }
+              >
+                {activeTask.status === "fazendo" || activeTask.status === "pendente"
+                  ? "Operando"
+                  : activeTask.status === "feito"
+                    ? "Concluído"
+                    : "Erro"}
+              </Badge>
+              <span className="truncate text-fg-secondary">
+                {activeTask.resposta || activeTask.pedido}
+              </span>
+            </div>
+            <button
+              type="button"
+              onClick={() => setActiveTask(null)}
+              className="text-muted hover:text-fg text-xs shrink-0"
+            >
+              ✕
+            </button>
+          </div>
+        )}
+      </div>
+
       <PreviasPanel projeto={activeProject} />
 
-      <p className="rounded-lg border border-line bg-surface-low px-3 py-2 text-[11px] text-muted sm:hidden">
-        No celular, o melhor é revisar em <strong className="text-fg">Abrir em Tela Cheia</strong> e pedir ajustes pelo
-        <strong className="text-fg"> Pedir ao Claude</strong>. A edição fina na timeline fica mais confortável no computador.
-      </p>
-
-      {/* Main Studio Frame or Offline Launcher */}
-      <div className="relative flex-1 rounded-xl border border-line/80 overflow-hidden bg-void shadow-2xl flex flex-col">
+      {/* 3. Iframe Principal do HyperFrames Studio (Auto-iniciado localmente na porta 3010) */}
+      <div className="relative flex-1 rounded-xl border border-white/[0.08] overflow-hidden bg-void shadow-2xl flex flex-col">
         {engineOnline ? (
           <iframe
             key={iframeKey}
@@ -249,46 +542,44 @@ export default function HyperFramesStudioPage() {
         ) : (
           <div className="flex-1 grid place-items-center p-8 text-center bg-void/90">
             <div className="max-w-md space-y-4">
-              <div className="mx-auto grid size-16 place-items-center rounded-2xl border border-primary/30 bg-primary/10 text-primary-bright">
-                <Icon name="movie_filter" className="text-[36px]" />
+              <div className="mx-auto grid size-14 place-items-center rounded-2xl border border-primary/30 bg-primary/10 text-primary-bright">
+                <Icon name="sync" className="text-[28px] animate-spin" />
               </div>
               <div>
-                <h3 className="font-display text-lg font-bold text-fg">
-                  HyperFrames Studio não está respondendo
+                <h3 className="font-display text-base font-semibold text-fg">
+                  Iniciando HyperFrames Studio Localmente...
                 </h3>
                 <p className="mt-1 text-xs text-muted leading-relaxed">
-                  O preview roda no seu PC e chega aqui pelo túnel. No PC, dê dois cliques em{" "}
-                  <strong className="text-fg">Iniciar Vincere.bat</strong> (pasta do Vincere Studio): ele
-                  sobe o túnel, o HyperFrames, o Flow e o acesso pelo celular. Esta tela reconecta sozinha.
+                  Subindo o servidor local na porta 3010 com Node 22 para o projeto{" "}
+                  <strong className="text-fg">{activeProject}</strong>.
                 </p>
               </div>
-
-              <button
-                type="button"
-                onClick={() => copy("npx hyperframes preview --port 3010 --no-open --no-browser-gpu")}
-                className="w-full rounded border border-line bg-surface-mid/60 p-2 text-left font-mono text-[11px] text-primary-bright hover:border-primary/50"
-                title="Copiar comando"
+              <Button
+                size="sm"
+                variant="primary"
+                icon="play_arrow"
+                onClick={() => fetchStatus(true)}
               >
-                cd C:\Users\Igor\Videos-HF; npx hyperframes preview --port 3010 --no-open --no-browser-gpu
-              </button>
+                Iniciar Agora
+              </Button>
             </div>
           </div>
         )}
 
-        {/* Floating Motions & SFX Drawer */}
+        {/* Gaveta Flutuante de Catálogo de Motions */}
         {showCatalog && (
-          <aside className="absolute inset-y-0 right-0 w-80 sm:w-96 border-l border-line bg-surface-low/95 backdrop-blur-md p-4 flex flex-col gap-3 shadow-2xl z-20 overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-line/60 pb-3">
+          <aside className="absolute inset-y-0 right-0 w-80 sm:w-96 border-l border-white/[0.08] bg-surface-low/95 backdrop-blur-2xl p-4 flex flex-col gap-3 shadow-2xl z-20 overflow-y-auto">
+            <div className="flex items-center justify-between border-b border-white/[0.06] pb-3">
               <div>
-                <h3 className="text-sm font-bold font-display text-fg flex items-center gap-1.5">
+                <h3 className="text-sm font-semibold font-display text-fg flex items-center gap-1.5">
                   <Icon name="auto_awesome" className="text-primary-bright text-[16px]" />
                   Catálogo de Efeitos & Motions
                 </h3>
-                <p className="text-[11px] text-muted">Atalhos mais usados — clique no cue para copiar</p>
+                <p className="text-[11px] text-muted">Clique para aplicar com o Agente ou copiar</p>
               </div>
               <button
                 onClick={() => setShowCatalog(false)}
-                className="grid size-7 place-items-center rounded hover:bg-line/40 text-muted hover:text-fg text-sm"
+                className="grid size-7 place-items-center rounded-lg hover:bg-white/[0.06] text-muted hover:text-fg text-sm"
               >
                 ✕
               </button>
@@ -306,17 +597,34 @@ export default function HyperFramesStudioPage() {
               {filteredMotions.map((m) => (
                 <div
                   key={m.name}
-                  className="rounded-lg border border-line/80 bg-surface-mid/60 p-2.5 space-y-1.5 hover:border-primary/50 transition-colors"
+                  className="rounded-xl border border-white/[0.07] bg-void/50 p-3 space-y-2 hover:border-white/[0.16] transition-colors"
                 >
                   <div className="flex items-center justify-between">
-                    <span className="font-bold text-xs text-fg font-display">{m.name}</span>
-                    <span className="rounded bg-primary/20 px-1.5 py-0.5 text-[9px] font-mono text-primary-bright">
+                    <span className="font-semibold text-xs text-fg font-display">{m.name}</span>
+                    <span className="rounded-full bg-primary/15 px-2 py-0.5 text-[9px] font-medium text-primary-bright">
                       {m.tag}
                     </span>
                   </div>
                   <p className="text-[11px] text-muted leading-relaxed">{m.desc}</p>
-                  <div onClick={() => copy(m.cue)} title="Copiar" className="cursor-pointer rounded bg-void/90 p-1.5 font-mono text-[10px] text-primary-bright select-all border border-line/40 hover:border-primary/50">
-                    {m.cue}
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => {
+                        handleSendToAgent(`Adicione o efeito/motion "${m.name}" (${m.desc} — ${m.cue}) na composição atual.`);
+                        setShowCatalog(false);
+                      }}
+                      className="apple-press flex-1 rounded-lg bg-primary/15 px-2.5 py-1.5 text-[10px] font-semibold text-primary-bright hover:bg-primary/25"
+                    >
+                      Aplicar com Agente
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => copy(m.cue)}
+                      className="apple-press rounded-lg border border-white/[0.08] bg-void px-2.5 py-1.5 font-mono text-[10px] text-muted hover:text-fg"
+                      title="Copiar cue"
+                    >
+                      Copiar
+                    </button>
                   </div>
                 </div>
               ))}
@@ -325,43 +633,44 @@ export default function HyperFramesStudioPage() {
         )}
       </div>
 
-      {/* Modal Novo Projeto HyperFrames */}
+      {/* Modal: Criar Novo Projeto Localmente em 1 Clique */}
       {showNewModal && (
-        <div className="fixed inset-0 z-50 grid place-items-center bg-void/80 backdrop-blur-sm p-4">
-          <Card className="w-full max-w-lg p-5 border-line shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-line pb-3">
-              <h3 className="font-display text-base font-bold text-fg flex items-center gap-2">
+        <div className="fixed inset-0 z-50 grid place-items-center bg-void/80 backdrop-blur-md p-4">
+          <Card className="w-full max-w-lg p-5 border-white/[0.1] shadow-2xl space-y-4" elevated>
+            <div className="flex items-center justify-between border-b border-white/[0.07] pb-3">
+              <h3 className="font-display text-base font-semibold text-fg flex items-center gap-2">
                 <Icon name="add_circle" className="text-primary-bright" />
-                Criar Novo Projeto no HyperFrames
+                Novo Projeto Local no HyperFrames
               </h3>
               <button onClick={() => setShowNewModal(false)} className="text-muted hover:text-fg">
                 ✕
               </button>
             </div>
 
-            <form onSubmit={(e) => e.preventDefault()} className="space-y-4">
+            <form onSubmit={handleCreateProjectLocal} className="space-y-4">
               <div>
-                <label className="label-mono mb-1 block text-muted">Nome do Projeto *</label>
+                <label className="text-xs font-medium text-fg-secondary mb-1 block">Nome do Projeto *</label>
                 <input
                   required
                   value={newProjectName}
                   onChange={(e) => setNewProjectName(e.target.value)}
-                  placeholder="Ex: misterio-area-51, corte-dragonball-01, nike-historia-v2"
+                  placeholder="Ex: abertura-canal, reel-nike-v2, corte-anime-01"
                   className="field w-full px-3 py-2 text-sm"
                 />
               </div>
 
               <div>
-                <label className="label-mono mb-1.5 block text-muted">Escolha o Tipo de Edição</label>
-                <div className="space-y-2 max-h-56 overflow-y-auto pr-1">
+                <label className="text-xs font-medium text-fg-secondary mb-1.5 block">Formato & Estilo Base</label>
+                <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
                   {PROFILES.map((prof) => (
                     <label
                       key={prof.id}
-                      className={`flex items-start gap-2.5 p-2.5 rounded border cursor-pointer text-xs transition-colors ${
+                      className={cn(
+                        "flex items-start gap-2.5 p-2.5 rounded-xl border cursor-pointer text-xs transition-colors",
                         selectedProfileId === prof.id
-                          ? "border-primary bg-primary/10 text-fg"
-                          : "border-line bg-surface-low text-fg-secondary hover:border-line/80"
-                      }`}
+                          ? "border-primary/60 bg-primary/10 text-fg"
+                          : "border-white/[0.06] bg-void/40 text-fg-secondary hover:border-white/[0.14]",
+                      )}
                     >
                       <input
                         type="radio"
@@ -384,49 +693,31 @@ export default function HyperFramesStudioPage() {
                 </div>
               </div>
 
-              {templates.length > 0 && (
-                <div>
-                  <label className="label-mono mb-1.5 block text-muted">Começar de um template (opcional)</label>
-                  <select value={templateSel} onChange={(e) => setTemplateSel(e.target.value)} className="field w-full px-3 py-2 text-sm">
-                    <option value="">Projeto em branco</option>
-                    {templates.map((t) => (
-                      <option key={t.nome} value={t.nome}>
-                        {t.nome}
-                        {t.nicho ? ` · ${t.nicho}` : ""}
-                        {t.origem ? ` (de ${t.origem})` : ""}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              )}
+              <div>
+                <label className="text-xs font-medium text-fg-secondary mb-1 block">
+                  Instrução inicial para o Agente (opcional)
+                </label>
+                <textarea
+                  rows={2}
+                  value={newProjectPrompt}
+                  onChange={(e) => setNewProjectPrompt(e.target.value)}
+                  placeholder="Ex.: Crie uma intro de 5 segundos estilo Apple com 3 cards flutuantes e tipografia cinética..."
+                  className="field w-full p-2.5 text-xs"
+                />
+              </div>
 
-              {slug && (
-                <div className="space-y-2 rounded border border-line bg-surface-low p-3 text-[11px]">
-                  <p className="text-muted">
-                    O projeto é criado no seu PC. Escolha uma das opções e ele aparece no seletor acima:
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => copy(claudePrompt)}
-                    className="w-full rounded border border-primary/40 bg-primary/10 p-2 text-left text-primary-bright hover:bg-primary/20"
-                  >
-                    <span className="label-mono block text-[10px] text-muted">Pedir ao Claude (copiar)</span>
-                    {claudePrompt}
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => copy(createCommand)}
-                    className="w-full rounded border border-line bg-void/80 p-2 text-left font-mono text-primary-bright hover:border-primary/50"
-                  >
-                    <span className="label-mono block font-sans text-[10px] text-muted">Terminal do PC (copiar)</span>
-                    {createCommand}
-                  </button>
-                </div>
-              )}
-
-              <div className="flex items-center justify-end gap-2 pt-3 border-t border-line">
-                <Button variant="outline" size="sm" type="button" onClick={() => setShowNewModal(false)}>
-                  Fechar
+              <div className="flex items-center justify-end gap-2 pt-3 border-t border-white/[0.07]">
+                <Button variant="secondary" size="sm" type="button" onClick={() => setShowNewModal(false)}>
+                  Cancelar
+                </Button>
+                <Button
+                  variant="primary"
+                  size="sm"
+                  type="submit"
+                  icon={creatingProject ? "sync" : "bolt"}
+                  disabled={!slug || creatingProject}
+                >
+                  {creatingProject ? "Criando e Abrindo..." : "Criar e Abrir no Studio"}
                 </Button>
               </div>
             </form>

@@ -37,7 +37,7 @@ export function chamarClaude(detail: { pedido: string; anexo?: string }) {
 
 const STATUS_LABEL: Record<Pedido["status"], { label: string; cls: string }> = {
   pendente: { label: "Na fila", cls: "border-warning/40 text-warning" },
-  fazendo: { label: "Claude trabalhando", cls: "border-primary/50 text-primary-bright" },
+  fazendo: { label: "Agente operando", cls: "border-primary/50 text-primary-bright" },
   feito: { label: "Feito", cls: "border-success/40 text-success" },
   erro: { label: "Precisa de você", cls: "border-error/50 text-error" },
 };
@@ -45,7 +45,7 @@ const STATUS_LABEL: Record<Pedido["status"], { label: string; cls: string }> = {
 const BOAS_VINDAS: Msg = {
   role: "assistant",
   content:
-    "Oi, Igor! Sou o Vince. Posso te explicar qualquer tela, sugerir o nicho e a skill certos e mandar o Claude editar para você. O que vamos fazer?",
+    "Oi! Sou o Vince. Posso te explicar qualquer tela, sugerir o nicho e a skill certos e mandar o Agente local (Antigravity agy / Claude Code) editar para você. O que vamos fazer?",
 };
 
 const SUGESTOES = ["Por onde eu começo um vídeo?", "Qual skill uso agora?", "Como copio o estilo de um vídeo?", "O que esta tela faz?"];
@@ -389,7 +389,7 @@ export function ClaudeButton() {
             <>
               <div className="space-y-2 border-b border-line p-4">
                 <p className="text-[11px] text-muted">
-                  O Claude no seu PC executa e responde aqui. Deixe rodando <code className="text-fg-secondary">/loop 1m /vincere-pedidos</code>.
+                  Conectado ao <strong className="text-primary-bright">Antigravity CLI (`agy`) / Claude Code</strong> no seu PC. Os pedidos são executados localmente nos seus projetos.
                 </p>
                 {anexo && <span className="inline-block rounded border border-primary/40 px-1.5 py-0.5 font-mono text-[10px] text-primary-bright">+ anexo</span>}
                 <textarea
@@ -415,7 +415,7 @@ export function ClaudeButton() {
                     className="flex h-10 flex-1 items-center justify-center gap-2 rounded bg-primary text-sm font-bold text-void disabled:opacity-40"
                   >
                     <Icon name="send" className="text-[18px]" />
-                    {enviando ? "Enviando…" : "Enviar ao Claude"}
+                    {enviando ? "Executando…" : "Executar com Agente (agy / Claude)"}
                   </button>
                 </div>
                 {erro && <p className="text-[11px] text-error">{erro}</p>}
