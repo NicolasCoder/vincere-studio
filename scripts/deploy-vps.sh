@@ -6,7 +6,7 @@
 # Também aplica as correções de segurança/operação (idempotentes):
 #   - next escuta só em 127.0.0.1 (acesso continua pelo túnel e pelo celular)
 #   - OMNIVOICE_API_KEY e HYPERFRAMES_URL no .env
-#   - encerra HyperFrames órfão na VPS (o preview mora no PC e chega pelo túnel)
+#   - NÃO encerra o HyperFrames da VPS (pm2 vincere-hf); se ele existir, HYPERFRAMES_URL aponta para ele
 #   - LAN_PIN: PIN exigido no acesso pela rede Wi-Fi (cópia em C:/Users/Igor/vincere-pin-celular.txt)
 set -euo pipefail
 
@@ -65,7 +65,11 @@ grep -q '^HYPERFRAMES_URL=' .env || echo 'HYPERFRAMES_URL="http://[::1]:3010"' >
 grep -q '^LAN_PIN=' .env || echo "LAN_PIN=\"$(shuf -i 10000000-99999999 -n 1)\"" >> .env
 grep -q -- '--hostname 127.0.0.1' ecosystem.config.cjs || \
   sed -i "s#args: 'start --port 3210'#args: 'start --port 3210 --hostname 127.0.0.1'#" ecosystem.config.cjs
-pkill -f 'hyperframes preview' || true
+# HyperFrames: se o serviço pm2 vincere-hf existe, o web usa o da VPS (127.0.0.1:3010, só IPv4);
+# senão o preview vem do PC pelo túnel (loopback IPv6). Nunca mata o preview.
+if pm2 describe vincere-hf >/dev/null 2>&1; then
+  sed -i 's#^HYPERFRAMES_URL=.*#HYPERFRAMES_URL="http://127.0.0.1:3010"#' .env
+fi
 if [[ $RESTORE_DB == 1 ]]; then
   pm2 stop vincere-web vincere-worker
   # Mescla com o app parado: base = PC (projetos), por cima o banco vivo da VPS.
