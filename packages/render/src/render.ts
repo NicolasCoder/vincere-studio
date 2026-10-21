@@ -148,7 +148,8 @@ function shouldFrame(id: string): boolean {
 async function detectEncoder(pref: RenderOptions["encoder"]): Promise<{ codec: string; args: string[] }> {
   if (pref && pref !== "auto") return encoderArgs(pref);
   const out = await run(FFMPEG, ["-hide_banner", "-encoders"]).catch(() => "");
-  for (const c of ["h264_qsv", "h264_nvenc"]) {
+  // Prioriza h264_nvenc (GPU NVIDIA RTX 3060 do PC) antes de h264_qsv e CPU libx264
+  for (const c of ["h264_nvenc", "h264_qsv"]) {
     if (out.includes(c)) {
       // testa rapidamente se o hardware aceita
       const ok = await run(FFMPEG, ["-hide_banner", "-loglevel", "error", "-f", "lavfi", "-i", "color=c=black:s=256x144:d=0.2", "-c:v", c, "-f", "null", "-"]).then(() => true).catch(() => false);

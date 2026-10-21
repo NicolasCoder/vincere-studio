@@ -2,7 +2,7 @@ import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { cn } from "../cn";
 import { Icon } from "./Icon";
 
-type Variant = "primary" | "ghost" | "icon" | "subtle" | "outline";
+type Variant = "primary" | "secondary" | "ghost" | "icon" | "subtle" | "outline";
 type Size = "sm" | "md" | "lg";
 
 export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
@@ -18,6 +18,7 @@ const base =
 
 const variants: Record<Variant, string> = {
   primary: "gradient-cta text-fg shadow-glow-cta hover:brightness-110",
+  secondary: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
   ghost: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
   outline: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
   subtle: "bg-transparent text-fg-secondary hover:bg-line/40 hover:text-fg",

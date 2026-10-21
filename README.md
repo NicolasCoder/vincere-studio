@@ -8,7 +8,9 @@
 ## ✨ Principais Funcionalidades
 
 * **🧠 Copiloto Criativo Multi-Nicho (`/copilot`):** Estruturação de narrativas em "beats" de 5 a 15 segundos para Dossiê Investigativo, Cinema, Character Sheets, Comercial UGC e Curiosidades.
-* **🎙️ Central de Vozes (`/voice-studio`):** Síntese de locução com clonagem vocal do Igor, rascunho rápido grátis e alinhamento métrico palavra por palavra com Whisper (`words.json + SRT`).
+* **👁️ Video-Sharingan com IA Local (`/sharingan`):** Engenharia reversa óptica e clonagem de ritmo/técnica de vídeos (`sharingan.py` + `Qwen2.5-VL-7B` via Ollama na GPU Local RTX 3060 a custo US$ 0.00), com extração multi-pass (`Keyframes`, `Step=5`, `Adaptive High-Motion Burst` e `Forense Step=1 1:1`), grade `10%×10%`, palco HTML5/GSAP interativo, comparativo 3-vias e 12 Portões de Qualidade (QC Gates).
+* **🎬 Estúdio Talking Head & Reels (`/talking-head`):** Pipeline dual-mode (GPU Local ↔ Cloud) para remoção de silêncios por palavras (`CrisperWhisper`), reenquadramento dinâmico (`MediaPipe`), legendas Lockup e sincronização na batida.
+* **🎙️ Central de Vozes & Offload GPU (`/voice-studio`):** Síntese de locução com clonagem vocal neural (**RVC V2 `rmvpe` na GPU do PC** + VoiceStudio VPS), análise acústica automática para clonagem ($F_0$ Hz, SNR dB, % voz ativa, normalização 44.1kHz) e alinhamento métrico palavra por palavra com **Faster-Whisper CUDA (`float16`)**.
 * **⚡ Workflow Studio Nodal (`/workflow`):** Canvas visual estilo Magnific AI e ElevenLabs. Conecte nós de Avatar, Produto, Cenário, Prompt com multi-engine (Gemini, Flow Daemon, MiniMax e Pollinations grátis) e Renderizador.
 * **🎞️ HyperFrames Studio (`/studio`):** Editor de vídeo em código aberto (HTML5, CSS3, GSAP e JS limpos) com preview interativo a 60fps e Hot-Reload em menos de 100ms.
 * **📝 Legendas Dinâmicas (`subtitles_studio`):** Tipografia cinética no formato **Lockup** (palavra principal em destaque geométrico + palavras de apoio encaixadas nos vãos + brilho dinâmico + anti-pisca) com templates reutilizáveis.

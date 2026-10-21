@@ -10,7 +10,7 @@ const HEARTBEAT_MS = 15_000;
 // diferentes, de projetos diferentes ou não). RENDER_VIDEO fica de fora da conta —
 // só um por vez, sempre, porque é o único que pesa de verdade em CPU/RAM (ffmpeg).
 const CONCURRENCY = Math.max(1, Number(process.env.WORKER_CONCURRENCY ?? 2));
-const HEAVY_TYPES = ["RENDER_VIDEO"];
+const HEAVY_TYPES = ["RENDER_VIDEO", "TALKING_HEAD_PIPELINE", "SHARINGAN_CLONE"];
 
 /** Grava um "pulso" periódico na tabela Setting, pra o painel de saúde do sistema saber
  * se o worker está vivo mesmo sem nenhum job em andamento. */

@@ -48,5 +48,7 @@ export const JOB_TYPES = [
   "GENERATE_EDIT_PLAN",
   "GENERATE_IMAGES",
   "APPLY_VISUAL_LAYER",
+  "TALKING_HEAD_PIPELINE",
+  "SHARINGAN_CLONE",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];

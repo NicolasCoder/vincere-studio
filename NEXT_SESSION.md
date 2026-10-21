@@ -10,6 +10,15 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 21/10/2026 — Video-Sharingan + IA Local & Offload GPU (`RTX 3060 12GB`)
+
+- **Estúdio Video-Sharingan (`/sharingan`) e Talking Head (`/talking-head`) integrados na interface do Vincere Studio:**
+  - Suporte completo aos 4 modos de visão computacional local (`local_vlm.py` + `Qwen2.5-VL-7B` via Ollama na RTX 3060: `Pass 1 Keyframes`, `Pass 2 Step=5 Dense`, `Pass 3 Adaptive High-Motion Burst` e `Pass 4 Forense Step=1 1:1 720×720 Strips`).
+  - Galeria interativa de frames `720p` com grade `10%×10%`, tiras forenses `1:1` de 6 quadros, consulta ao vivo ao `Qwen2.5-VL-7B`, palco HTML5/GSAP interativo com scrubber `window.__timelines.main.seek(t)`, comparativos 2-vias/3-vias, 12 Portões de Qualidade (`sharingan.py compare`) e painel de economia de tokens (`US$ 0.00`).
+- **Offload de Funções Pesadas para a GPU do Computador (`scripts/pc-gpu-bridge.py` + `apps/web/lib/pc-gpu-engine.ts`):**
+  - Geração de voz + conversão neural RVC V2 (`rmvpe`), análise acústica para clonagem de voz ($F_0$, SNR dB, % voz ativa, normalização 44.1kHz), transcrição/alinhamento palavra a palavra via **Faster-Whisper CUDA (`float16`)** e codificação de vídeo `h264_nvenc` priorizados na GPU local (`RTX 3060 12GB`), com fallback transparente para a VPS/Cloud.
+- **Validação técnica executada e verde:** `pnpm typecheck` (7/7 pacotes) e `pnpm test` (incluindo build de produção do Next.js e smoke tests de `/sharingan`, `/talking-head` e `/projects`) passando sem erros.
+
 ## Estado deixado em 20/10/2026 (Claude) — ler primeiro
 
 - Handoff completo (feito, pendente, como retomar): Obsidian

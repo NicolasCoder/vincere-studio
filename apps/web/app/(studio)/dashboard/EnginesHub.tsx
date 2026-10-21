@@ -8,14 +8,18 @@ interface EngineStatus {
   hyperframes: boolean;
   voiceStudio: boolean;
   flowDaemon: boolean;
+  sharinganLocal: boolean;
+  computeMode: string;
   loading: boolean;
 }
 
 export function EnginesHub() {
   const [status, setStatus] = useState<EngineStatus>({
-    hyperframes: true, // task-570 is online
+    hyperframes: true,
     voiceStudio: false,
     flowDaemon: false,
+    sharinganLocal: false,
+    computeMode: "AUTO",
     loading: true,
   });
 
@@ -24,6 +28,8 @@ export function EnginesHub() {
     let hf = false;
     let vs = false;
     let fl = false;
+    let sh = false;
+    let mode = "AUTO";
 
     try {
       const res = await fetch("/api/hyperframes");
@@ -49,10 +55,21 @@ export function EnginesHub() {
       fl = false;
     }
 
+    try {
+      const res = await fetch("/api/reels-tools");
+      const d = await res.json();
+      sh = !!d.nodes?.localGpu?.online;
+      mode = d.computeMode || "AUTO";
+    } catch {
+      sh = false;
+    }
+
     setStatus({
       hyperframes: hf,
       voiceStudio: vs,
       flowDaemon: fl,
+      sharinganLocal: sh,
+      computeMode: mode,
       loading: false,
     });
   };
@@ -97,14 +114,14 @@ export function EnginesHub() {
         </Link>
       </div>
 
-      {/* VoiceStudio VPS */}
+      {/* VoiceStudio (GPU Local RTX 3060 + VPS) */}
       <div className="flex flex-col justify-between rounded-lg border border-line bg-surface-low/80 p-3.5 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <span className="grid size-7 place-items-center rounded bg-secondary/10 text-secondary-soft">
               <Icon name="record_voice_over" className="text-[18px]" />
             </span>
-            <span className="font-display font-semibold text-xs text-fg">VoiceStudio (VPS)</span>
+            <span className="font-display font-semibold text-xs text-fg">Vozes & Whisper (GPU PC)</span>
           </div>
           <span
             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-mono ${
@@ -114,11 +131,11 @@ export function EnginesHub() {
             }`}
           >
             <span className={`size-1.5 rounded-full ${status.voiceStudio ? "bg-success" : "bg-secondary-bright"}`} />
-            {status.voiceStudio ? "Porta 3900" : "HostGator"}
+            {status.voiceStudio ? "RTX 3060 + RVC V2" : "PC / VPS"}
           </span>
         </div>
         <p className="text-[11px] text-muted">
-          Vozes clonadas e alinhamento por palavra (Whisper), na VPS.
+          Geração de voz, análise acústica para clonagem (RVC V2 rmvpe) e Faster-Whisper na GPU do PC.
         </p>
         <Link
           href="/voice-studio"
@@ -161,24 +178,45 @@ export function EnginesHub() {
         </Link>
       </div>
 
-      {/* Claude no PC */}
+      {/* Sharingan & Reels Tools (Duas Vias: Local GPU + Cloud) */}
       <div className="flex flex-col justify-between rounded-lg border border-line bg-surface-low/80 p-3.5 space-y-3">
-        <div className="flex items-center gap-2">
-          <span className="grid size-7 place-items-center rounded bg-primary/10 text-primary-bright">
-            <Icon name="forum" className="text-[18px]" />
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <span className="grid size-7 place-items-center rounded bg-primary/10 text-primary-bright">
+              <Icon name="visibility" className="text-[18px]" />
+            </span>
+            <span className="font-display font-semibold text-xs text-fg">Sharingan & Talking Head</span>
+          </div>
+          <span
+            className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-mono ${
+              status.sharinganLocal
+                ? "border-success/40 bg-success/10 text-success"
+                : "border-primary/40 bg-primary/10 text-primary-bright"
+            }`}
+          >
+            <span className={`size-1.5 rounded-full ${status.sharinganLocal ? "bg-success" : "bg-primary-bright"}`} />
+            {status.sharinganLocal ? `GPU Local (${status.computeMode})` : "Cloud Switch"}
           </span>
-          <span className="font-display font-semibold text-xs text-fg">Claude (co-editor)</span>
         </div>
         <p className="text-[11px] text-muted">
-          Peça pelo botão Chamar o Claude. No PC, deixe rodando <code className="text-fg-secondary">/loop 1m /vincere-pedidos</code>.
+          Duas vias: leve na Nuvem + clonagem de vídeo e áudio na GPU local (ou Cloud).
         </p>
-        <Link
-          href="/skills"
-          className="inline-flex items-center justify-between rounded border border-line px-2.5 py-1.5 text-[11px] font-medium text-fg-secondary hover:border-primary/50 hover:text-fg transition-colors"
-        >
-          <span>Skills e receitas</span>
-          <Icon name="chevron_right" className="text-[14px]" />
-        </Link>
+        <div className="grid grid-cols-2 gap-1.5">
+          <Link
+            href="/talking-head"
+            className="inline-flex items-center justify-between rounded border border-line px-2 py-1.5 text-[11px] font-medium text-fg-secondary hover:border-primary/50 hover:text-fg transition-colors"
+          >
+            <span>Talking Head</span>
+            <Icon name="chevron_right" className="text-[14px]" />
+          </Link>
+          <Link
+            href="/sharingan"
+            className="inline-flex items-center justify-between rounded border border-primary/30 bg-primary/10 px-2 py-1.5 text-[11px] font-medium text-primary-bright hover:bg-primary/20 transition-colors"
+          >
+            <span>Sharingan</span>
+            <Icon name="chevron_right" className="text-[14px]" />
+          </Link>
+        </div>
       </div>
     </div>
   );

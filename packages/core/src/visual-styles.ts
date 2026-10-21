@@ -79,7 +79,20 @@ export const VISUAL_STYLES: Record<string, VisualStyle> = {
     motion: "slow-zoom-in",
     grading: "dessaturado com acentos vermelhos",
   },
+  TALKING_HEAD: {
+    id: "TALKING_HEAD",
+    label: "Talking Head / Reels (Apresentador & Cortes)",
+    description: "A-roll com apresentador centralizado (olhos Y=640px), jump-cuts mascarados, B-roll nos cortes e legenda Lockup",
+    prefix: "Editorial vertical creator studio shot, crisp modern lighting, Apple Keynote aesthetic,",
+    suffix: "shallow depth of field f/1.8, warm key light, clean studio background, natural skin tones, 8k",
+    negative: "text, watermark, washed out blacks, blurry face, distorted eyes, cartoon",
+    motion: "static",
+    grading: "Apple Sungazing / Kodak Portra 400 (pretos densos, pele quente)",
+  },
 };
+
+export const isTalkingHeadStyle = (visualStyle?: string | null): boolean =>
+  visualStyle === "TALKING_HEAD" || (visualStyle ?? "").startsWith("TALKING_HEAD");
 
 export const visualStyleList = Object.values(VISUAL_STYLES);
 export const getVisualStyle = (id?: string | null) => VISUAL_STYLES[id ?? ""] ?? VISUAL_STYLES.DARK_DOC;

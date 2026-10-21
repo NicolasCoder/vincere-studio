@@ -121,6 +121,20 @@ Sexta rodada (20/10, noite) — Checkpoint de segurança para colaboração de e
 - **Pacote Compactado**: Criado snapshot `_backups/versao-estavel-v2.0/vincere-snapshot-estavel.zip` contendo o banco SQLite e arquivos de manifesto e configuração.
 - **Branch de Trabalho Isolada**: Criada `feat/colaboracao-edicao` para que a adição de novas funções com o parceiro de edição ocorra sem qualquer risco à versão estável.
 
+Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Computador (`RTX 3060 12GB`):
+
+- **Ponte GPU do Computador (`scripts/pc-gpu-bridge.py` + `apps/web/lib/pc-gpu-engine.ts`):**
+  - Orquestrador unificado (CLI e daemon HTTP `:9335`, túnel SSH `-R 9335:127.0.0.1:9335` em `scripts/iniciar-vincere.ps1`) que transfere as tarefas pesadas de IA e vídeo da VPS CPU (~40× real-time) para a **NVIDIA GeForce RTX 3060 (12GB VRAM)** do computador local:
+    1. **Análise e Preparo para Clonagem de Voz (`analyze_voice_for_cloning`):** normaliza a amostra em `44.1kHz mono WAV`, mede telemetria acústica real ($F_0$ médio em Hz, SNR em dB, % de quadros sonoros, recomendação de qualidade para RVC V2 / F5-TTS / OmniVoice) e transcreve automaticamente a amostra com **Faster-Whisper CUDA (`float16`)**.
+    2. **Geração de Voz & Conversão RVC V2 na GPU (`rvc_convert` + `narratePcLocalGpu`):** sintetiza a fala base com `EdgeVoiceProvider` + converte o timbre na RTX 3060 via `RVC V2` (`rmvpe`, 10 modelos `.pth` locais incluindo `vinicius_v1_e400_s11200.pth`, `vinicius_v1.pth`, `Sheikh_Refaat_RVC_v1_250e.pth`) + alinha timestamps por palavra no **Faster-Whisper GPU**.
+    3. **Alinhamento de Legendas e Encoder NVENC (`apps/worker/src/jobs/align-captions.ts` & `packages/render/src/render.ts`):** `ALIGN_CAPTIONS` prioriza o Faster-Whisper na GPU do PC antes do filtro CPU do FFmpeg, e `detectEncoder` prioriza `h264_nvenc` (GPU NVIDIA) antes de `h264_qsv` / `libx264`.
+- **Estúdio Completo `Video-Sharingan + IA Local` em `/sharingan` (`apps/web/app/(studio)/sharingan/page.tsx`, `/api/sharingan`, `/api/sharingan/media`):**
+  - Integração nativa de todo o ecossistema `F:\Python Projects\reels_tools\video-sharingan` (`sharingan.py` + `local_vlm.py` + `Qwen2.5-VL-7B` via Ollama local na RTX 3060, custo **US$ 0.00**):
+    - **Aba 1 (DNA Óptico & Clonagem Multi-Pass):** seletor dos 4 modos de visão local (`Pass 1 Keyframes`, `Pass 2 Step=5 Dense`, `Pass 3 Adaptive High-Motion Burst`, `Pass 4 Forense Step=1 1:1 720×720 Strips`), cards de métricas medidas (`analysis.json`: ASL, velocidade de câmera em `%W/s`, DOF/Laplacian, BPM, paleta hex, grão $\sigma$) e visualizador duplo de `brief.md` e `local_vlm_spec.md`.
+    - **Aba 2 (Grade `10%×10%` & Inspetor Forense `1:1` ao Vivo):** galeria de Contact Sheets, frames `720p` com grade de coordenadas X%/Y% e tiras forenses `1:1` de 6 quadros (`step=1`), navegador de lotes salvos (`local_vlm_vision_merged.json` / `forensic_step1_vision.json`) e consulta ao vivo ao `Qwen2.5-VL-7B` na RTX 3060.
+    - **Aba 3 (Palco HTML5/GSAP Interativo, Comparativo 3-Vias & 12 QC Gates):** palco `1080×1920` ao vivo em iframe com scrubber determinístico (`window.__timelines.main.seek(t)`), botão de renderização Playwright + FFmpeg no PC, player de vídeos comparativos 2-vias e 3-vias (`Original vs Híbrido vs Qwen2.5-VL Local`) e executor ao vivo dos **12 Portões de Qualidade (`sharingan.py compare`)**.
+    - **Aba 4 (Economia de Tokens & Telemetria GPU `US$ 0.00`):** painel detalhado (`token_savings_report_merged.json`) comparando o custo local (`US$ 0.00`) contra equivalentes em APIs pagas (`Claude Opus 4.6`, `Sonnet 4`, `GPT-4o`) e listando as janelas de `Adaptive High-Motion Burst`.
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**

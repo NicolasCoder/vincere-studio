@@ -16,6 +16,7 @@ const NewProject = z.object({
   audience: z.string().optional(),
   targetDuration: z.coerce.number().optional(),
   hooks: z.array(z.string()).default([]),
+  visualStyle: z.string().optional().default("DARK_DOC"),
 });
 
 export async function createProject(formData: FormData) {
@@ -27,6 +28,7 @@ export async function createProject(formData: FormData) {
     audience: formData.get("audience") ?? undefined,
     targetDuration: formData.get("targetDuration") ?? undefined,
     hooks: formData.getAll("hooks").map(String),
+    visualStyle: formData.get("visualStyle") ? String(formData.get("visualStyle")) : "DARK_DOC",
   });
   const format = FORMATS[data.format as VideoFormat];
   const p = await prisma.project.create({
@@ -39,6 +41,7 @@ export async function createProject(formData: FormData) {
       audience: data.audience,
       targetDuration: data.targetDuration ?? format.duration.default,
       hooks: JSON.stringify(data.hooks),
+      visualStyle: data.visualStyle,
       status: "IN_PROGRESS",
     },
   });

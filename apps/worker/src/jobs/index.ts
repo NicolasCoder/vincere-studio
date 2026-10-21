@@ -15,6 +15,8 @@ import { publishYoutube } from "./publish-youtube";
 import { generateEditPlan } from "./edit-plan";
 import { generateImages } from "./generate-images";
 import { applyVisualLayer } from "./apply-visual-layer";
+import { talkingHeadPipeline } from "./talking-head";
+import { sharinganClone } from "./sharingan-clone";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -45,4 +47,6 @@ export const handlers: Record<JobType, JobHandler> = {
   GENERATE_EDIT_PLAN: generateEditPlan,
   GENERATE_IMAGES: generateImages,
   APPLY_VISUAL_LAYER: applyVisualLayer,
+  TALKING_HEAD_PIPELINE: talkingHeadPipeline,
+  SHARINGAN_CLONE: sharinganClone,
 };

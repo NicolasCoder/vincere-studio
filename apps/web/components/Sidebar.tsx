@@ -23,7 +23,8 @@ const sections: NavSection[] = [
     title: "CRIAR",
     items: [
       { href: "/dashboard", icon: "home", label: "Início" },
-      { href: "/projects", icon: "movie", label: "Projetos" },
+      { href: "/projects", icon: "movie", label: "Projetos (Dark & Doc)" },
+      { href: "/talking-head", icon: "person_pin", label: "Talking Head & Reels", badge: "Novo", live: true },
       { href: "/studio", icon: "movie_filter", label: "HyperFrames Studio", accent: true },
       { href: "/tendencias", icon: "trending_up", label: "Tendências" },
       { href: "/copilot", icon: "edit_note", label: "Roteiro em beats" },
@@ -32,9 +33,10 @@ const sections: NavSection[] = [
   {
     title: "GERAR COM IA",
     items: [
+      { href: "/sharingan", icon: "visibility", label: "Clonagem (Sharingan)", badge: "Local/Cloud", accent: true },
       { href: "/flow-studio", icon: "auto_awesome", label: "Imagem e vídeo (Flow)" },
       { href: "/prompts", icon: "photo_library", label: "Biblioteca de prompts" },
-      { href: "/voice-studio", icon: "record_voice_over", label: "Vozes" },
+      { href: "/voice-studio", icon: "record_voice_over", label: "Vozes (Duas Vias)" },
       { href: "/workflow", icon: "account_tree", label: "Workflow nodal" },
     ],
   },

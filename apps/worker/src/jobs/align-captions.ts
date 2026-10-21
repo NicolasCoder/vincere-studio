@@ -1,14 +1,69 @@
 import path from "node:path";
 import { existsSync } from "node:fs";
 import { readFile, rm } from "node:fs/promises";
+import { spawn } from "node:child_process";
 import { prisma } from "@vincere-studio/db";
 import { FFMPEG, absPath, hasWhisperFilter, run, storageRoot } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 interface Word { text: string; startMs: number; endMs: number }
 
+const PC_GPU_BRIDGECandidates = [
+  path.resolve(process.cwd(), "scripts", "pc-gpu-bridge.py"),
+  path.resolve(process.cwd(), "..", "..", "scripts", "pc-gpu-bridge.py"),
+];
+
+function resolvePcGpuBridge(): string | null {
+  for (const p of PC_GPU_BRIDGECandidates) {
+    if (existsSync(p)) return p;
+  }
+  return null;
+}
+
+async function alignWithPcGpuWhisper(audioPath: string, bridgeScript: string): Promise<Word[] | null> {
+  return new Promise((resolve) => {
+    const payload = JSON.stringify({ audioPath, model: "base", language: "pt" });
+    const proc = spawn("python", [bridgeScript, "transcribe", "--payload", payload], {
+      env: { ...process.env, PYTHONIOENCODING: "utf-8" },
+      windowsHide: true,
+    });
+    let stdout = "";
+    proc.stdout.on("data", (d) => {
+      stdout += String(d);
+    });
+    proc.on("error", () => resolve(null));
+    proc.on("close", () => {
+      const lines = stdout
+        .trim()
+        .split(/\r?\n/)
+        .map((l) => l.trim())
+        .filter(Boolean);
+      const last = lines[lines.length - 1] ?? "";
+      try {
+        const parsed = JSON.parse(last) as {
+          ok?: boolean;
+          words?: { word: string; start: number; end: number }[];
+        };
+        if (parsed.ok && Array.isArray(parsed.words) && parsed.words.length > 0) {
+          resolve(
+            parsed.words.map((w) => ({
+              text: w.word,
+              startMs: Math.round(Number(w.start) * 1000),
+              endMs: Math.round(Number(w.end) * 1000),
+            })),
+          );
+          return;
+        }
+      } catch {}
+      resolve(null);
+    });
+  });
+}
+
 /**
  * ALIGN_CAPTIONS: gera timestamps por palavra para cada faixa de voz.
+ * 0) Prioriza o Faster-Whisper na GPU Local do PC (`scripts/pc-gpu-bridge.py transcribe`, RTX 3060 CUDA float16)
+ *    para obter timestamps exatos por palavra em fração de segundo.
  * 1) Se o FFmpeg tiver o filtro whisper e o modelo existir em storage/models/ggml-base.bin,
  *    usa os segmentos do whisper e distribui as palavras dentro de cada segmento.
  * 2) Senão, distribui proporcionalmente ao tamanho das palavras na duração da faixa.
@@ -18,13 +73,20 @@ export async function alignCaptions(ctx: JobContext) {
   const projectId = String(ctx.payload.projectId ?? ctx.job.projectId ?? "");
   const script = await prisma.script.findFirst({ where: { projectId }, orderBy: { version: "desc" }, include: { blocks: { orderBy: { order: "asc" }, include: { voiceTracks: true } } } });
   if (!script) throw new Error("Sem roteiro");
+  const pcBridge = resolvePcGpuBridge();
   const model = path.join(storageRoot(), "models", "ggml-base.bin");
   const whisper = (await hasWhisperFilter()) && existsSync(model);
-  await ctx.log(whisper ? "Whisper (FFmpeg) disponível: alinhamento por segmentos" : "Whisper indisponível (modelo ausente): alinhamento proporcional");
+  await ctx.log(
+    pcBridge
+      ? "PC GPU Faster-Whisper (RTX 3060 CUDA) disponível: alinhamento exato palavra a palavra"
+      : whisper
+        ? "Whisper (FFmpeg) disponível: alinhamento por segmentos"
+        : "Whisper indisponível (modelo ausente): alinhamento proporcional",
+  );
 
   const tracks = script.blocks.flatMap((b) => b.voiceTracks.map((t) => ({ t, b })));
   if (!tracks.length) throw new Error("Sintetize a locução antes de alinhar as legendas.");
-  let mode = whisper ? "whisper" : "proportional";
+  let mode = pcBridge ? "pc_gpu_whisper" : whisper ? "whisper" : "proportional";
 
   for (let i = 0; i < tracks.length; i++) {
     const { t, b } = tracks[i];
@@ -32,7 +94,10 @@ export async function alignCaptions(ctx: JobContext) {
     const clean = b.narration.replace(/\[[^\]]*\]/g, " ").replace(/\s+/g, " ").trim();
     const words = clean.split(" ").filter(Boolean);
     let result: Word[] | null = null;
-    if (whisper) {
+    if (pcBridge) {
+      result = await alignWithPcGpuWhisper(absPath(t.filePath), pcBridge).catch(() => null);
+    }
+    if (!result && whisper) {
       try {
         result = await alignWithWhisper(absPath(t.filePath), model, words, t.durationMs);
       } catch (err) {

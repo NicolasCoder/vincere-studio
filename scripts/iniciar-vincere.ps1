@@ -1,4 +1,4 @@
-﻿# Sobe, no PC, tudo que o Vincere Studio (rodando na VPS) precisa — sem duplicar nada.
+# Sobe, no PC, tudo que o Vincere Studio (rodando na VPS) precisa — sem duplicar nada.
 # Cada serviço só é iniciado se a porta dele ainda não estiver ocupada.
 #   3210  túnel SSH: web da VPS no PC + repassa 3010/9334 do PC para a VPS
 #   3010  HyperFrames preview (C:\Users\Igor\Videos-HF)
@@ -25,10 +25,15 @@ if (-not (Test-Port 9334)) {
   Start-Hidden "python.exe" "flow_queue_daemon.py" "C:\Users\Igor\flow-studio-mcp"
 } else { Write-Host "Flow daemon (9334) ja ativo." }
 
+if (-not (Test-Port 9335)) {
+  Write-Host "Iniciando PC GPU Bridge (9335 - RTX 3060 / RVC V2 / Whisper CUDA / Sharingan Qwen2.5-VL)..."
+  Start-Hidden "python.exe" "scripts\pc-gpu-bridge.py --serve --port 9335" $repo
+} else { Write-Host "PC GPU Bridge (9335) ja ativo." }
+
 # Só o 127.0.0.1 conta: o lan-proxy também escuta 3210 (no IP da rede) e mascararia um túnel caído.
 if (-not (Get-NetTCPConnection -LocalAddress 127.0.0.1 -LocalPort 3210 -State Listen -ErrorAction SilentlyContinue)) {
-  Write-Host "Abrindo tunel SSH com a VPS (3210)..."
-  Start-Hidden "ssh.exe" "-p 22022 -i C:/Users/Igor/.ssh/claude_vps_ed25519 -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -N -L 3210:127.0.0.1:3210 -R 9334:127.0.0.1:9334 -R 3010:127.0.0.1:3010 root@143.95.167.129" $repo
+  Write-Host "Abrindo tunel SSH com a VPS (3210 + repasse GPU 9335)..."
+  Start-Hidden "ssh.exe" "-p 22022 -i C:/Users/Igor/.ssh/claude_vps_ed25519 -o ServerAliveInterval=30 -o ExitOnForwardFailure=yes -N -L 3210:127.0.0.1:3210 -R 9334:127.0.0.1:9334 -R 9335:127.0.0.1:9335 -R 3010:127.0.0.1:3010 root@143.95.167.129" $repo
 } else { Write-Host "Tunel (3210) ja ativo." }
 
 $lan = Get-NetIPAddress -AddressFamily IPv4 -ErrorAction SilentlyContinue |

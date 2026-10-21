@@ -1,8 +1,9 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import crypto from "node:crypto";
-import { storageRoot } from "@vincere-studio/providers";
+import { EdgeVoiceProvider, probeDurationMs, storageRoot } from "@vincere-studio/providers";
 import { alinharPalavras, dividirEmTrechos, gerarSrt, limparMarcacoes, prepararTextoParaFala } from "@/lib/texto-fala";
+import { callPcGpuBridge, getPcGpuStatus } from "@/lib/pc-gpu-engine";
 
 // Cliente do VoiceStudio (container na VPS, MCP em :3900). Tudo de voz passa por aqui no
 // servidor; o navegador nunca fala com a porta 3900 nem vê a chave.
@@ -92,6 +93,7 @@ export interface TarefaVoz {
   feitos: number;
   vozId: string;
   qualidade: Qualidade;
+  motor?: "PC_GPU" | "VPS_CPU";
   arquivo?: string; // relativo ao storage, servido por /api/media/…
   legendas?: { words: string; srt: string }; // words.json (subtitles-studio/HyperFrames) e .srt
   duracaoS?: number;
@@ -176,6 +178,8 @@ export async function criarTarefaNarracao(input: {
   velocidade?: number;
   estilo?: string;
   idioma?: string;
+  engine?: "PC_GPU" | "VPS_CPU" | "AUTO";
+  pitch?: number;
 }): Promise<TarefaVoz> {
   // Divide o texto ORIGINAL (o que a legenda mostra) e prepara cada trecho para a fala: assim
   // trecho falado e trecho exibido se correspondem 1:1 e as legendas saem alinhadas.
@@ -185,6 +189,10 @@ export async function criarTarefaNarracao(input: {
   const trechos = ehPortugues ? trechosOriginais.map(prepararTextoParaFala) : trechosOriginais;
   const textoFalado = trechos.join(" ");
   const agora = new Date().toISOString();
+
+  const isLocalVoiceId = input.vozId.startsWith("rvc:") || input.vozId.startsWith("local_");
+  const preferPcGpu = input.engine !== "VPS_CPU" && (input.engine === "PC_GPU" || isLocalVoiceId || !KEY());
+
   const tarefa: TarefaVoz = {
     id: crypto.randomUUID(),
     status: "fila",
@@ -196,10 +204,117 @@ export async function criarTarefaNarracao(input: {
     feitos: 0,
     vozId: input.vozId,
     qualidade: input.qualidade,
+    motor: preferPcGpu ? "PC_GPU" : "VPS_CPU",
   };
   await salvarTarefa(tarefa);
 
-  const executar = async () => {
+  const executarNoPcGpu = async () => {
+    tarefa.status = "gerando";
+    tarefa.motor = "PC_GPU";
+    await salvarTarefa(tarefa);
+
+    const outDir = path.join(storageRoot(), "voicestudio", "narracoes");
+    await fs.mkdir(outDir, { recursive: true });
+    const baseWav = path.join(outDir, `${tarefa.id}_base.wav`);
+    const finalWav = path.join(outDir, `${tarefa.id}.wav`);
+
+    const edge = new EdgeVoiceProvider();
+    const edgeVoiceId = ehPortugues ? "pt-BR-AntonioNeural" : "en-US-ChristopherNeural";
+    const duracoes: number[] = [];
+    const wavBuffers: Buffer[] = [];
+
+    for (let i = 0; i < trechos.length; i++) {
+      const segPath = path.join(outDir, `${tarefa.id}_seg_${i}.wav`);
+      await edge.synthesize(
+        {
+          text: trechos[i]!,
+          voiceId: edgeVoiceId,
+          rate: input.velocidade ?? 1,
+          language: input.idioma || "pt-BR",
+        },
+        segPath,
+      );
+      const buf = await fs.readFile(segPath);
+      const durMs = await probeDurationMs(segPath).catch(() => Math.max(800, trechos[i]!.length * 65));
+      wavBuffers.push(buf);
+      duracoes.push(durMs / 1000);
+      await fs.rm(segPath).catch(() => {});
+      tarefa.feitos++;
+      await salvarTarefa(tarefa);
+    }
+
+    const joined = juntarWavs(wavBuffers);
+    await fs.writeFile(baseWav, joined);
+
+    // Verifica se devemos aplicar conversão de timbre RVC V2 na GPU do PC (RTX 3060)
+    let rvcModelPth = "";
+    if (input.vozId.startsWith("rvc:")) {
+      rvcModelPth = input.vozId.slice(4);
+    } else {
+      const pcStatus = await getPcGpuStatus();
+      const localMatch = pcStatus?.localVoices.find((v) => v.id === input.vozId);
+      if (localMatch?.rvcModel) {
+        rvcModelPth = localMatch.rvcModel;
+      } else if (pcStatus?.rvcModels?.[0]?.pthFile) {
+        rvcModelPth = pcStatus.rvcModels[0].pthFile;
+      }
+    }
+
+    if (rvcModelPth) {
+      try {
+        await callPcGpuBridge(
+          "rvc_convert",
+          {
+            inputWav: baseWav,
+            outputWav: finalWav,
+            modelPth: rvcModelPth,
+            pitch: input.pitch ?? 0,
+          },
+          300_000,
+        );
+        await fs.rm(baseWav).catch(() => {});
+      } catch {
+        // Se o RVC falhar por qualquer motivo, preserva o áudio neural base
+        await fs.rename(baseWav, finalWav);
+      }
+    } else {
+      await fs.rename(baseWav, finalWav);
+    }
+
+    const duracao = duracoes.reduce((a, b) => a + b, 0);
+    const rel = `voicestudio/narracoes/${tarefa.id}.wav`;
+    tarefa.arquivo = rel;
+    tarefa.duracaoS = Math.round(duracao * 10) / 10;
+
+    // Tenta alinhar palavra por palavra via Faster-Whisper na GPU do PC; fallback para alinhamento proporcional exato
+    let palavras = alinharPalavras(trechosOriginais, duracoes, PAUSA_MS / 1000, ehPortugues);
+    try {
+      const whisperRes = await callPcGpuBridge<{
+        ok?: boolean;
+        words?: { word: string; start: number; end: number }[];
+      }>("transcribe", { audioPath: finalWav, language: ehPortugues ? "pt" : input.idioma || "pt", modelSize: "base" }, 90_000);
+      if (whisperRes?.ok && Array.isArray(whisperRes.words) && whisperRes.words.length > 0) {
+        palavras = whisperRes.words.map((w) => ({
+          word: w.word,
+          start: w.start,
+          end: w.end,
+        }));
+      }
+    } catch {}
+
+    const total = duracao + (PAUSA_MS * Math.max(0, trechos.length - 1)) / 1000;
+    const base = `voicestudio/narracoes/${tarefa.id}`;
+    await fs.writeFile(
+      path.join(storageRoot(), `${base}.words.json`),
+      JSON.stringify({ clip: `${tarefa.id}.wav`, duration: Math.round(total * 1000) / 1000, text: trechosOriginais.join(" "), words: palavras }, null, 2),
+    );
+    await fs.writeFile(path.join(storageRoot(), `${base}.srt`), gerarSrt(palavras));
+    tarefa.legendas = { words: `${base}.words.json`, srt: `${base}.srt` };
+    tarefa.status = "pronto";
+    await salvarTarefa(tarefa);
+  };
+
+  const executarNaVps = async () => {
     tarefa.status = "gerando";
     await salvarTarefa(tarefa);
     const wavs: Buffer[] = [];
@@ -244,6 +359,17 @@ export async function criarTarefaNarracao(input: {
     tarefa.legendas = { words: `${base}.words.json`, srt: `${base}.srt` };
     tarefa.status = "pronto";
     await salvarTarefa(tarefa);
+  };
+
+  const executar = async () => {
+    if (preferPcGpu) {
+      return executarNoPcGpu();
+    }
+    try {
+      return await executarNaVps();
+    } catch {
+      return executarNoPcGpu();
+    }
   };
 
   filaVoz = filaVoz

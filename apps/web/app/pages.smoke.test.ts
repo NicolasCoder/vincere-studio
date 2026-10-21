@@ -18,7 +18,10 @@ let sampleProjectId: string | null = null;
 // 2) processo órfão — com shell:true o PID retornado é o do cmd.exe, não do next-server;
 // matar só o cmd.exe deixa o servidor de verdade preso na porta pro próximo `pnpm test`.
 // Chamando node+bin diretamente, o PID do spawn já É o processo real do servidor.
-const nextBin = path.resolve(process.cwd(), "node_modules/next/dist/bin/next");
+import { createRequire } from "node:module";
+import fs from "node:fs";
+const require = createRequire(import.meta.url);
+const nextBin = require.resolve("next/dist/bin/next");
 
 function run(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
@@ -43,7 +46,9 @@ async function waitForServer(timeoutMs: number) {
 }
 
 beforeAll(async () => {
-  await run(["build"]);
+  if (!fs.existsSync(path.resolve(process.cwd(), ".next/BUILD_ID"))) {
+    await run(["build"]);
+  }
 
   server = spawn(process.execPath, [nextBin, "start", "--port", String(PORT)], { cwd: process.cwd(), stdio: "pipe" });
   await waitForServer(60_000);
@@ -69,6 +74,15 @@ describe("smoke test — páginas críticas (200 OK)", () => {
   it("/projects responde 200", async () => {
     const res = await fetch(`${BASE_URL}/projects`);
     expect(res.status).toBe(200);
+  });
+
+  it("/talking-head e /sharingan respondem 200", async () => {
+    const [r1, r2] = await Promise.all([
+      fetch(`${BASE_URL}/talking-head`),
+      fetch(`${BASE_URL}/sharingan`),
+    ]);
+    expect(r1.status).toBe(200);
+    expect(r2.status).toBe(200);
   });
 
   it("/projects/[id]/repurposing responde 200 (rota do bug histórico de onClick em Server Component)", async () => {

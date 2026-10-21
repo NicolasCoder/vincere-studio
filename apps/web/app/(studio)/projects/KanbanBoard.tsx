@@ -11,6 +11,7 @@ export interface KanbanProject {
   niche: string;
   format: string;
   stage: string;
+  visualStyle?: string;
 }
 
 /**
@@ -122,9 +123,14 @@ export function KanbanBoard({ projects }: { projects: KanbanProject[] }) {
                   className={`cursor-grab active:cursor-grabbing ${arrastando === p.id ? "opacity-40" : ""}`}
                 >
                   <Card className="group relative h-full p-3 hover:border-line-glow" accent={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
-                    <Chip active tone={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
-                      {FORMATS[p.format as VideoFormat].ratio}
-                    </Chip>
+                    <div className="flex items-center gap-1.5 flex-wrap">
+                      <Chip active tone={p.format === "SHORT_9_16" ? "violet" : "cyan"}>
+                        {FORMATS[p.format as VideoFormat].ratio}
+                      </Chip>
+                      <Badge tone={p.visualStyle === "TALKING_HEAD" ? "success" : "neutral"}>
+                        {p.visualStyle === "TALKING_HEAD" ? "Talking Head" : "Dark / Doc"}
+                      </Badge>
+                    </div>
                     {/* Apagar fica escondido até o ponteiro chegar na carta: é irreversível e leva
                         os arquivos junto, então não deve estar no caminho de um clique distraído. */}
                     <button
