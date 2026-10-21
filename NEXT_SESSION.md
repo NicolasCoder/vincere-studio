@@ -19,6 +19,25 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
   - Geração de voz + conversão neural RVC V2 (`rmvpe`), análise acústica para clonagem de voz ($F_0$, SNR dB, % voz ativa, normalização 44.1kHz), transcrição/alinhamento palavra a palavra via **Faster-Whisper CUDA (`float16`)** e codificação de vídeo `h264_nvenc` priorizados na GPU local (`RTX 3060 12GB`), com fallback transparente para a VPS/Cloud.
 - **Validação técnica executada e verde:** `pnpm typecheck` (7/7 pacotes) e `pnpm test` (incluindo build de produção do Next.js e smoke tests de `/sharingan`, `/talking-head` e `/projects`) passando sem erros.
 
+## Estado deixado em 21/10/2026 (Claude) — handoff para o Nicolas
+
+- **PR #3** (`feat/restaura-copiloto` → `main`, CI verde) traz: esteira do Copiloto (`/copiloto`), painel de canais
+  em Métricas, provedor `VOICESTUDIO`, botão "Atualizar versão", Console Admin (`scripts/admin`) e a correção de
+  segurança da ponte de GPU. Ele **inclui o seu PR #2** (a branch parte da sua). Revisar e mesclar nesta ordem:
+  #2 e #3 (ou só o #3).
+- **Ponte de GPU**: agora exige `PC_GPU_TOKEN` (o mesmo no `.env` do PC e da VPS; `iniciar-vincere.ps1` gera o do
+  PC) e só lê/grava em pastas permitidas (`PC_GPU_ALLOWED_DIRS` para as suas, ex.: pasta de vídeos de referência).
+  Se algo do Sharingan/Talking Head quebrar com "Caminho fora das pastas permitidas", é isso.
+- **Estrutural — é do Nicolas** (detalhes em `docs/PROGRESSO_SESSAO.md`, "Oitava rodada"):
+  1. HyperFrames na VPS sempre ligado (hoje o preview mora no PC e vem por túnel reverso; o `deploy-vps.sh`
+     encerra qualquer `hyperframes preview` na VPS — ajustar junto).
+  2. "Perfil de execução" (PC fraco / PC forte / nuvem): cada etapa da esteira escolhe o motor por ele.
+  3. Pastas de mídia e projetos por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`) e VoiceStudio clonado como
+     provedor completo do pipeline (hoje o `VOICESTUDIO` só narra; falta testar de ponta a ponta).
+  4. Edição por voz e LLM/agente configurável pelo usuário (base: microfone do `/studio`, `ASSISTENTE_PROVIDER`).
+- **Antes de mexer**: `git fetch` e `git switch feat/restaura-copiloto` (ou `main` depois do merge); rodar
+  `pnpm typecheck && pnpm test && pnpm build`; só subir quando estiver verde. O repositório agora é **privado**.
+
 ## Estado deixado em 20/10/2026 (Claude) — ler primeiro
 
 - Handoff completo (feito, pendente, como retomar): Obsidian
