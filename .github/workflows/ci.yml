@@ -9,6 +9,8 @@ jobs:
   verificar:
     runs-on: ubuntu-latest
     env:
+      # O next build (no teste de páginas e no passo de build) passa de 2 GB de heap; o runner tem 7 GB.
+      NODE_OPTIONS: --max-old-space-size=4096
       # Banco descartável só da CI. O smoke test das páginas e o build leem este DATABASE_URL
       # (o .env do PC não existe aqui); os testes de db/providers usam o .env.test versionado.
       DATABASE_URL: file:${{ github.workspace }}/ci.db
