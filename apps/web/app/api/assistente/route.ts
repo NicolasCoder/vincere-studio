@@ -11,23 +11,25 @@ export const dynamic = "force-dynamic";
 
 // Mapa das telas: é o que o assistente pode indicar em "irPara".
 const TELAS: Record<string, string> = {
-  "/dashboard": "Início: escolher um nicho e começar um vídeo; status dos motores; projetos recentes",
-  "/projects": "Projetos do banco (pipeline clássico: ideia → roteiro → mídia → render → publicação); cada projeto tem o painel Saúde do projeto com o próximo passo",
-  "/studio": "HyperFrames Studio: timeline ao vivo do projeto em C:\\Users\\Igor\\Videos-HF; editar cenas pedindo ao Claude",
-  "/copiloto": "Copiloto (esteira de criação): ideia → roteiro em beats → narração → cenas e B-roll → bruto, que segue para o HyperFrames; chama skills em cada etapa",
+  "/dashboard": "Início: escolher formato (Vertical 9:16, Horizontal 16:9, Quadrado 1:1) e estilo no carrossel; fila de processamento e projetos recentes",
+  "/workflow": "Copiloto & Fluxo Nodal (estilo ComfyUI): descrever a meta e etapas para a IA montar o grafo de nodes automaticamente, ou usar fluxos prontos",
+  "/studio": "HyperFrames Studio: pré-visualização e timeline ao vivo do projeto em C:\\Users\\Igor\\Videos-HF; editar cenas pedindo ao Claude",
+  "/tendencias": "Pesquisa de tendências com dados reais (vidIQ, buscas, Reddit/X, notícias) por idioma/mercado: temas e nichos fora do óbvio, com evidência e botão para virar vídeo",
+  "/sharingan": "Clonagem (Sharingan): enviar múltiplos arquivos de vídeo/imagem de referência, clicar em Clonar na GPU local (mostra a economia de GPU vs CPU/Nuvem), ver galeria e histórico",
+  "/motion-dex": "MotionDex: enciclopédia ('Pokédex') de Motions clonados, ritmos de corte e coreografias de câmera prontos para usar",
   "/flow-studio": "Gerar imagem (Nano Banana) e vídeo (Veo) no Google Flow e vincular à cena",
   "/prompts": "Biblioteca de prompts testados de imagem e vídeo, com imagem de referência",
-  "/voice-studio": "Central de Vozes: narrar com voz clonada (qualidade rascunho/equilibrado/final, roda em segundo plano), rascunho rápido grátis (Edge TTS), clonar voz enviando um áudio de 5-30s e transcrever áudio",
-  "/tipografia": "Combinações de fontes do Google por nicho, com prévia ao vivo e CSS pronto para o HyperFrames",
-  "/tendencias": "Pesquisa de tendências com dados reais (vidIQ, buscas, Reddit/X, notícias) por idioma/mercado: temas e nichos fora do óbvio, com evidência e botão para virar vídeo",
-  "/workflow": "Workflow nodal: avatar, produto, cenário, prompt, voz e render conectados",
+  "/voice-studio": "Vozes & Whisper (GPU): narrar com voz clonada, rascunho rápido grátis (Edge TTS), clonar voz e transcrever áudio na GPU do PC",
   "/skills": "Skills e receitas por nicho, com exemplo de pedido",
+  "/tipografia": "Combinações de fontes do Google por nicho, com prévia ao vivo e CSS pronto para o HyperFrames",
   "/references": "Canais de referência",
   "/assets": "Mídias geradas e baixadas",
   "/channels": "Canais do YouTube conectados",
   "/metrics": "Métricas de retenção",
-  "/health": "Saúde do sistema",
   "/settings": "Configurações (chaves, orçamento, vozes)",
+  "/copiloto": "Esteira Linear Clássica (Ideia → Roteiro → Narração → Cenas → Bruto)",
+  "/talking-head": "Talking Head & Cortes (reels_tools)",
+  "/projects": "Quadro de Projetos (Kanban)",
 };
 
 const SYSTEM = `Você é o Vince, o assistente que mora dentro do Vincere Studio, um estúdio de vídeo com IA do Igor.

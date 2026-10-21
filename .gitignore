@@ -20,6 +20,7 @@ dist/
 *.id_ed25519
 storage/*
 !storage/.gitkeep
+apps/web/storage/
 .DS_Store
 _incoming/
 scripts/auto-pull.log

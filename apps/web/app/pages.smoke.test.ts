@@ -76,13 +76,17 @@ describe("smoke test — páginas críticas (200 OK)", () => {
     expect(res.status).toBe(200);
   });
 
-  it("/talking-head e /sharingan respondem 200", async () => {
-    const [r1, r2] = await Promise.all([
+  it("/talking-head, /sharingan, /motion-dex e /workflow respondem 200", async () => {
+    const [r1, r2, r3, r4] = await Promise.all([
       fetch(`${BASE_URL}/talking-head`),
       fetch(`${BASE_URL}/sharingan`),
+      fetch(`${BASE_URL}/motion-dex`),
+      fetch(`${BASE_URL}/workflow`),
     ]);
     expect(r1.status).toBe(200);
     expect(r2.status).toBe(200);
+    expect(r3.status).toBe(200);
+    expect(r4.status).toBe(200);
   });
 
   it("/projects/[id]/repurposing responde 200 (rota do bug histórico de onClick em Server Component)", async () => {

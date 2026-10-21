@@ -10,8 +10,15 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
-## Estado deixado em 21/10/2026 — Video-Sharingan + IA Local & Offload GPU (`RTX 3060 12GB`)
+## Estado deixado em 21/10/2026 — Video-Sharingan + IA Local, MotionDex & Redesign Apple Minimalista
 
+- **Redesign Minimalista (Guidelines Apple HIG & Emil Kowalski) e Reestruturação de UX (`apps/web` + `packages/ui`):**
+  - **Sidebar em Acordeão (`Sidebar.tsx`)**: dividida em `CRIAR`, `MOTION DEX`, `GERAR COM IA`, `BIBLIOTECA` e `SISTEMA & OUTROS`. Títulos principais sem ícones e em fonte menor (`10px` uppercase) que os itens de submenu (`13px`), eliminando poluição visual.
+  - **Início (`dashboard/page.tsx` + `NichoLauncher.tsx`)**: seletor de proporção (`9:16`, `16:9`, `1:1`) + carrossel horizontal `Estilo de vídeo` com cards largos e títulos em até 2 linhas (`line-clamp-2`), fila de processamento em destaque e indicadores condicionais.
+  - **Copiloto & Fluxo Estilo ChatGPT / n8n (`/workflow` + `/workflow/[id]`)**:
+    - Ao abrir `/workflow`: caixa de chat centralizada estilo GPT/n8n para a IA arquitetar os nodes (`createWorkflowWithAi`), grid de **Fluxos prontos (1 clique)** logo abaixo e coluna de **Fluxos Salvos** à direita.
+    - No editor nodal (`/workflow/[id]`): barra lateral esquerda com **Fluxos Salvos** e botão `+ Novo Fluxo (IA / Templates)` no rodapé.
+  - **MotionDex (`/motion-dex`) + Clonagem Sharingan (`/sharingan`)**: enciclopédia visual estilo Pokédex de motions clonados e tela de clonagem enxuta com banner de economia na GPU, dropzone único multi-arquivo (`/api/sharingan/upload`), galeria e histórico.
 - **Estúdio Video-Sharingan (`/sharingan`) e Talking Head (`/talking-head`) integrados na interface do Vincere Studio:**
   - Suporte completo aos 4 modos de visão computacional local (`local_vlm.py` + `Qwen2.5-VL-7B` via Ollama na RTX 3060: `Pass 1 Keyframes`, `Pass 2 Step=5 Dense`, `Pass 3 Adaptive High-Motion Burst` e `Pass 4 Forense Step=1 1:1 720×720 Strips`).
   - Galeria interativa de frames `720p` com grade `10%×10%`, tiras forenses `1:1` de 6 quadros, consulta ao vivo ao `Qwen2.5-VL-7B`, palco HTML5/GSAP interativo com scrubber `window.__timelines.main.seek(t)`, comparativos 2-vias/3-vias, 12 Portões de Qualidade (`sharingan.py compare`) e painel de economia de tokens (`US$ 0.00`).
