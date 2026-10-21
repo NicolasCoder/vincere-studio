@@ -363,7 +363,7 @@ const createProjectSchema = z.object({
   height: z.number().int().min(320).max(3840).default(1920),
   template: z.string().optional(),
   prompt: z.string().optional(),
-  engine: z.enum(["auto", "agy", "claude", "inbox"]).optional(),
+  engine: z.enum(["auto", "agy", "claude", "hermes", "inbox"]).optional(),
 });
 
 const decisaoSchema = z.object({

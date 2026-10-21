@@ -2,13 +2,24 @@ import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
 import { updateRequest } from "./claude-inbox";
+import {
+  buildHermesInvocation,
+  describeHermes,
+  readHermesConfig,
+  remoteProjectDir,
+  type AgentEngineId,
+  type AgentInvocation,
+  type DetectedHermes,
+} from "./agent-adapters";
 
-export type AgentEngineId = "auto" | "agy" | "claude" | "inbox";
+export type { AgentEngineId } from "./agent-adapters";
 
 export interface DetectedAgents {
   agyPath: string | null;
   claudePath: string | null;
   preferred: "agy" | "claude" | "inbox";
+  /** Só presente quando o Hermes foi configurado no .env; não entra na escolha "preferred". */
+  hermes: DetectedHermes;
 }
 
 const AGY_CANDIDATES = [
@@ -27,7 +38,7 @@ export function detectLocalAgents(): DetectedAgents {
   const agyPath = AGY_CANDIDATES.find((p) => existsSync(p)) ?? null;
   const claudePath = CLAUDE_CANDIDATES.find((p) => existsSync(p)) ?? null;
   const preferred = agyPath ? "agy" : claudePath ? "claude" : "inbox";
-  return { agyPath, claudePath, preferred };
+  return { agyPath, claudePath, preferred, hermes: describeHermes(readHermesConfig()) };
 }
 
 export interface AgentSelectionContext {
@@ -52,15 +63,17 @@ export interface RunLocalAgentInput {
   selection?: AgentSelectionContext | null;
 }
 
-function buildAgentPrompt(input: RunLocalAgentInput): string {
+// dirOverride: caminho do projeto como o agente o enxerga (num agente remoto, é o caminho do servidor).
+function buildAgentPrompt(input: RunLocalAgentInput, dirOverride?: string): string {
   const lines: string[] = [
     "Você está operando integrado ao Vincere Studio (HyperFrames Studio Local).",
     "Execute a alteração solicitada diretamente nos arquivos do projeto sem fazer perguntas.",
   ];
 
-  if (input.projectDir) {
-    lines.push(`Diretório do projeto HyperFrames ativo: ${input.projectDir}`);
-    lines.push(`Arquivo principal da composição: ${path.join(input.projectDir, "index.html")}`);
+  const projectDir = dirOverride ?? input.projectDir;
+  if (projectDir) {
+    lines.push(`Diretório do projeto HyperFrames ativo: ${projectDir}`);
+    lines.push(`Arquivo principal da composição: ${(dirOverride ? path.posix : path).join(projectDir, "index.html")}`);
   } else if (input.projectHf) {
     lines.push(`Projeto HyperFrames ativo: ${input.projectHf}`);
   }
@@ -102,14 +115,35 @@ function buildAgentPrompt(input: RunLocalAgentInput): string {
   return lines.filter((l) => l !== undefined).join("\n");
 }
 
+// Pasta do Node 22 que o Nicolas usa com o agy; só entra no PATH se existir (e com o separador do sistema).
+const LEGACY_NODE_DIR = "C:\\Users\\Nicolas\\AppData\\Local\\nvm\\v22.11.0";
+
+function agentEnv(): NodeJS.ProcessEnv {
+  const extra = [process.env.VINCERE_AGENT_PATH, existsSync(LEGACY_NODE_DIR) ? LEGACY_NODE_DIR : undefined].filter(
+    Boolean,
+  ) as string[];
+  if (extra.length === 0) return process.env;
+  return { ...process.env, PATH: [...extra, process.env.PATH || ""].join(path.delimiter) };
+}
+
+type EngineUsed = "agy" | "claude" | "hermes" | "inbox";
+
+const ENGINE_LABEL: Record<EngineUsed, string> = {
+  agy: "Antigravity (agy)",
+  claude: "Claude Code",
+  hermes: "Hermes",
+  inbox: "fila",
+};
+
 export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
   dispatched: boolean;
-  engineUsed: "agy" | "claude" | "inbox";
+  engineUsed: EngineUsed;
 }> {
   const detected = detectLocalAgents();
-  const requested = input.engine || "auto";
+  const hermesCfg = detected.hermes.available ? readHermesConfig() : null;
+  const requested: AgentEngineId = input.engine || "auto";
 
-  let engineUsed: "agy" | "claude" | "inbox" = "inbox";
+  let engineUsed: EngineUsed = "inbox";
   let binPath: string | null = null;
 
   if (requested === "agy" && detected.agyPath) {
@@ -118,6 +152,8 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
   } else if (requested === "claude" && detected.claudePath) {
     engineUsed = "claude";
     binPath = detected.claudePath;
+  } else if (requested === "hermes" && hermesCfg) {
+    engineUsed = "hermes";
   } else if (requested === "auto") {
     if (detected.agyPath) {
       engineUsed = "agy";
@@ -125,43 +161,54 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
     } else if (detected.claudePath) {
       engineUsed = "claude";
       binPath = detected.claudePath;
+    } else if (hermesCfg) {
+      // Último recurso: só existe se alguém configurou o Hermes de propósito.
+      engineUsed = "hermes";
     }
   }
 
-  if (!binPath || engineUsed === "inbox") {
+  if (engineUsed === "inbox" || (engineUsed !== "hermes" && !binPath)) {
     return { dispatched: false, engineUsed: "inbox" };
   }
 
   const repoRoot = path.resolve(process.cwd(), "..", "..");
   const cwd = input.projectDir && existsSync(input.projectDir) ? input.projectDir : repoRoot;
-  const fullPrompt = buildAgentPrompt(input);
+
+  let invocation: AgentInvocation;
+  if (engineUsed === "hermes" && hermesCfg) {
+    // Com agente remoto, o projeto é o do servidor (ou nenhum), nunca o caminho do PC.
+    const remoteDir = hermesCfg.mode === "ssh" ? remoteProjectDir(hermesCfg, input.projectDir, input.projectHf) : undefined;
+    const prompt = hermesCfg.mode === "ssh" ? buildAgentPrompt({ ...input, projectDir: undefined }, remoteDir) : buildAgentPrompt(input);
+    invocation = buildHermesInvocation(hermesCfg, {
+      prompt,
+      cwd,
+      projectDir: input.projectDir,
+      projectHf: input.projectHf,
+    });
+  } else {
+    const fullPrompt = buildAgentPrompt(input);
+    const args: string[] =
+      engineUsed === "agy"
+        ? ["--mode", "auto", "--dangerously-skip-permissions", "--add-dir", cwd, "-p", fullPrompt]
+        : ["--dangerously-skip-permissions", "-p", fullPrompt];
+    invocation = { command: binPath as string, args, cwd, label: ENGINE_LABEL[engineUsed] };
+  }
 
   await updateRequest(input.requestId, {
     status: "fazendo",
-    resposta: `Operando localmente com ${engineUsed === "agy" ? "Antigravity (agy)" : "Claude Code"} em ${path.basename(cwd)}...`,
+    resposta: `Operando ${engineUsed === "hermes" ? "com" : "localmente com"} ${invocation.label} em ${path.basename(cwd)}...`,
   });
 
-  const args: string[] =
-    engineUsed === "agy"
-      ? [
-          "--mode",
-          "auto",
-          "--dangerously-skip-permissions",
-          "--add-dir",
-          cwd,
-          "-p",
-          fullPrompt,
-        ]
-      : ["--dangerously-skip-permissions", "-p", fullPrompt];
-
-  const child = spawn(binPath, args, {
-    cwd,
-    env: {
-      ...process.env,
-      PATH: `C:\\Users\\Nicolas\\AppData\\Local\\nvm\\v22.11.0;${process.env.PATH || ""}`,
-    },
+  const child = spawn(invocation.command, invocation.args, {
+    cwd: invocation.cwd,
+    env: agentEnv(),
     windowsHide: true,
   });
+
+  if (invocation.stdin !== undefined) {
+    child.stdin?.on("error", () => {});
+    child.stdin?.end(invocation.stdin, "utf8");
+  }
 
   let stdout = "";
   let stderr = "";
@@ -187,7 +234,7 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
         status: "feito",
         resposta:
           cleanOut.slice(-4000) ||
-          `Alteração concluída pelo ${engineUsed === "agy" ? "Antigravity (agy)" : "Claude Code"}.`,
+          `Alteração concluída pelo ${ENGINE_LABEL[engineUsed]}.`,
       });
     } else {
       await updateRequest(input.requestId, {

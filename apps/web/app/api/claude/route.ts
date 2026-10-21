@@ -38,7 +38,7 @@ const createSchema = z.object({
   projectDir: z.string().max(500).optional(),
   projetoId: z.string().max(60).optional(),
   anexo: z.string().max(20000).optional(),
-  engine: z.enum(["auto", "agy", "claude", "inbox"]).optional(),
+  engine: z.enum(["auto", "agy", "claude", "hermes", "inbox"]).optional(),
   selection: selectionSchema,
 });
 
