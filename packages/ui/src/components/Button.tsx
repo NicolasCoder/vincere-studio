@@ -14,15 +14,15 @@ export interface ButtonProps extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const base =
-  "inline-flex items-center justify-center gap-2 rounded font-display font-semibold transition-all duration-150 disabled:opacity-50 disabled:pointer-events-none whitespace-nowrap";
+  "inline-flex items-center justify-center gap-2 rounded-lg font-display font-medium tracking-[-0.01em] transition-[transform,background-color,border-color,color,opacity,filter] duration-150 ease-[cubic-bezier(0.23,1,0.32,1)] active:scale-[0.97] disabled:opacity-45 disabled:pointer-events-none whitespace-nowrap select-none";
 
 const variants: Record<Variant, string> = {
   primary: "gradient-cta text-fg shadow-glow-cta hover:brightness-110",
-  secondary: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
-  ghost: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
-  outline: "bg-surface/60 border border-line text-fg-secondary hover:border-primary-bright hover:text-fg",
-  subtle: "bg-transparent text-fg-secondary hover:bg-line/40 hover:text-fg",
-  icon: "size-8 !p-0 bg-transparent text-fg-secondary hover:bg-line/40 hover:text-fg",
+  secondary: "bg-surface/70 border border-white/[0.08] text-fg-secondary hover:border-white/[0.18] hover:bg-surface-elevated/80 hover:text-fg",
+  ghost: "bg-surface/60 border border-white/[0.07] text-fg-secondary hover:border-white/[0.16] hover:text-fg",
+  outline: "bg-transparent border border-white/[0.1] text-fg-secondary hover:border-primary/60 hover:text-fg",
+  subtle: "bg-transparent text-fg-secondary hover:bg-white/[0.05] hover:text-fg",
+  icon: "size-8 !p-0 bg-transparent text-fg-secondary hover:bg-white/[0.06] hover:text-fg",
 };
 
 const sizes: Record<Size, string> = {

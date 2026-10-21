@@ -22,6 +22,7 @@ import { Badge, Button, Icon, cn } from "@vincere-studio/ui";
 import { nodeTypes, WorkflowIdContext, type CanvasNode } from "./nodes";
 import { TONE } from "./NodeShell";
 import { runWorkflow, saveWorkflow } from "@/app/(studio)/workflow/actions";
+import { chamarClaude } from "@/components/ClaudeButton";
 
 const EDGE_COLOR: Record<NodeKind, string> = {
   AVATAR: TONE.violet.handle,
@@ -296,9 +297,22 @@ function Canvas({ id, name, status, initialGraph }: { id: string; name: string; 
               </span>
               <Button variant="icon" icon="terminal" title="Log da execução" className={cn(showLog && "bg-primary/15 text-primary-bright")} onClick={() => setShowLog((v) => !v)} />
               <Button variant="icon" icon="ios_share" title="Exportar prompts para colar no Google Flow" onClick={exportToFlow} />
+              <Button
+                variant="secondary"
+                size="sm"
+                icon="psychology"
+                title="Pedir para a IA / Agente ajustar ou executar este fluxo"
+                onClick={() =>
+                  chamarClaude({
+                    pedido: `No fluxo nodal "${name}" (/workflow/${id}, com ${nodes.length} nós), quero ajustar/executar as etapas automaticamente:`,
+                  })
+                }
+              >
+                Pedir à IA
+              </Button>
               <Button variant="icon" icon="save" title="Salvar agora" onClick={save} disabled={pending} />
               <Button variant="primary" size="sm" icon="motion_play" onClick={run} disabled={pending || liveStatus === "RUNNING"}>
-                Executar
+                Aprovar & Executar
               </Button>
             </div>
           </div>

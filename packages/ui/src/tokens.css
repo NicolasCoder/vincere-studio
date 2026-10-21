@@ -41,50 +41,57 @@
   --font-sans: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 
-  /* Radius (Soft 1) */
-  --radius-sm: 0.125rem;
-  --radius-DEFAULT: 0.25rem;
-  --radius-md: 0.375rem;
-  --radius-lg: 0.5rem;
-  --radius-xl: 0.75rem;
+  /* Radius — Apple continuous-inspired softer geometry */
+  --radius-sm: 0.375rem;
+  --radius-DEFAULT: 0.5rem;
+  --radius-md: 0.625rem;
+  --radius-lg: 0.75rem;
+  --radius-xl: 1rem;
+
+  /* Motion Easing (Emil Kowalski & Apple HIG) */
+  --ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+  --ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+  --ease-apple: cubic-bezier(0.32, 0.72, 0, 1);
 
   /* Layout */
-  --spacing-sidebar: 18rem;
+  --spacing-sidebar: 16rem;
   --spacing-inspector: 22rem;
 
-  /* Glows */
-  --shadow-glow-cyan: 0 0 24px -6px rgba(77, 107, 255, 0.35);
-  --shadow-glow-violet: 0 0 24px -6px rgba(122, 44, 255, 0.3);
-  --shadow-glow-cta: 0 6px 20px -6px rgba(77, 107, 255, 0.55);
-  --shadow-sheet: 0 20px 40px -15px rgba(0, 0, 0, 0.8);
+  /* Shadows & Subtle Depth */
+  --shadow-glow-cyan: 0 8px 24px -8px rgba(77, 107, 255, 0.25);
+  --shadow-glow-violet: 0 8px 24px -8px rgba(122, 44, 255, 0.22);
+  --shadow-glow-cta: 0 4px 14px -4px rgba(77, 107, 255, 0.45);
+  --shadow-sheet: 0 20px 44px -16px rgba(0, 0, 0, 0.75);
 }
 
 @layer components {
   .glass {
-    background: rgba(20, 22, 31, 0.72);
-    backdrop-filter: blur(16px);
-    -webkit-backdrop-filter: blur(16px);
-    border: 1px solid var(--color-line);
+    background: rgba(20, 22, 31, 0.68);
+    backdrop-filter: blur(20px) saturate(180%);
+    -webkit-backdrop-filter: blur(20px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.065);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.06);
   }
   .glass-elevated {
-    background: rgba(28, 31, 43, 0.92);
-    backdrop-filter: blur(24px);
-    -webkit-backdrop-filter: blur(24px);
-    border: 1px solid var(--color-line);
-    box-shadow: var(--shadow-sheet);
+    background: rgba(26, 29, 40, 0.86);
+    backdrop-filter: blur(28px) saturate(190%);
+    -webkit-backdrop-filter: blur(28px) saturate(190%);
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    box-shadow: inset 0 1px 0 0 rgba(255, 255, 255, 0.09), var(--shadow-sheet);
   }
   .field {
-    background: rgba(16, 18, 25, 0.9);
-    border: 1px solid var(--color-line);
+    background: rgba(14, 16, 23, 0.82);
+    border: 1px solid rgba(255, 255, 255, 0.08);
     color: var(--color-fg);
-    border-radius: var(--radius-DEFAULT);
-    transition: border-color 150ms, box-shadow 150ms;
+    border-radius: var(--radius-md);
+    transition: border-color 160ms var(--ease-out), box-shadow 160ms var(--ease-out), background-color 160ms var(--ease-out);
   }
   .field:focus-within,
   .field:focus {
     outline: none;
+    background: rgba(18, 20, 29, 0.95);
     border-color: var(--color-primary);
-    box-shadow: 0 0 0 3px rgba(77, 107, 255, 0.18);
+    box-shadow: 0 0 0 3px rgba(77, 107, 255, 0.16);
   }
   .gradient-cta {
     background: linear-gradient(135deg, #2f6bff 0%, #7a2cff 100%);
