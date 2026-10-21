@@ -114,6 +114,13 @@ Quinta rodada (20/10) — voz, tipografia e saúde do projeto:
 - **Saúde do projeto** no `ProjectShell` (8 itens com próximo passo) e recuperação de mídias
   sumidas na tela de Mídia (busca grátis via Openverse sem chave).
 
+Sexta rodada (20/10, noite) — Checkpoint de segurança para colaboração de edição:
+
+- **Checkpoint Git**: Tag imutável `v2.0-estavel` e branch permanente `backup/versao-estavel-v2.0` criadas no commit `6dbab3d`.
+- **Backup de Dados**: Cópia íntegra de `storage/docupulse.db` salva em `storage/docupulse.backup-20261020-estavel.db` e em `_backups/versao-estavel-v2.0/docupulse.db`.
+- **Pacote Compactado**: Criado snapshot `_backups/versao-estavel-v2.0/vincere-snapshot-estavel.zip` contendo o banco SQLite e arquivos de manifesto e configuração.
+- **Branch de Trabalho Isolada**: Criada `feat/colaboracao-edicao` para que a adição de novas funções com o parceiro de edição ocorra sem qualquer risco à versão estável.
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**
