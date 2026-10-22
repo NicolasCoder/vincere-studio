@@ -7,14 +7,19 @@
 #   - next escuta só em 127.0.0.1 (acesso continua pelo túnel e pelo celular)
 #   - OMNIVOICE_API_KEY e HYPERFRAMES_URL no .env
 #   - NÃO encerra o HyperFrames da VPS (pm2 vincere-hf); se ele existir, HYPERFRAMES_URL aponta para ele
-#   - LAN_PIN: PIN exigido no acesso pela rede Wi-Fi (cópia em C:/Users/Igor/vincere-pin-celular.txt)
+#   - LAN_PIN: PIN exigido no acesso pela rede Wi-Fi (cópia em ~/vincere-pin-celular.txt)
+#
+# Servidor de destino: por variável de ambiente (os padrões abaixo são os do Igor).
+#   VINCERE_VPS_HOST (usuário@servidor)  VINCERE_VPS_PORT  VINCERE_VPS_KEY (chave privada)  VINCERE_VPS_APP (pasta no servidor)
 set -euo pipefail
 
 REPO="$(cd "$(dirname "$0")/.." && pwd)"
-KEY="C:/Users/Igor/.ssh/claude_vps_ed25519"
-HOST="root@143.95.167.129"
-APP="/opt/vincere-studio"
-SSH=(ssh -p 22022 -i "$KEY" -o ServerAliveInterval=30 "$HOST")
+KEY="${VINCERE_VPS_KEY:-C:/Users/Igor/.ssh/claude_vps_ed25519}"
+HOST="${VINCERE_VPS_HOST:-root@143.95.167.129}"
+PORT="${VINCERE_VPS_PORT:-22022}"
+APP="${VINCERE_VPS_APP:-/opt/vincere-studio}"
+PIN_ARQUIVO="${VINCERE_PIN_ARQUIVO:-$HOME/vincere-pin-celular.txt}"
+SSH=(ssh -p "$PORT" -i "$KEY" -o ServerAliveInterval=30 "$HOST")
 PC_DB="$REPO/storage/docupulse.db"
 RESTORE_DB=0
 [[ "${1:-}" == "--restore-db" ]] && RESTORE_DB=1
@@ -50,7 +55,7 @@ tar -czf - --exclude=node_modules --exclude=.next --exclude=.turbo --exclude='*.
 
 if [[ $RESTORE_DB == 1 ]]; then
   echo "== 3/6 Enviando banco do PC e mídia dos projetos"
-  scp -P 22022 -i "$KEY" -q "$PC_DB" "$HOST:/tmp/vincere-pc.db"
+  scp -P "$PORT" -i "$KEY" -q "$PC_DB" "$HOST:/tmp/vincere-pc.db"
   tar -czf - -C "$REPO/storage" projects | "${SSH[@]}" "tar -xzf - -C $APP/storage"
 else
   echo "== 3/6 (banco intocado)"
@@ -117,6 +122,6 @@ curl -fsS http://127.0.0.1:3210/api/hyperframes; echo
 ss -ltn | grep ':3210'
 EOF
 # Cópia do PIN do celular no PC, fora do Google Drive (não é exibida aqui).
-"${SSH[@]}" "grep -oP '^LAN_PIN=\"?\K[0-9]+' $APP/.env" > "C:/Users/Igor/vincere-pin-celular.txt" 2>/dev/null || true
-echo "PIN do celular salvo em C:/Users/Igor/vincere-pin-celular.txt"
+"${SSH[@]}" "grep -oP '^LAN_PIN=\"?\K[0-9]+' $APP/.env" > "$PIN_ARQUIVO" 2>/dev/null || true
+echo "PIN do celular salvo em $PIN_ARQUIVO"
 echo "Publicado. Backup em $BK"

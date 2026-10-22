@@ -26,4 +26,6 @@ jobs:
       - run: pnpm --filter @vincere-studio/db exec prisma db push --skip-generate
       - run: pnpm typecheck
       - run: pnpm test
+      # Testes unitários do web (adaptadores de agente, cérebro do Vince, configuração do HyperFrames...), rápidos e sem servidor.
+      - run: pnpm --filter @vincere-studio/web test:unit
       - run: pnpm build

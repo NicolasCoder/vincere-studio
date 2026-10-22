@@ -4,8 +4,12 @@ import { NextResponse } from "next/server";
 
 export const dynamic = "force-dynamic";
 
+// Pastas de onde esta rota pode servir arquivos. REELS_TOOLS_DIR aponta para a pasta do reels_tools de quem roda a
+// instância; o caminho antigo do Igor segue valendo só se existir (sai quando ele definir REELS_TOOLS_DIR no .env).
 const ALLOWED_ROOTS = [
-  "F:/Python Projects/reels_tools",
+  ...[process.env.REELS_TOOLS_DIR, "F:/Python Projects/reels_tools"]
+    .filter((d): d is string => Boolean(d) && fs.existsSync(d as string))
+    .map((d) => d.replace(/\\/g, "/")),
   path.resolve(process.cwd(), "../../storage").replace(/\\/g, "/"),
   path.resolve(process.cwd(), "storage").replace(/\\/g, "/"),
 ];

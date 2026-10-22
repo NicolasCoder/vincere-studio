@@ -16,7 +16,7 @@ export interface Skill {
   preview: Preview;
 }
 
-// Só skills instaladas em C:\Users\Igor\.claude\skills (conferido em 19/10/2026).
+// Só skills instaladas na pasta de skills do agente (conferido em 19/10/2026).
 export const SKILLS: Skill[] = [
   {
     id: "hyperframes",

@@ -15,6 +15,7 @@ if (process.env.NODE_ENV !== "production") globalForPrisma.prisma = prisma;
 // persiste no arquivo como o journal_mode=WAL que o worker já ativa), então cada
 // processo que abre o Prisma Client — inclusive o Next.js — precisa configurar o
 // seu, senão colisões de escrita falham na hora em vez de esperar a vez.
-prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;").catch(() => {});
+// Sem DATABASE_URL (ex.: durante o `next build`) não há banco para configurar, e o Prisma imprimiria um erro à toa.
+if (process.env.DATABASE_URL) prisma.$queryRawUnsafe("PRAGMA busy_timeout=5000;").catch(() => {});
 
 export * from "@prisma/client";

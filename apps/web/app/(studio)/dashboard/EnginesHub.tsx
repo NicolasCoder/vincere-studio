@@ -103,7 +103,7 @@ export function EnginesHub() {
           </span>
         </div>
         <p className="text-[11px] text-muted">
-          Timeline ao vivo dos projetos em Videos-HF, no seu PC.
+          Timeline ao vivo dos seus projetos do HyperFrames.
         </p>
         <Link
           href="/studio"

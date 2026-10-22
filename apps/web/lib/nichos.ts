@@ -136,7 +136,7 @@ export function pedidoDoNicho(n: Nicho, tema: string, formato: Formato, notas?: 
     `Tema: ${tema}.`,
     notas ? `Notas: ${notas}.` : "",
     `Entre por ${n.skill} e siga: ${n.passos.join(" → ")}.`,
-    "Crie o projeto em C:\\Users\\Igor\\Videos-HF e me avise quando a primeira versão estiver no Studio.",
+    "Crie o projeto na pasta de projetos do HyperFrames e me avise quando a primeira versão estiver no Studio.",
   ]
     .filter(Boolean)
     .join(" ");

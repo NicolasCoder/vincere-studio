@@ -35,7 +35,7 @@ async function waitForServer(timeoutMs: number) {
   const start = Date.now();
   while (Date.now() - start < timeoutMs) {
     try {
-      const res = await fetch(BASE_URL);
+      const res = await fetch(BASE_URL, { signal: AbortSignal.timeout(3000) });
       if (res.status < 500) return;
     } catch {
       // ainda subindo
@@ -46,6 +46,10 @@ async function waitForServer(timeoutMs: number) {
 }
 
 beforeAll(async () => {
+  // Sem banco, as páginas dão 500 e o teste parecia travado por minutos; falha logo, dizendo o que fazer.
+  if (!process.env.DATABASE_URL) {
+    throw new Error("DATABASE_URL ausente: crie o .env (rode `pnpm run setup`) ou exporte DATABASE_URL antes de rodar o smoke test.");
+  }
   if (!fs.existsSync(path.resolve(process.cwd(), ".next/BUILD_ID"))) {
     await run(["build"]);
   }

@@ -596,7 +596,7 @@ export default function TalkingHeadPage() {
                   value={videoPath}
                   onChange={(e) => setVideoPath(e.target.value)}
                   className="field w-full px-3 py-2 text-xs mt-1"
-                  placeholder="C:\Users\Igor\Videos-HF\raw_video.mp4"
+                  placeholder="Caminho do vídeo, ex.: Videos-HF/raw_video.mp4"
                 />
               </div>
             </div>

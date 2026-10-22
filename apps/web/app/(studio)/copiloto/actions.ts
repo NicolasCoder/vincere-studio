@@ -1,6 +1,7 @@
 "use server";
 // Ações do Copiloto: cada etapa do passo a passo chama o mesmo pipeline dos Projetos
 // (jobs do worker), mas volta para o próprio Copiloto em vez de saltar para outra tela.
+import { pastaDeProjetosHyperframes } from "@/lib/pastas";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
@@ -12,7 +13,7 @@ import { nichoPorId } from "@/lib/nichos";
 import { saveBlock } from "../projects/[id]/script/actions";
 
 /** Pasta dos projetos do HyperFrames; cada pessoa aponta a sua em HYPERFRAMES_PROJECTS_DIR. */
-const HF_DIR = process.env.HYPERFRAMES_PROJECTS_DIR || "C:\\Users\\Igor\\Videos-HF";
+const HF_DIR = pastaDeProjetosHyperframes();
 
 const voltar = (projectId: string, etapa: number, job?: string): never =>
   redirect(`/copiloto?projeto=${projectId}&etapa=${etapa}${job ? `&job=${job}` : ""}`);

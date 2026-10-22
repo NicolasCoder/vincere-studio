@@ -11,7 +11,7 @@
     "db:push": "pnpm --filter @vincere-studio/db push",
     "db:seed": "pnpm --filter @vincere-studio/db seed",
     "db:studio": "pnpm --filter @vincere-studio/db studio",
-    "setup": "pnpm install && pnpm db:generate && pnpm db:push && pnpm db:seed",
+    "setup": "node scripts/setup.mjs",
     "test": "turbo run test"
   },
   "devDependencies": {

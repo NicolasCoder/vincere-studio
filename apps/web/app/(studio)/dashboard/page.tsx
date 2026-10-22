@@ -131,8 +131,8 @@ export default async function Dashboard() {
                           >
                             {p.title}
                           </Link>
-                          <div className="mt-0.5 flex items-center gap-2 text-[11px] text-muted">
-                            <span>{p.niche}</span>
+                          <div className="mt-0.5 flex flex-wrap items-center gap-x-2 gap-y-0.5 text-[11px] text-muted">
+                            <span className="max-w-full truncate">{p.niche}</span>
                             <span>·</span>
                             <span className="font-mono">{f.label}</span>
                             <span>·</span>

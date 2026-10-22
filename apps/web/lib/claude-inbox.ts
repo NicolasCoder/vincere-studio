@@ -17,7 +17,7 @@ export interface ClaudeRequest {
   pedido: string;
   /** Tela de onde o pedido saiu (ex.: /studio). */
   pagina?: string;
-  /** Projeto HyperFrames em C:\Users\Igor\Videos-HF, quando houver. */
+  /** Projeto HyperFrames na pasta de projetos, quando houver. */
   projetoHf?: string;
   /** Projeto do banco (id), quando houver. */
   projetoId?: string;

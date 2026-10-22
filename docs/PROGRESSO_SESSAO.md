@@ -159,6 +159,50 @@ Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Com
   (local / nuvem / PC forte), pasta de projetos e de mídia por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`),
   voz clonada do VoiceStudio como provedor completo do pipeline e edição por voz com LLM/agente configurável.
 
+## Décima rodada (22/10, madrugada, Claude) — o Vince com a IA da pessoa e as melhorias da lista
+
+Mesma branch: **`fix/varredura-pre-video`**. Validação: `pnpm typecheck` 7/7; testes providers 42, worker 2, db 2, web (unit) 64. Verificado numa instância
+limpa (banco novo, sem chaves) com **Claude Code, Codex e Antigravity reais**.
+
+### O que entrou
+1. **O cérebro do Vince é a IA que a pessoa vincula** (`apps/web/lib/cerebro.ts`, `cerebro-comandos.ts`, `vince-sistema.ts`, `app/api/cerebro`,
+   `components/PainelVincularCerebro.tsx`). Ao abrir o Vince pela primeira vez ele convida a vincular; ao vincular, a IA **lê o manual `/AGENTES.md`** e se
+   apresenta. Opções: agentes (Claude Code, Antigravity, Codex, Hermes) e LLMs (Gemini, compatível com OpenAI, Ollama). Conversa é **somente leitura**
+   (Claude `-p --permission-mode plan`, agy `--mode plan -p`, Codex `exec --sandbox read-only`), numa pasta temporária vazia. Sem IA vinculada o Vince
+   **não** manda a conversa a nenhum serviço: pede o vínculo (`VINCE_RESERVA_PUBLICA=1` liga a IA pública gratuita, só se a pessoa quiser).
+   O prompt do Vince ficou neutro (saiu o "Igor" e o caminho `C:\Users\Igor\Videos-HF`).
+2. **Botão "Criar" do Início**: com agente vinculado, abre o pedido ao agente; **sem agente, cria o projeto direto** (ideias → roteiro → voz → render). O
+   quadrado 1:1 sem agente vai para `/workflow`.
+3. **Edições** (`/api/claude`) usam o agente vinculado; **Codex** virou motor de edição (`--sandbox workspace-write`); o atalho `claude.cmd` do npm é
+   traduzido para o `.exe` real (o Node não executa `.cmd` sem shell); detecção por **PATH** em Windows, Mac e Linux (`agente-executavel.ts`).
+4. **Provedor de texto por tarefa, com reserva**: `TEXT_PROVIDER_<TAREFA>` (ideias, roteiro, cenas, edição, seo, fluxo, sharingan) e `TEXT_PROVIDER_FALLBACK`
+   (`packages/providers/src/texto-por-tarefa.ts`; as 9 chamadas de texto trocadas).
+5. **`pnpm run setup`** (`scripts/setup.mjs`): cria `.env`, pastas e banco e confere ffmpeg/HyperFrames/GPU/agentes, sem sobrescrever nada. (O `setup` antigo nunca
+   rodava via `pnpm setup`: o pnpm tem um comando interno com esse nome; use `pnpm run setup`.)
+6. **Portabilidade**: caminhos pessoais saíram do código do app (`lib/pastas.ts`); `scripts/deploy-vps.sh` aceita `VINCERE_VPS_HOST/PORT/KEY/APP` (padrões = os do Igor).
+7. Menores: o smoke test falha em segundos com mensagem clara sem `DATABASE_URL`; o `PRAGMA` do `packages/db` não imprime erro sem banco; data do cartão de
+   projeto deixou de sobrepor o selo; o pedido ao agente aceita `faixaAudio`; os testes unitários do web entram no CI.
+8. **Armadilha do `next build`**: guardar `path.win32.join`/`path.posix.join` numa variável e chamá-la depois quebra o build ("path must be of type string. Received function"),
+   e o typecheck não pega. Use funções explícitas. Também evite `path.join(os.homedir(), …)` (use `lib/pastas.ts`).
+
+### Verificado (instância limpa)
+- Detecção: Claude, Antigravity e Codex disponíveis; Hermes/Gemini/OpenAI-compat/Ollama indisponíveis com a dica do que falta.
+- Sem IA vinculada: o Vince responde 409 `precisaVincular` (nada sai da instância).
+- Apresentação lendo o manual: **Claude Code 11 s, Codex 16 s, Antigravity 48 s**. Uma pergunta real ("short de curiosidades sobre o céu azul") devolveu o estilo,
+  skills e **prompts da biblioteca que existem** (conferido nome a nome), sem inventar.
+- Interface: painel de vínculo no primeiro acesso → vincular → apresentação no chat, cabeçalho "IA: Claude Code", atalho "Trocar a IA do Vince".
+- "Criar": com agente → pedido preenchido na aba Pedidos; sem agente → projeto criado (9:16, etapa de ideias).
+
+### Não feito (e por quê)
+- **Flow ao vivo dentro do Vincere / diagnóstico "media_id vazio"**: exige testar com a conta Google do Igor e mexer no repositório do Flow.
+- **Abrir o túnel SSH pela própria tela**: a interface passaria a executar `ssh` com host/chave informados (superfície de segurança); precisa de decisão.
+- **Login/usuários, chaves cifradas ou no cofre do sistema**: mudança estrutural (hoje as chaves salvas ficam em texto no SQLite da instância).
+- **Instalador de um clique e launchers para Mac/Linux**: o `pnpm run setup` cobre o essencial; `.bat`/`.ps1` do Igor seguem Windows-only. A etapa do banco do setup
+  reaproveita `db:generate/push/seed` e **não foi rodada de ponta a ponta** aqui.
+- **Renomeação física** (`docupulse.db`, remoto `PulseStudio`, pastas) e a escolha da cópia canônica do projeto Nike: decisão do Igor.
+- **Seleção de faixa de áudio na interface do Studio**: o pedido já aceita `faixaAudio`, mas o Studio ainda não a captura.
+- Pipeline completo de roteiro → render com texto real continua **sem teste** (exige a chave do Gemini ou outra IA de texto).
+
 ## Nona rodada (21/10, noite, Claude) — varredura, agentes, chaves e HyperFrames por instância
 
 Branch: **`fix/varredura-pre-video`** (parte de `feat/restaura-copiloto`). Para ver: `git fetch origin && git switch fix/varredura-pre-video`.
