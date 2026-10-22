@@ -8,27 +8,17 @@ import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "
 import { updateBudget } from "./budget-actions";
 import { prisma } from "@vincere-studio/db";
 import { VincularAgente } from "@/components/VincularAgente";
+import { ChavesApi } from "@/components/ChavesApi";
+import { HyperframesOnde } from "@/components/HyperframesOnde";
+import { lerAlvoHyperframes } from "@/lib/hyperframes-config";
 import { detectLocalAgents } from "@/lib/local-agent-runner";
-import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@vincere-studio/providers";
+import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus, statusDasChaves } from "@vincere-studio/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
 import { AtualizarVersao } from "@/components/AtualizarVersao";
 
-const PROVIDERS = [
-  ["GEMINI_API_KEY", "Gemini API — texto e voz", "aistudio.google.com — nível gratuito, sem cobrança"],
-  ["GEMINI_IMAGE_API_KEY", "Gemini API — imagens (Nano Banana)", "projeto com faturamento; usada só nos modos Híbrido/Premium"],
-  ["PEXELS_API_KEY", "Pexels (fotos e vídeos de acervo)", "pexels.com/api — gratuito"],
-  ["PIXABAY_API_KEY", "Pixabay (fotos, vídeos, música)", "pixabay.com/api — gratuito"],
-  ["CLOUDFLARE_ACCOUNT_ID", "Cloudflare — ID da conta", "dash.cloudflare.com → a conta → o ID aparece na URL"],
-  ["CLOUDFLARE_API_TOKEN", "Cloudflare Workers AI (FLUX, imagens grátis)", "token com permissão Workers AI · cota diária gratuita, sem cartão"],
-  ["HUGGINGFACE_TOKEN", "Hugging Face (FLUX, imagens grátis)", "huggingface.co → Settings → Access Tokens · gratuito"],
-  ["OPENAI_API_KEY", "OpenAI (GPT Image)", "platform.openai.com → API keys · pago, melhor em layout e tipografia"],
-  ["TOGETHER_API_KEY", "Together.ai (FLUX schnell Free)", "api.together.xyz · nível gratuito, sem cartão"],
-  ["KIE_API_KEY", "kie.ai (imagens pagas, muitos modelos)", "kie.ai → Chaves API · só funciona com teto de orçamento acima de US$ 0"],
-];
-
-export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string }> }) {
-  const { job, youtube, msg, channel } = await searchParams;
+export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string; chave?: string; n?: string; cmsg?: string; hf?: string; hfmsg?: string }> }) {
+  const { job, youtube, msg, channel, chave, n, cmsg, hf, hfmsg } = await searchParams;
   await ensureDefaultVoiceProfiles();
   const [usage, settings, jobs, profiles, youtubeConnection, budget] = await Promise.all([
     getUsageSummary(),
@@ -39,6 +29,19 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     getBudgetStatus(),
   ]);
   const edgeVoices = new EdgeVoiceProvider().voices();
+  const chaves = await statusDasChaves();
+  const rotulo = chaves.find((c) => c.name === n)?.label ?? "Chave";
+  const avisoChave =
+    chave === "salva" ? { tipo: "ok" as const, texto: `${rotulo}: salva. Já vale para ideias, roteiro e voz.` }
+    : chave === "removida" ? { tipo: "ok" as const, texto: `${rotulo}: removida.` }
+    : chave === "teste_ok" ? { tipo: "ok" as const, texto: cmsg ?? "Chave válida." }
+    : chave === "erro" ? { tipo: "erro" as const, texto: cmsg ?? "Não foi possível concluir." }
+    : undefined;
+  const alvoHf = await lerAlvoHyperframes();
+  const avisoHf =
+    hf === "salvo" || hf === "teste_ok" ? { tipo: "ok" as const, texto: hfmsg ?? "Pronto." }
+    : hf === "erro" ? { tipo: "erro" as const, texto: hfmsg ?? "Não foi possível concluir." }
+    : undefined;
   const detectados = detectLocalAgents();
   const agentes = [
     { id: "agy", nome: "Antigravity (agy)", disponivel: Boolean(detectados.agyPath), detalhe: detectados.agyPath ?? "defina AGY_BIN se estiver em outro lugar" },
@@ -131,6 +134,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
         </Card>
+        <ChavesApi chaves={chaves} aviso={avisoChave} />
+        <HyperframesOnde alvo={alvoHf} aviso={avisoHf} />
         <VincularAgente agentes={agentes} />
         <Card className="p-5" id="youtube">
           <div className="flex items-center justify-between">

@@ -103,6 +103,7 @@ export default function HyperFramesStudioPage() {
       });
       const data = await res.json();
       setEngineOnline(Boolean(data.running));
+      setHfBaseUrl(typeof data.hfBaseUrl === "string" ? data.hfBaseUrl : null);
       if (data.activeProject) {
         setActiveProject(data.activeProject);
       }
@@ -278,12 +279,14 @@ export default function HyperFramesStudioPage() {
   };
 
   const [hfHost, setHfHost] = useState("127.0.0.1");
+  // Preview em outro computador (configurado em Configurações): o navegador abre esse endereço.
+  const [hfBaseUrl, setHfBaseUrl] = useState<string | null>(null);
   useEffect(() => {
     const h = window.location.hostname;
     setHfHost(h === "localhost" ? "127.0.0.1" : h);
   }, []);
 
-  const studioUrl = `http://${hfHost}:3010/#project/${encodeURIComponent(activeProject)}`;
+  const studioUrl = `${hfBaseUrl ?? `http://${hfHost}:3010`}/#project/${encodeURIComponent(activeProject)}`;
 
   const filteredMotions = MOTIONS_CATALOG.filter(
     (m) =>

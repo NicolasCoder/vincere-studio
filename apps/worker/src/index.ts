@@ -2,6 +2,7 @@ import { prisma, type Job } from "@vincere-studio/db";
 import type { JobType } from "@vincere-studio/core";
 import { claimNext, fail, finish, makeContext } from "./queue";
 import { handlers } from "./jobs";
+import { carregarChavesNoAmbiente } from "@vincere-studio/providers";
 
 const POLL_MS = Number(process.env.WORKER_POLL_MS ?? 1000);
 const WEBHOOK_URL = process.env.WEBHOOK_URL;
@@ -57,6 +58,8 @@ async function runJob(job: Job) {
   const handler = handlers[job.type as JobType];
   try {
     if (!handler) throw new Error(`Tipo de job desconhecido: ${job.type}`);
+    // Chaves salvas pela interface valem na hora, sem reiniciar o worker; falha aqui não derruba o job.
+    await carregarChavesNoAmbiente().catch((err) => console.error("[chaves] não foi possível carregar as chaves salvas:", err instanceof Error ? err.message : err));
     const result = await handler(ctx);
     await finish(job, result);
     await notify("job.done", { id: job.id, type: job.type, projectId: job.projectId, result });

@@ -7,12 +7,17 @@ import { z } from "zod";
 import { storageRoot } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
-import { deveIniciarPreviewLocal, portaAceitaConexao, timeoutConfigMs, urlsCandidatas } from "@/lib/hyperframes-autostart";
+import { deveIniciarPreviewLocal, portaAceitaConexao, timeoutConfigMs } from "@/lib/hyperframes-autostart";
+import { lerAlvoHyperframes, resolverAlvo, type AlvoHyperframes } from "@/lib/hyperframes-config";
 
 export const dynamic = "force-dynamic";
 
-const HYPERFRAMES_PORT = Number(new URL(process.env.HYPERFRAMES_URL || "http://127.0.0.1:3010").port || 3010);
-const HF_CANDIDATE_URLS = urlsCandidatas(process.env.HYPERFRAMES_URL, HYPERFRAMES_PORT);
+// Onde o HyperFrames roda vem da tela de Configurações (ou do .env, se nada foi salvo); lido a cada
+// requisição para a troca valer na hora.
+let alvo: AlvoHyperframes = resolverAlvo({}, process.env);
+async function atualizarAlvo() {
+  alvo = await lerAlvoHyperframes();
+}
 const HF_STORAGE = () => path.join(storageRoot(), "hyperframes");
 
 function resolveWorkspaceDir(): string {
@@ -66,7 +71,7 @@ interface HfConfigResponse {
 }
 
 async function getRunningHfConfig(): Promise<HfConfigResponse | null> {
-  for (const baseUrl of HF_CANDIDATE_URLS) {
+  for (const baseUrl of alvo.urls) {
     try {
       const res = await fetch(`${baseUrl}/__hyperframes_config`, {
         signal: AbortSignal.timeout(timeoutConfigMs()),
@@ -81,7 +86,7 @@ async function getRunningHfConfig(): Promise<HfConfigResponse | null> {
 }
 
 async function getRunningSelection(projectId: string) {
-  for (const baseUrl of HF_CANDIDATE_URLS) {
+  for (const baseUrl of alvo.urls) {
     try {
       const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/selection`, {
         signal: AbortSignal.timeout(Math.max(1000, timeoutConfigMs() / 2)),
@@ -144,8 +149,8 @@ async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfCon
       const npx = npxInvocation(npxBin, nodeBin);
       const cmd = hfMjs ? nodeBin : npx.cmd;
       const args = hfMjs
-        ? [hfMjs, "preview", targetProjectDir, "--background", "--force-new", "--port", String(HYPERFRAMES_PORT), "--no-open"]
-        : [...npx.prefix, "hyperframes", "preview", targetProjectDir, "--background", "--force-new", "--port", String(HYPERFRAMES_PORT), "--no-open"];
+        ? [hfMjs, "preview", targetProjectDir, "--background", "--force-new", "--port", String(alvo.port), "--no-open"]
+        : [...npx.prefix, "hyperframes", "preview", targetProjectDir, "--background", "--force-new", "--port", String(alvo.port), "--no-open"];
 
       const child = spawn(cmd, args, {
         cwd: targetProjectDir,
@@ -305,6 +310,7 @@ function buildStarterCompositionHtml(title: string, width: number, height: numbe
 
 // GET /api/hyperframes
 export async function GET(req: Request) {
+  await atualizarAlvo();
   const params = new URL(req.url).searchParams;
   const action = params.get("action");
   if (action === "previas") {
@@ -326,10 +332,10 @@ export async function GET(req: Request) {
 
   // Auto-inicia o HyperFrames localmente ao abrir a tela /studio
   // No modo "vps" o preview roda no servidor (túnel na porta 3010); não há o que iniciar neste PC.
-  const modoVps = process.env.HYPERFRAMES_MODO?.trim().toLowerCase() === "vps";
+  const modoVps = alvo.modoVps;
   // Só sobe outro preview se a porta estiver FECHADA: um preview vivo, mas ocupado compilando, demora a
   // responder e antes era reiniciado (--force-new) a cada travada.
-  const portaAberta = cfg ? true : await portaAceitaConexao(HYPERFRAMES_PORT);
+  const portaAberta = cfg ? true : await portaAceitaConexao(alvo.port);
   if (deveIniciarPreviewLocal({ rodando: Boolean(cfg), portaAberta, autoStart, modoVps, temProjetos: localProjects.length > 0 })) {
     const target =
       localProjects.find((p) => p.name === requestedProject) ??
@@ -352,7 +358,10 @@ export async function GET(req: Request) {
   return NextResponse.json({
     ok: true,
     running: Boolean(cfg),
-    port: HYPERFRAMES_PORT,
+    port: alvo.port,
+    modoHyperframes: alvo.modo,
+    // Endereço que o navegador deve abrir quando o preview roda em outro computador; null = este computador.
+    hfBaseUrl: alvo.modo === "remoto" ? alvo.url : null,
     activeProject,
     activeProjectDir,
     projects: localProjects,
@@ -386,6 +395,7 @@ const decisaoSchema = z.object({
 });
 
 export async function POST(req: Request) {
+  await atualizarAlvo();
   const body = await req.json().catch(() => null);
   if (!body || typeof body !== "object") {
     return NextResponse.json({ ok: false, error: "Payload inválido" }, { status: 400 });
