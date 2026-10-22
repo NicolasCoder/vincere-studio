@@ -7,17 +7,12 @@ import { z } from "zod";
 import { storageRoot } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
+import { deveIniciarPreviewLocal, portaAceitaConexao, timeoutConfigMs, urlsCandidatas } from "@/lib/hyperframes-autostart";
 
 export const dynamic = "force-dynamic";
 
 const HYPERFRAMES_PORT = Number(new URL(process.env.HYPERFRAMES_URL || "http://127.0.0.1:3010").port || 3010);
-const HF_CANDIDATE_URLS = Array.from(
-  new Set([
-    `http://127.0.0.1:${HYPERFRAMES_PORT}`,
-    `http://localhost:${HYPERFRAMES_PORT}`,
-    process.env.HYPERFRAMES_URL || `http://127.0.0.1:${HYPERFRAMES_PORT}`,
-  ]),
-);
+const HF_CANDIDATE_URLS = urlsCandidatas(process.env.HYPERFRAMES_URL, HYPERFRAMES_PORT);
 const HF_STORAGE = () => path.join(storageRoot(), "hyperframes");
 
 function resolveWorkspaceDir(): string {
@@ -74,7 +69,7 @@ async function getRunningHfConfig(): Promise<HfConfigResponse | null> {
   for (const baseUrl of HF_CANDIDATE_URLS) {
     try {
       const res = await fetch(`${baseUrl}/__hyperframes_config`, {
-        signal: AbortSignal.timeout(1200),
+        signal: AbortSignal.timeout(timeoutConfigMs()),
         cache: "no-store",
       });
       if (!res.ok) continue;
@@ -89,7 +84,7 @@ async function getRunningSelection(projectId: string) {
   for (const baseUrl of HF_CANDIDATE_URLS) {
     try {
       const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/selection`, {
-        signal: AbortSignal.timeout(1000),
+        signal: AbortSignal.timeout(Math.max(1000, timeoutConfigMs() / 2)),
         cache: "no-store",
       });
       if (!res.ok) continue;
@@ -332,7 +327,10 @@ export async function GET(req: Request) {
   // Auto-inicia o HyperFrames localmente ao abrir a tela /studio
   // No modo "vps" o preview roda no servidor (túnel na porta 3010); não há o que iniciar neste PC.
   const modoVps = process.env.HYPERFRAMES_MODO?.trim().toLowerCase() === "vps";
-  if (!cfg && autoStart && !modoVps && localProjects.length > 0) {
+  // Só sobe outro preview se a porta estiver FECHADA: um preview vivo, mas ocupado compilando, demora a
+  // responder e antes era reiniciado (--force-new) a cada travada.
+  const portaAberta = cfg ? true : await portaAceitaConexao(HYPERFRAMES_PORT);
+  if (deveIniciarPreviewLocal({ rodando: Boolean(cfg), portaAberta, autoStart, modoVps, temProjetos: localProjects.length > 0 })) {
     const target =
       localProjects.find((p) => p.name === requestedProject) ??
       localProjects.find((p) => p.name === "referenciamotion-pro") ??
