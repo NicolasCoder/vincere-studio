@@ -3,7 +3,7 @@ import path from "node:path";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import { prisma } from "@vincere-studio/db";
-import { absPath, getAuthenticatedYoutubeClient, getTextProvider, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
+import { absPath, getAuthenticatedYoutubeClient, getTextProviderFor, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
 import { quadroDe, renderizarThumbnail } from "@vincere-studio/render";
 import { z } from "zod";
 
@@ -192,7 +192,7 @@ export async function generateSeoMetadata(projectId: string, _formData?: FormDat
 
   const short = project.format === "SHORT_9_16";
 
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("seo");
   const { data, usage } = await provider.generateJson(
     seoUserPrompt({
       projectTitle: project.title,

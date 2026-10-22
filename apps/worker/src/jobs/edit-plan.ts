@@ -24,7 +24,7 @@ import {
   type EditPlanData,
 } from "@vincere-studio/core";
 import { ACT_GAP_MS, profileFor } from "@vincere-studio/render";
-import { FFMPEG, absPath, getTextProvider, recordUsage, run } from "@vincere-studio/providers";
+import { FFMPEG, absPath, getTextProviderFor, recordUsage, run } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 interface Word {
@@ -113,7 +113,7 @@ export async function generateEditPlan(ctx: JobContext) {
   // livre para o lower third. Se alguém marcar o checkbox manualmente no render, o plano fica
   // conservador demais, não errado — a inserção sobe em vez de invadir.
   const burnedCaptions = FORMATS[project.format as VideoFormat].captions.required;
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("edicao");
   // O perfil decide quais layouts existem NESTE formato e qual a orientação editorial do nicho.
   // Cronologia e mesa de arquivo, por exemplo, não são propostas em Short: são horizontais por
   // natureza e a inserção seria descartada no render, gastando uma das poucas do ato.

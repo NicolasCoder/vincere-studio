@@ -19,6 +19,9 @@ export const API_KEY_SPECS: ApiKeySpec[] = [
   { name: "GEMINI_API_KEY", label: "Gemini (ideias, roteiro e voz)", grupo: "texto", segredo: true, ajuda: "Grátis em aistudio.google.com/apikey" },
   { name: "GEMINI_IMAGE_API_KEY", label: "Gemini — imagens (opcional)", grupo: "texto", segredo: true, ajuda: "Só se você tiver faturamento ativo; senão usa a chave acima" },
   { name: "TEXT_PROVIDER", label: "Provedor de texto", grupo: "texto", segredo: false, ajuda: "GEMINI, OLLAMA ou OPENAI_COMPAT" },
+  { name: "TEXT_PROVIDER_IDEIAS", label: "Provedor de texto só para ideias (opcional)", grupo: "texto", segredo: false, ajuda: "Vazio = o provedor de texto padrão" },
+  { name: "TEXT_PROVIDER_ROTEIRO", label: "Provedor de texto só para roteiro (opcional)", grupo: "texto", segredo: false, ajuda: "Vazio = o provedor de texto padrão" },
+  { name: "TEXT_PROVIDER_FALLBACK", label: "Provedor de texto de reserva (opcional)", grupo: "texto", segredo: false, ajuda: "Assume se o principal falhar (GEMINI, OLLAMA ou OPENAI_COMPAT)" },
   { name: "OPENAI_COMPAT_API_KEY", label: "LLM compatível com OpenAI — chave", grupo: "texto", segredo: true, ajuda: "NVIDIA NIM, OpenRouter, Groq, Hermes…" },
   { name: "OPENAI_COMPAT_BASE_URL", label: "LLM compatível com OpenAI — endereço", grupo: "texto", segredo: false, ajuda: "Ex.: https://integrate.api.nvidia.com/v1" },
   { name: "OPENAI_COMPAT_MODEL", label: "LLM compatível com OpenAI — modelo", grupo: "texto", segredo: false, ajuda: "Nome do modelo no provedor" },
@@ -64,13 +67,14 @@ export function validarValor(name: string, bruto: string): string {
   if (/[\r\n]/.test(valor)) throw new Error("O valor não pode ter quebra de linha.");
   const spec = API_KEY_SPECS.find((s) => s.name === name);
   if (spec?.segredo && /\s/.test(valor)) throw new Error("A chave não pode ter espaços; confira se copiou inteira.");
-  if (name === "TEXT_PROVIDER" && !PROVEDORES_TEXTO.has(valor.toUpperCase())) {
+  const ehProvedorDeTexto = name === "TEXT_PROVIDER" || name.startsWith("TEXT_PROVIDER_");
+  if (ehProvedorDeTexto && !PROVEDORES_TEXTO.has(valor.toUpperCase())) {
     throw new Error("Provedor de texto inválido. Use GEMINI, OLLAMA ou OPENAI_COMPAT.");
   }
   if (name === "OPENAI_COMPAT_BASE_URL" && !/^https?:\/\/[^\s]+$/i.test(valor)) {
     throw new Error("O endereço precisa começar com http:// ou https://.");
   }
-  return name === "TEXT_PROVIDER" ? valor.toUpperCase() : valor;
+  return ehProvedorDeTexto ? valor.toUpperCase() : valor;
 }
 
 type Ambiente = Record<string, string | undefined>;

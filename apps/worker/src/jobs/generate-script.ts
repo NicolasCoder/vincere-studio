@@ -12,7 +12,7 @@ import {
   type ScriptContext,
   type VideoFormat,
 } from "@vincere-studio/core";
-import { getTextProvider, recordUsage } from "@vincere-studio/providers";
+import { getTextProviderFor, recordUsage } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 import { recomputeScript } from "./script-utils";
 
@@ -41,7 +41,7 @@ export async function generateScript(ctx: JobContext) {
     targetDuration: project.targetDuration,
     hooks: JSON.parse(project.hooks || "[]"),
   };
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("roteiro");
   const system = scriptSystemPrompt();
   let cost = 0;
 

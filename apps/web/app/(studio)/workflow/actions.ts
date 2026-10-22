@@ -17,7 +17,7 @@ import {
   type WorkflowNode,
   type WorkflowEdge,
 } from "@vincere-studio/core";
-import { getTextProvider } from "@vincere-studio/providers";
+import { getTextProviderFor } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 
 function edge(source: string, target: string): WorkflowEdge {
@@ -44,7 +44,7 @@ async function buildGraphFromGoal(
   let flowTitle = cleanGoal.length > 42 ? `${cleanGoal.slice(0, 42)}…` : cleanGoal;
 
   try {
-    const provider = getTextProvider();
+    const provider = getTextProviderFor("fluxo");
     const prompt = [
       "Você é o arquiteto de fluxos nodais (estilo ComfyUI) do Vincere Studio.",
       `Meta do usuário: "${cleanGoal}" | Formato: ${format} | Estilo base: ${stylePreset}.`,

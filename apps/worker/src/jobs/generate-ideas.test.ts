@@ -22,6 +22,7 @@ vi.mock("@vincere-studio/providers", async (importOriginal) => {
   return {
     ...actual,
     getTextProvider: () => ({ name: "GEMINI", generateJson: mockGenerateJson, generateText: vi.fn() }),
+    getTextProviderFor: () => ({ name: "GEMINI", generateJson: mockGenerateJson, generateText: vi.fn() }),
     recordUsage: mockRecordUsage,
   };
 });

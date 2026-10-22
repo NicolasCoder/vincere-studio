@@ -9,7 +9,7 @@ import {
   trendAnglesUserPrompt,
   type VideoFormat,
 } from "@vincere-studio/core";
-import { getTextProvider, recordUsage } from "@vincere-studio/providers";
+import { getTextProviderFor, recordUsage } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -25,7 +25,7 @@ export async function generateIdeas(ctx: JobContext) {
   const project = await prisma.project.findUnique({ where: { id: projectId }, include: { ideas: true } });
   if (!project) throw new Error(`Projeto ${projectId} não encontrado`);
 
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("ideias");
 
   // Niche Finder: passo leve e opcional pra ampliar o leque de ângulos antes da ideação.
   // Nunca deve travar a geração de ideias — se falhar por qualquer motivo, segue sem ele.

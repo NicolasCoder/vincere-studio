@@ -2,7 +2,7 @@ import path from "node:path";
 import { readdir, rename, stat, writeFile } from "node:fs/promises";
 import { prisma } from "@vincere-studio/db";
 import { FORMATS, SCENES_PROMPT_VERSION, ScenesResponseSchema, composeImagePrompt, getVisualStyle, parseSceneFileStem, sceneFileStem, scenesPrompt, type VideoFormat } from "@vincere-studio/core";
-import { downloadTo, getStockProviders, getTextProvider, probeDurationMs, probeMediaInfo, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
+import { downloadTo, getStockProviders, getTextProviderFor, probeDurationMs, probeMediaInfo, projectDir, recordUsage, relPath } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 
 /**
@@ -19,7 +19,7 @@ export async function generateScenePrompts(ctx: JobContext) {
   if (!script) throw new Error("Gere o roteiro antes.");
   const style = getVisualStyle(project.visualStyle);
   const format = FORMATS[project.format as VideoFormat];
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("cenas");
   const pack: string[] = [`# Pacote de prompts — ${project.title}`, ``, `Estilo: ${style.label}. Proporção: ${format.ratio}.`, `Gere cada imagem e salve na pasta inbox do projeto com o nome indicado (ex.: a01-s03.png). O app casa os arquivos com as cenas automaticamente.`, ``];
   let total = 0;
 

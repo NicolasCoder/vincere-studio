@@ -2,7 +2,7 @@ import path from "node:path";
 import fs from "node:fs/promises";
 import { spawn } from "node:child_process";
 import type { JobContext } from "../queue";
-import { getTextProvider, storageRoot } from "@vincere-studio/providers";
+import { getTextProviderFor, storageRoot } from "@vincere-studio/providers";
 
 const REELS_TOOLS_DIR = process.env.REELS_TOOLS_DIR || "F:\\Python Projects\\reels_tools";
 const SHARINGAN_SCRIPT = path.join(REELS_TOOLS_DIR, "video-sharingan", "scripts", "sharingan.py");
@@ -216,7 +216,7 @@ export async function sharinganClone(ctx: JobContext) {
 
   if (!briefMd) {
     try {
-      const provider = getTextProvider();
+      const provider = getTextProviderFor("sharingan");
       const prompt = [
         "Você é o diretor técnico do motor `video-sharingan` (Copy the technique, not the pixels).",
         `Tema do novo vídeo clonado: "${userTopic}".`,

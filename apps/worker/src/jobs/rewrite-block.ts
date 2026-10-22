@@ -1,6 +1,6 @@
 import { prisma } from "@vincere-studio/db";
 import { RewriteSchema, SuggestionsSchema, rewritePrompt, scriptSystemPrompt, suggestionsPrompt, type RewriteMode } from "@vincere-studio/core";
-import { getTextProvider, recordUsage } from "@vincere-studio/providers";
+import { getTextProviderFor, recordUsage } from "@vincere-studio/providers";
 import type { JobContext } from "../queue";
 import { recomputeScript } from "./script-utils";
 
@@ -13,7 +13,7 @@ export async function rewriteBlock(ctx: JobContext) {
   if (!block) throw new Error("Bloco não encontrado");
 
   await ctx.progress({ percent: 20, message: `Reescrevendo Ato ${block.act} (${mode})` });
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("roteiro");
   const res = await provider.generateJson(rewritePrompt(block.narration, mode, instruction, { title: block.script.project.title, actTitle: block.title }), RewriteSchema, {
     system: scriptSystemPrompt(),
     temperature: 0.9,
@@ -31,7 +31,7 @@ export async function scriptSuggestions(ctx: JobContext) {
   const script = await prisma.script.findUnique({ where: { id: scriptId }, include: { project: true, blocks: { orderBy: { order: "asc" } } } });
   if (!script) throw new Error("Roteiro não encontrado");
   await ctx.progress({ percent: 20, message: "Analisando retenção do roteiro" });
-  const provider = getTextProvider();
+  const provider = getTextProviderFor("roteiro");
   const res = await provider.generateJson(
     suggestionsPrompt(script.project.title, script.blocks.map((b) => ({ act: b.act, title: b.title, narration: b.narration, startMs: b.startMs ?? 0, endMs: b.endMs ?? 0 }))),
     SuggestionsSchema,
