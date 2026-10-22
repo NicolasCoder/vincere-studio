@@ -11,17 +11,18 @@ export function VoiceGallery({ back, busy, elevenProfiles = [] }: { back: string
   const root = storageRoot();
   const gemini = new GeminiVoiceProvider(process.env.GEMINI_API_KEY || "x").voices();
   const edge = new EdgeVoiceProvider().voices();
-  const groups: { provider: string; title: string; note: string; voices: { id: string; label: string; description?: string; gender?: string; style?: string }[] }[] = [
-    { provider: "GEMINI_TTS", title: "Gemini TTS", note: "free tier · controlado por instrução de estilo", voices: gemini },
+  const groups: { provider: string; title: string; note: string; blocked?: string; voices: { id: string; label: string; description?: string; gender?: string; style?: string }[] }[] = [
+    { provider: "GEMINI_TTS", title: "Gemini TTS", note: process.env.GEMINI_API_KEY ? "free tier · controlado por instrução de estilo" : "precisa de GEMINI_API_KEY no .env (grátis em aistudio.google.com/apikey)", blocked: process.env.GEMINI_API_KEY ? undefined : "Falta a GEMINI_API_KEY no .env", voices: gemini },
     { provider: "EDGE_TTS", title: "Edge TTS", note: "grátis, sem chave, sem estilo por instrução", voices: edge },
-    { provider: "ELEVENLABS", title: "ElevenLabs", note: process.env.ELEVENLABS_API_KEY ? "premium · 10k créditos/mês grátis" : "configure ELEVENLABS_API_KEY", voices: elevenProfiles.map((p) => ({ id: p.voiceId, label: p.name, description: p.voiceId, style: p.style })) },
-  ].filter((g) => g.provider !== "ELEVENLABS" || elevenProfiles.length > 0); // ElevenLabs só aparece para perfis antigos
+    { provider: "ELEVENLABS", title: "ElevenLabs", note: process.env.ELEVENLABS_API_KEY ? "premium · 10k créditos/mês grátis" : "configure ELEVENLABS_API_KEY", blocked: process.env.ELEVENLABS_API_KEY ? undefined : "Falta a ELEVENLABS_API_KEY no .env", voices: elevenProfiles.map((p) => ({ id: p.voiceId, label: p.name, description: p.voiceId, style: p.style })) },
+  ].filter((g) => g.provider !== "ELEVENLABS" || elevenProfiles.length > 0) // ElevenLabs só aparece para perfis antigos
+    .sort((a, b) => Number(Boolean(a.blocked)) - Number(Boolean(b.blocked))); // o que funciona sem chave aparece primeiro
   return (
     <Card className="p-5" id="vozes">
       <div className="flex items-center justify-between"><h3 className="font-display text-lg font-semibold"><Icon name="graphic_eq" className="mr-1 align-middle text-primary-bright" />Galeria de vozes</h3><span className="font-mono text-[10px] text-muted">Prévia: frase de teste do nicho (~12s)</span></div>
       {groups.map((g) => (
         <div key={g.provider} className="mt-4">
-          <div className="flex items-center gap-2"><Badge tone={g.provider === "GEMINI_TTS" ? "cyan" : g.provider === "EDGE_TTS" ? "neutral" : "violet"}>{g.title}</Badge><span className="font-mono text-[10px] text-muted">{g.note}</span></div>
+          <div className="flex items-center gap-2"><Badge tone={g.provider === "GEMINI_TTS" ? "cyan" : g.provider === "EDGE_TTS" ? "neutral" : "violet"}>{g.title}</Badge><span className={g.blocked ? "font-mono text-[10px] text-warning" : "font-mono text-[10px] text-muted"}>{g.note}</span></div>
           <div className="mt-2 grid grid-cols-3 gap-2">
             {g.voices.length === 0 && <div className="col-span-3 rounded border border-dashed border-line p-3 text-xs text-muted">Cadastre um perfil ElevenLabs (com o Voice ID) para ele aparecer aqui.</div>}
             {g.voices.map((v) => {
@@ -36,7 +37,7 @@ export function VoiceGallery({ back, busy, elevenProfiles = [] }: { back: string
                   <div className="mt-2 flex items-center gap-2">
                     {rel ? <audio controls preload="none" src={`/api/media/${rel}`} className="h-8 flex-1" /> : <span className="flex-1 font-mono text-[10px] text-muted">sem prévia</span>}
                     <form action={previewVoice.bind(null, g.provider, v.id, v.style ?? (g.provider === "GEMINI_TTS" ? STYLE_DEFAULT : ""), back)}>
-                      <Button type="submit" size="sm" variant="icon" icon={rel ? "refresh" : "play_circle"} title={rel ? "Regerar prévia" : "Gerar prévia"} disabled={busy} />
+                      <Button type="submit" size="sm" variant="icon" icon={rel ? "refresh" : "play_circle"} title={g.blocked ?? (rel ? "Regerar prévia" : "Gerar prévia")} disabled={busy || Boolean(g.blocked)} />
                     </form>
                   </div>
                 </div>

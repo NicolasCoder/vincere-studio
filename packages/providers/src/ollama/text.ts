@@ -1,4 +1,5 @@
 import type { z } from "zod";
+import { schemaInstruction } from "../schema";
 import { ProviderError, type GenerateOptions, type TextProvider, type UsageInfo } from "../types";
 
 export class OllamaTextProvider implements TextProvider {
@@ -67,7 +68,7 @@ export class OllamaTextProvider implements TextProvider {
     opts: GenerateOptions = {}
   ): Promise<{ data: z.infer<T>; usage: UsageInfo; raw: string }> {
     const model = opts.model || this.defaultModel;
-    const jsonPrompt = `${prompt}\n\nIMPORTANTE: Responda APENAS em JSON válido estritamente sem nenhum texto ou markdown antes ou depois.`;
+    const jsonPrompt = `${prompt}\n\n${schemaInstruction(schema)}`;
 
     const body = {
       model,

@@ -54,6 +54,14 @@ function resolveNode22AndHyperframes(): {
   return { nodeBin, hfMjs, npxBin, envPath };
 }
 
+// No Windows "npx" é npx.cmd, e o Node recusa executar .cmd sem shell (ENOENT/EINVAL). O npx-cli.js que
+// acompanha o npm roda direto com o node, sem shell, então nenhum nome de pasta vira comando.
+function npxInvocation(npxBin: string, nodeBin: string): { cmd: string; prefix: string[] } {
+  if (process.platform !== "win32") return { cmd: npxBin, prefix: [] };
+  const cli = path.join(path.dirname(nodeBin), "node_modules", "npm", "bin", "npx-cli.js");
+  return existsSync(cli) ? { cmd: nodeBin, prefix: [cli] } : { cmd: npxBin, prefix: [] };
+}
+
 interface HfConfigResponse {
   isHyperframes: boolean;
   pid: number;
@@ -138,10 +146,11 @@ async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfCon
       }
 
       const { nodeBin, hfMjs, npxBin, envPath } = resolveNode22AndHyperframes();
-      const cmd = hfMjs ? nodeBin : npxBin;
+      const npx = npxInvocation(npxBin, nodeBin);
+      const cmd = hfMjs ? nodeBin : npx.cmd;
       const args = hfMjs
         ? [hfMjs, "preview", targetProjectDir, "--background", "--force-new", "--port", String(HYPERFRAMES_PORT), "--no-open"]
-        : ["hyperframes", "preview", targetProjectDir, "--background", "--force-new", "--port", String(HYPERFRAMES_PORT), "--no-open"];
+        : [...npx.prefix, "hyperframes", "preview", targetProjectDir, "--background", "--force-new", "--port", String(HYPERFRAMES_PORT), "--no-open"];
 
       const child = spawn(cmd, args, {
         cwd: targetProjectDir,
@@ -150,6 +159,8 @@ async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfCon
         stdio: "ignore",
         windowsHide: true,
       });
+      // Sem este ouvinte, um ENOENT vira uncaughtException e derruba o servidor inteiro.
+      child.on("error", (err) => console.error("[hyperframes] não foi possível iniciar o preview:", err.message));
       child.unref();
 
       // Aguarda até 6s pelo servidor responder em /__hyperframes_config
@@ -319,7 +330,9 @@ export async function GET(req: Request) {
   let cfg = await getRunningHfConfig();
 
   // Auto-inicia o HyperFrames localmente ao abrir a tela /studio
-  if (!cfg && autoStart && localProjects.length > 0) {
+  // No modo "vps" o preview roda no servidor (túnel na porta 3010); não há o que iniciar neste PC.
+  const modoVps = process.env.HYPERFRAMES_MODO?.trim().toLowerCase() === "vps";
+  if (!cfg && autoStart && !modoVps && localProjects.length > 0) {
     const target =
       localProjects.find((p) => p.name === requestedProject) ??
       localProjects.find((p) => p.name === "referenciamotion-pro") ??

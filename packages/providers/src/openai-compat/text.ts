@@ -1,5 +1,38 @@
 import type { z } from "zod";
 import { ProviderError, type GenerateOptions, type TextProvider, type UsageInfo } from "../types";
+import { schemaInstruction } from "../schema";
+
+/**
+ * Limite do plano gratuito (429, ou 402 FREE_LIMIT no Pollinations): quanto esperar antes de tentar de novo.
+ * Usa o Retry-After do servidor ou o "Retry after Ns" da mensagem; null = erro de verdade, não repetir.
+ */
+export function retryDelayMs(status: number, body: string, retryAfterHeader?: string | null): number | null {
+  const limite = status === 429 || (status === 402 && /FREE_LIMIT|rate|limit/i.test(body));
+  if (!limite) return null;
+  const header = Number(retryAfterHeader);
+  const msg = /retry after (\d+)\s*s/i.exec(body);
+  const seconds = Number.isFinite(header) && header > 0 ? header : msg ? Number(msg[1]) : 5;
+  // Teto de 60 s por espera, mais 1 s de folga para o relógio do servidor.
+  return Math.min(60, Math.max(1, seconds)) * 1000 + 1000;
+}
+
+/** Extrai o primeiro valor JSON de uma resposta de modelo: aceita cercas ```json e texto antes/depois. */
+export function extractJson(raw: string): { ok: true; value: unknown } | { ok: false } {
+  const candidates: string[] = [raw.trim()];
+  const fenced = /```(?:json)?\s*([\s\S]*?)```/i.exec(raw);
+  if (fenced?.[1]) candidates.push(fenced[1].trim());
+  const bloco = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
+  if (bloco) candidates.push(bloco[0]);
+  for (const c of candidates) {
+    if (!c) continue;
+    try {
+      return { ok: true, value: JSON.parse(c) };
+    } catch {
+      // tenta o próximo candidato
+    }
+  }
+  return { ok: false };
+}
 
 /**
  * Qualquer servidor com a API de chat da OpenAI (/v1/chat/completions): NVIDIA NIM (grátis),
@@ -26,36 +59,47 @@ export class OpenAICompatTextProvider implements TextProvider {
     this.defaultModel = defaultModel;
   }
 
-  private async chat(prompt: string, opts: GenerateOptions, json: boolean) {
+  private async chat(prompt: string, opts: GenerateOptions, json: boolean, jsonInstruction?: string) {
     const model = opts.model || this.defaultModel;
     const messages = [
       ...(opts.system ? [{ role: "system", content: opts.system }] : []),
-      { role: "user", content: json ? `${prompt}\n\nResponda APENAS com JSON válido, sem markdown.` : prompt },
+      {
+        role: "user",
+        content: json ? `${prompt}\n\n${jsonInstruction ?? "Responda APENAS com JSON válido, sem markdown."}` : prompt,
+      },
     ];
-    let res: Response;
-    try {
-      res = await fetch(this.chatUrl, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
-        },
-        body: JSON.stringify({
-          model,
-          messages,
-          temperature: opts.temperature ?? (json ? 0.3 : 0.7),
-          max_tokens: opts.maxOutputTokens ?? 4096,
-          ...(json ? { response_format: { type: "json_object" } } : {}),
-        }),
-        signal: AbortSignal.timeout(Number(process.env.OPENAI_COMPAT_TIMEOUT_MS ?? 120_000)),
-      });
-    } catch (err) {
-      throw new ProviderError(`Sem conexão com ${this.baseUrl}: ${err instanceof Error ? err.message : err}`, 503, err);
+    const requestBody = JSON.stringify({
+      model,
+      messages,
+      temperature: opts.temperature ?? (json ? 0.3 : 0.7),
+      max_tokens: opts.maxOutputTokens ?? (Number(process.env.OPENAI_COMPAT_MAX_TOKENS) || 4096),
+      ...(json ? { response_format: { type: "json_object" } } : {}),
+    });
+    const maxRetries = Math.max(0, Number(process.env.OPENAI_COMPAT_RETRIES ?? 3));
+    let res: Response | undefined;
+    for (let attempt = 0; ; attempt++) {
+      let current: Response;
+      try {
+        current = await fetch(this.chatUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            ...(this.apiKey ? { Authorization: `Bearer ${this.apiKey}` } : {}),
+          },
+          body: requestBody,
+          signal: AbortSignal.timeout(Number(process.env.OPENAI_COMPAT_TIMEOUT_MS ?? 120_000)),
+        });
+      } catch (err) {
+        throw new ProviderError(`Sem conexão com ${this.baseUrl}: ${err instanceof Error ? err.message : err}`, 503, err);
+      }
+      res = current;
+      if (current.ok) break;
+      const errText = await current.text().catch(() => current.statusText);
+      const waitMs = attempt < maxRetries ? retryDelayMs(current.status, errText, current.headers.get("retry-after")) : null;
+      if (waitMs === null) throw new ProviderError(`${this.name} ${current.status}: ${errText.slice(0, 300)}`, current.status);
+      await new Promise((r) => setTimeout(r, waitMs));
     }
-    if (!res.ok) {
-      const errText = await res.text().catch(() => res.statusText);
-      throw new ProviderError(`${this.name} ${res.status}: ${errText.slice(0, 300)}`, res.status);
-    }
+    if (!res) throw new ProviderError(`${this.name}: sem resposta`, 502);
     const body = (await res.json()) as {
       choices?: Array<{ message?: { content?: string } }>;
       usage?: { prompt_tokens?: number; completion_tokens?: number };
@@ -76,23 +120,36 @@ export class OpenAICompatTextProvider implements TextProvider {
   }
 
   async generateJson<T extends z.ZodTypeAny>(prompt: string, schema: T, opts: GenerateOptions = {}) {
-    const { text: raw, usage } = await this.chat(prompt, opts, true);
-    let parsed: unknown;
-    try {
-      parsed = JSON.parse(raw);
-    } catch {
-      const match = raw.match(/\{[\s\S]*\}|\[[\s\S]*\]/);
-      if (!match) throw new ProviderError(`${this.name} não retornou JSON válido`, 502, raw);
-      parsed = JSON.parse(match[0]);
+    const instruction = schemaInstruction(schema);
+    const maxFixes = Math.max(0, Number(process.env.OPENAI_COMPAT_JSON_FIXES ?? 1));
+    let currentPrompt = prompt;
+    let tokensIn = 0;
+    let tokensOut = 0;
+    let lastError = "";
+    for (let attempt = 0; attempt <= maxFixes; attempt++) {
+      const { text: raw, usage } = await this.chat(currentPrompt, opts, true, instruction);
+      tokensIn += usage.tokensIn;
+      tokensOut += usage.tokensOut;
+      const parsed = extractJson(raw);
+      if (parsed.ok) {
+        const result = schema.safeParse(parsed.value);
+        if (result.success) {
+          return { data: result.data as z.infer<T>, usage: { ...usage, tokensIn, tokensOut }, raw };
+        }
+        lastError = `Resposta fora do schema: ${result.error.issues.map((i) => i.path.join(".") + " " + i.message).join("; ")}`;
+      } else {
+        lastError = raw.trim()
+          ? `${this.name} não retornou JSON válido (início da resposta: ${raw.trim().slice(0, 160).replace(/\s+/g, " ")})`
+          : `${this.name} devolveu resposta vazia (modelos de raciocínio podem gastar todos os tokens pensando; aumente OPENAI_COMPAT_MAX_TOKENS)`;
+      }
+      if (attempt < maxFixes) {
+        // Uma correção guiada resolve a maioria dos modelos fracos/gratuitos sem repetir o prompt inteiro de novo.
+        currentPrompt = `${prompt}
+
+Sua resposta anterior foi rejeitada: ${lastError}
+Responda de novo, só com o JSON correto.`;
+      }
     }
-    const result = schema.safeParse(parsed);
-    if (!result.success) {
-      throw new ProviderError(
-        `Resposta fora do schema: ${result.error.issues.map((i) => i.path.join(".") + " " + i.message).join("; ")}`,
-        502,
-        parsed,
-      );
-    }
-    return { data: result.data as z.infer<T>, usage, raw };
+    throw new ProviderError(lastError, 502);
   }
 }

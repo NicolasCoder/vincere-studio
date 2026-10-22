@@ -40,3 +40,28 @@ export function toGeminiSchema(schema: z.ZodTypeAny): Record<string, unknown> {
       return { type: "STRING", ...desc };
   }
 }
+
+function lowerTypes(node: unknown): unknown {
+  if (Array.isArray(node)) return node.map(lowerTypes);
+  if (node && typeof node === "object") {
+    return Object.fromEntries(
+      Object.entries(node as Record<string, unknown>).map(([k, v]) => [k, k === "type" && typeof v === "string" ? v.toLowerCase() : lowerTypes(v)]),
+    );
+  }
+  return node;
+}
+
+/**
+ * Instrução para provedores sem "structured output" nativo (OpenAI-compatível, Ollama): descreve o
+ * formato exato esperado. Só pedir "JSON válido" faz modelos que não são o Gemini inventarem os
+ * próprios campos e o job falhar com "Resposta fora do schema".
+ */
+export function schemaInstruction(schema: z.ZodTypeAny): string {
+  const jsonSchema = JSON.stringify(lowerTypes(toGeminiSchema(schema)));
+  return [
+    "Responda APENAS com JSON válido, sem markdown e sem texto antes ou depois.",
+    "O JSON deve seguir EXATAMENTE este JSON Schema: todos os campos listados em \"required\" são obrigatórios,",
+    "os nomes dos campos devem ser idênticos e não adicione campos novos.",
+    `Schema: ${jsonSchema}`,
+  ].join("\n");
+}

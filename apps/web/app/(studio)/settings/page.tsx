@@ -48,7 +48,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         {youtube === "denied" && <div className="flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"><Icon name="warning" className="text-[18px]" />Autorização negada no Google — nada foi conectado.</div>}
         {youtube === "no_credentials" && <div className="flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning"><Icon name="warning" className="text-[18px]" />Configure YOUTUBE_CLIENT_ID/YOUTUBE_CLIENT_SECRET no .env antes de conectar (veja o card abaixo).</div>}
         {youtube === "error" && <div className="flex items-center gap-3 rounded border border-error/40 bg-error/10 px-4 py-3 text-sm text-error"><Icon name="error" className="text-[18px]" />Falha ao conectar: {msg}</div>}
-        {job && <JobWatcher jobId={job} label="Gerando prévia de voz" />}
+        {job && <div className="sticky top-2 z-20"><JobWatcher jobId={job} label="Gerando prévia de voz" /></div>}
         <Card className="p-5">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-lg font-semibold"><Icon name="savings" className="mr-1 align-middle text-primary-bright" />Orçamento de IA paga (imagem/vídeo)</h3>
@@ -123,7 +123,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
         </Card>
-        <Card className="p-5">
+        <Card className="p-5" id="youtube">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-lg font-semibold"><Icon name="smart_display" className="mr-1 align-middle text-primary-bright" />Canal do YouTube</h3>
             {youtubeConnection && <Badge tone="success" pill dot>Conectado</Badge>}

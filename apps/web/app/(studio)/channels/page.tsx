@@ -4,7 +4,7 @@ import { Badge, Card, Icon, Stat } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary } from "@/lib/data";
-import { getYoutubeChannelManagerData } from "@vincere-studio/providers";
+import { getYoutubeChannelManagerData, youtubeCredentialsConfigured } from "@vincere-studio/providers";
 
 function formatCount(n?: number) {
   if (n == null) return "—";
@@ -39,11 +39,25 @@ export default async function ChannelsPage() {
           <Card className="grid place-items-center p-16 text-center text-sm text-muted">
             <Icon name="link" className="text-[40px]" />
             <p className="mt-3">Nenhum canal conectado ainda.</p>
-            <Link href="/settings" className="mt-4">
-              <span className="inline-flex items-center gap-2 rounded border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary-bright hover:bg-primary/20">
-                <Icon name="link" className="text-[16px]" />Conectar canal em Settings
-              </span>
-            </Link>
+            {youtubeCredentialsConfigured() ? (
+              // Credenciais prontas: vai direto ao login do Google, sem passar pelas Configurações.
+              <a href="/api/auth/youtube/start" className="mt-4">
+                <span className="inline-flex items-center gap-2 rounded border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary-bright hover:bg-primary/20">
+                  <Icon name="link" className="text-[16px]" />Conectar canal do YouTube
+                </span>
+              </a>
+            ) : (
+              <>
+                <p className="mt-2 max-w-md text-xs text-warning">
+                  Falta configurar <code className="font-mono">YOUTUBE_CLIENT_ID</code> e <code className="font-mono">YOUTUBE_CLIENT_SECRET</code> no .env antes de conectar.
+                </p>
+                <Link href="/settings#youtube" className="mt-4">
+                  <span className="inline-flex items-center gap-2 rounded border border-primary/40 bg-primary/10 px-4 py-2 text-xs font-semibold text-primary-bright hover:bg-primary/20">
+                    <Icon name="link" className="text-[16px]" />Ver como configurar
+                  </span>
+                </Link>
+              </>
+            )}
           </Card>
         ) : (
           <>
