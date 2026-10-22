@@ -10,6 +10,15 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 21/10/2026 (noite, Claude) — para o Nicolas puxar
+
+- Branch **`fix/varredura-pre-video`** (parte de `feat/restaura-copiloto`): `git fetch origin && git switch fix/varredura-pre-video`.
+- Resumo completo e **lista de pontos de melhoria** em `docs/PROGRESSO_SESSAO.md`, seção "Nona rodada".
+- Novo: chaves de API e "onde o HyperFrames roda" pela interface (Configurações), guia `/AGENTES.md` + "Vincular agente", adaptador opcional do Hermes,
+  provedores de texto mais robustos e correção do reinício do HyperFrames. **Não testado**: pipeline completo com LLM real, Flow, render.
+- Decisões: uma instância por pessoa (sem login/multi-tenant por enquanto); o Hermes pessoal do Igor não entra no Vincere; Vince/"Hey, Vince" adiado.
+- Antes de mexer: `pnpm typecheck && pnpm test` (e `pnpm --filter @vincere-studio/web test:unit`); só subir verde.
+
 ## Estado deixado em 21/10/2026 — Video-Sharingan + IA Local, MotionDex & Redesign Apple Minimalista
 
 - **Redesign Minimalista (Guidelines Apple HIG & Emil Kowalski) e Reestruturação de UX (`apps/web` + `packages/ui`):**

@@ -159,6 +159,53 @@ Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Com
   (local / nuvem / PC forte), pasta de projetos e de mídia por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`),
   voz clonada do VoiceStudio como provedor completo do pipeline e edição por voz com LLM/agente configurável.
 
+## Nona rodada (21/10, noite, Claude) — varredura, agentes, chaves e HyperFrames por instância
+
+Branch: **`fix/varredura-pre-video`** (parte de `feat/restaura-copiloto`). Para ver: `git fetch origin && git switch fix/varredura-pre-video`.
+Validação: `pnpm typecheck` 7/7; testes: providers 33, worker 2, web (unit) 38. Telas conferidas no navegador numa instância isolada.
+
+### O que entrou (em ordem dos commits)
+1. **Adaptador do Hermes** (`apps/web/lib/agent-adapters.ts`): o Vince pode comandar o Hermes (`engine: "hermes"`), **desligado por padrão**
+   (só com `HERMES_SSH_HOST` ou `HERMES_BIN`). O pedido vai por stdin (apóstrofo, `$()` e crases chegam literais). `pnpm --filter @vincere-studio/web test:unit`.
+2. **Provedores de texto** (`packages/providers`): `OPENAI_COMPAT` e `OLLAMA` agora recebem o JSON Schema (só o Gemini recebia); retry em 429/402
+   `FREE_LIMIT`; uma correção guiada quando o JSON vem inválido; mensagem clara quando o modelo devolve resposta vazia (`OPENAI_COMPAT_MAX_TOKENS`).
+3. **HyperFrames**: `spawn("npx")` sem tratamento de erro derrubava o servidor (corrigido); o auto-start **não reinicia mais um preview vivo só porque
+   demorou a responder** (`apps/web/lib/hyperframes-autostart.ts`, `HYPERFRAMES_CONFIG_TIMEOUT_MS`).
+4. **Interface**: vozes sem chave ficam desativadas com o motivo (aviso do job agora fica fixo); Canais vai direto ao login do Google.
+5. **Guia para agentes** `apps/web/public/AGENTES.md` (servido em `/AGENTES.md`) + card **Configurações → Vincular agente de IA**.
+6. **Chaves de API pela interface** (Configurações → Chaves de API): 19 chaves por instância, no banco; valem na hora no web e no worker; nunca voltam
+   inteiras para a tela; "Testar" do Gemini. Código: `packages/providers/src/api-keys.ts`, `apps/web/instrumentation.ts`.
+7. **Onde o HyperFrames roda** (Configurações): "neste computador" ou "no meu servidor" (endereço, normalmente túnel SSH), com "Testar conexão";
+   o remoto nunca inicia preview local. Código: `apps/web/lib/hyperframes-config.ts`.
+
+### Decisões
+- **Uma instância por pessoa** (open source, autohospedado): cada um com o próprio `.env`/banco/chaves/Flow. Não há login nem multi-tenant, e a VPS do Igor
+  **não** é compartilhada. SaaS multi-tenant fica para depois, se houver demanda.
+- **Hermes pessoal não entra no Vincere.** Se usado, será um perfil dedicado só ao Vincere (porta e chave próprias, modelo barato, sem ferramentas).
+- **Vince / "Hey, Vince" adiado.** O conhecimento do Vince deve viajar no repositório (não depender do Obsidian/Hermes de ninguém).
+
+### Pontos de melhoria (por prioridade)
+1. **Instalador e assistente de primeiro acesso** (pastas `STORAGE_DIR`/`HYPERFRAMES_PROJECTS_DIR`, modo do HyperFrames, checagem de ffmpeg/Node/GPU, `pnpm setup`),
+   que funcione em Mac e Linux. Hoje o launcher é `.bat`/`.ps1` e há **caminhos fixos** do PC do Igor, o IP da VPS e um caminho do Nicolas em ~11 arquivos
+   (`scripts/*`, `skills-catalog`, `claude-inbox`, `local-agent-runner`).
+2. **Botão "Criar" do Início** (`NichoLauncher.tsx`) chama `chamarClaude(...)`: sem agente ele não cria vídeo. Falta o caminho direto para criar o projeto;
+   o rótulo "IA Gemini" do botão de ideias é fixo.
+3. **Escolher o provedor por tarefa, com reserva** (roteiro num, resto em outro). Hoje é global (`TEXT_PROVIDER`) + `ASSISTENTE_PROVIDER`.
+4. **Segurança**: sem login; `/api/claude` dispara um agente na máquina; as chaves salvas ficam em texto no SQLite (guardar no cofre do sistema ou cifrar);
+   exigir token fora de `localhost`.
+5. **HyperFrames**: abrir o túnel SSH pela própria tela (guardar host/porta/chave); alinhar versões (local 0.8.181 x VPS 0.8.185); o compilador recompila
+   e rebaixa fontes do Google a cada vez e trava máquinas fracas.
+6. **Flow**: painel ao vivo dentro do Vincere para login/captcha (hoje a janela do Chrome precisa aparecer); o diagnóstico de 19/10 ("media_id vazio") não foi
+   investigado; o daemon (porta 9334) precisa estar rodando (o `Iniciar Vincere.bat` liga).
+7. **Texto grátis sem chave não fecha o pipeline** (Pollinations anônimo: 1 resposta a cada 30 s). Exigir a chave do Gemini ou oferecer Ollama local; documentar.
+8. **Testes e build**: o smoke test do web trava sem `.env` (falta um banco de teste e timeout no `fetch`); o `PRAGMA` do `packages/db` imprime erro do Prisma
+   no build sem `DATABASE_URL` (inofensivo); build de 3,5 min.
+9. **Interface**: data sobreposta ao selo da etapa nos cartões do Início (~1024 px); falta a seleção de faixa de áudio no pedido ao agente.
+10. **Dados e nomes legados**: banco `docupulse.db`, remoto `PulseStudio`, três cópias do projeto no PC do Igor e duas cópias do projeto Nike (local e VPS).
+
+### Não testado
+Pipeline completo de roteiro → cenas → B-roll → legendas → render com um provedor de texto real; geração no Flow; Hermes real; render do HyperFrames.
+
 ## Sessão 19/10/2026 — Vincere Studio 2.0: HyperFrames, VoiceStudio VPS e Centro de Comando
 
 - **Integração Completa do HyperFrames Studio:**
