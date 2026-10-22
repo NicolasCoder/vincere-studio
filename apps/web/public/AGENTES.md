@@ -23,6 +23,8 @@ O nome oficial é exclusivamente **Vincere Studio**.
   - `/api/hyperframes` — estado do preview do HyperFrames (`running`, `port`, `activeProject`) e agentes detectados.
   - `/api/flow` — estado do daemon do Google Flow (porta 9334).
   - `/api/claude` — pedidos enviados pelo Vince/Studio e agentes detectados. `POST` cria um pedido (ver abaixo).
+  - `/api/cerebro` — qual IA está vinculada ao Vince e as opções detectadas nesta máquina. `POST` com `acao`: `vincular`
+    (`tipo` + `id`), `desvincular` ou `apresentar` (a IA lê este manual e se apresenta).
 - Não existe login por usuário: quem acessa a instância usa o que está configurado nela. **Nunca** exponha a
   instância na internet sem proteção.
 
@@ -91,7 +93,7 @@ A biblioteca em `/skills` descreve cada uma, com prévia. As principais, por id:
 - Quando o usuário seleciona algo no Studio, o pedido chega com: rótulo/tag, seletor CSS, `data-hf-id`,
   tempo atual da timeline, texto atual, arquivo-fonte e estilos inline. Use isso para localizar o elemento.
 - Trabalhe **só dentro da pasta do projeto** informada. Não renderize vídeos pesados sem o usuário pedir.
-- A seleção de uma **faixa de áudio** ainda não é enviada no pedido; se o usuário falar de áudio, pergunte o intervalo.
+- Quando houver uma **faixa de áudio** selecionada, o pedido traz `faixaAudio` (trilha, início e fim em segundos). Se o usuário falar de áudio e isso não vier, pergunte o intervalo.
 
 ## Enviar um pedido pela própria ferramenta
 
@@ -100,11 +102,28 @@ A biblioteca em `/skills` descreve cada uma, com prévia. As principais, por id:
 Se nenhum agente estiver vinculado, o pedido fica na caixa (`status: pendente`) até alguém atendê-lo.
 `PATCH /api/claude` atualiza `status` (`pendente|fazendo|feito|erro`) e `resposta`.
 
+## O Vince e a IA da pessoa
+
+O **Vince** é o assistente que mora no canto da tela. Quem fala por ele é **a IA que a própria pessoa vinculou**: um agente instalado
+na máquina dela (Claude Code, Antigravity, Codex, Hermes) ou uma LLM por chave/endereço (Gemini, compatível com OpenAI, Ollama).
+
+- **Primeiro acesso:** o Vince convida a vincular uma IA (também em Configurações → "Vincular a sua IA ao Vince"). Ao vincular, a IA
+  **lê este manual** e se apresenta, e a partir daí guia a pessoa: explica telas, sugere skills e prompts da biblioteca e propõe pedidos de edição.
+- **Conversa é somente leitura:** os agentes respondem em modo de planejamento/leitura, numa pasta temporária vazia, sem acesso aos
+  projetos nem ao `.env`. Editar arquivos é outra etapa: o Vince devolve um pedido (`acaoClaude`) e, com a pessoa de acordo, o agente
+  vinculado executa em `POST /api/claude`.
+- **Sem IA vinculada**, o Vince não manda a conversa para nenhum serviço: ele pede o vínculo. (O botão "Criar" do Início, nesse caso,
+  abre o projeto direto no passo a passo.)
+- A IA e as chaves são **por instância**: nada se compartilha com outras pessoas.
+
 ## Onde ficam os dados
 
 - Banco SQLite e mídia: pasta `storage/` da instância (`STORAGE_DIR`). Projetos HyperFrames: `HYPERFRAMES_PROJECTS_DIR`.
-- Configuração: arquivo `.env` na raiz (modelo em `.env.example`). Provedores de texto: `TEXT_PROVIDER`
-  (`GEMINI`, `OLLAMA` ou `OPENAI_COMPAT`).
+- Configuração: arquivo `.env` na raiz (modelo em `.env.example`) **ou, para as chaves de API, a tela Configurações → Chaves de API**
+  (a chave salva na tela vale na hora e vence a do `.env`). Provedores de texto: `TEXT_PROVIDER` (`GEMINI`, `OLLAMA` ou
+  `OPENAI_COMPAT`); `TEXT_PROVIDER_<TAREFA>` escolhe outro só para ideias, roteiro etc., e `TEXT_PROVIDER_FALLBACK` é a reserva.
+- Onde o HyperFrames roda: Configurações → "Onde o HyperFrames roda" (neste computador ou num servidor da pessoa).
+- Primeiro uso numa máquina nova: `pnpm install` e depois `pnpm run setup` (cria `.env`, pastas e banco, e confere ffmpeg/HyperFrames/GPU).
 
 ## Regras de conduta (obrigatórias)
 

@@ -11,7 +11,6 @@ import { VincularAgente } from "@/components/VincularAgente";
 import { ChavesApi } from "@/components/ChavesApi";
 import { HyperframesOnde } from "@/components/HyperframesOnde";
 import { lerAlvoHyperframes } from "@/lib/hyperframes-config";
-import { detectLocalAgents } from "@/lib/local-agent-runner";
 import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus, statusDasChaves } from "@vincere-studio/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
@@ -42,12 +41,6 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     hf === "salvo" || hf === "teste_ok" ? { tipo: "ok" as const, texto: hfmsg ?? "Pronto." }
     : hf === "erro" ? { tipo: "erro" as const, texto: hfmsg ?? "Não foi possível concluir." }
     : undefined;
-  const detectados = detectLocalAgents();
-  const agentes = [
-    { id: "agy", nome: "Antigravity (agy)", disponivel: Boolean(detectados.agyPath), detalhe: detectados.agyPath ?? "defina AGY_BIN se estiver em outro lugar" },
-    { id: "claude", nome: "Claude Code", disponivel: Boolean(detectados.claudePath), detalhe: detectados.claudePath ?? "defina CLAUDE_BIN se estiver em outro lugar" },
-    { id: "hermes", nome: "Hermes", disponivel: detectados.hermes.available, detalhe: detectados.hermes.detail },
-  ];
   const ytCredentialsSet = youtubeCredentialsConfigured();
   const podeLegenda = await youtubePodeLegenda();
   return (
@@ -136,7 +129,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
         </Card>
         <ChavesApi chaves={chaves} aviso={avisoChave} />
         <HyperframesOnde alvo={alvoHf} aviso={avisoHf} />
-        <VincularAgente agentes={agentes} />
+        <VincularAgente />
         <Card className="p-5" id="youtube">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-lg font-semibold"><Icon name="smart_display" className="mr-1 align-middle text-primary-bright" />Canal do YouTube</h3>

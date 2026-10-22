@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { createRequest, listRequests, updateRequest, type ClaudeRequestStatus } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
+import { lerCerebro } from "@/lib/cerebro";
 
 export const dynamic = "force-dynamic";
 
@@ -27,6 +28,10 @@ const selectionSchema = z
     textContent: z.string().nullable().optional(),
     sourceFile: z.string().optional(),
     inlineStyles: z.record(z.string()).optional(),
+    // Faixa de áudio selecionada na timeline (segundos), quando o Studio souber capturá-la.
+    faixaAudio: z
+      .object({ trilha: z.string().max(200).optional(), inicio: z.number().min(0).optional(), fim: z.number().min(0).optional() })
+      .optional(),
   })
   .nullable()
   .optional();
@@ -38,9 +43,16 @@ const createSchema = z.object({
   projectDir: z.string().max(500).optional(),
   projetoId: z.string().max(60).optional(),
   anexo: z.string().max(20000).optional(),
-  engine: z.enum(["auto", "agy", "claude", "hermes", "inbox"]).optional(),
+  engine: z.enum(["auto", "agy", "claude", "codex", "hermes", "inbox"]).optional(),
   selection: selectionSchema,
 });
+
+// Sem motor escolhido, executa com o agente que a pessoa vinculou ao Vince (se houver); senão, o primeiro detectado.
+async function motorDoPedido(escolhido?: "auto" | "agy" | "claude" | "codex" | "hermes" | "inbox") {
+  if (escolhido && escolhido !== "auto") return escolhido;
+  const c = await lerCerebro();
+  return c?.tipo === "agente" ? (c.id as "agy" | "claude" | "codex" | "hermes") : "auto";
+}
 
 // POST /api/claude  → cria pedido e dispara o agente local (Antigravity agy / Claude Code)
 export async function POST(req: Request) {
@@ -54,7 +66,7 @@ export async function POST(req: Request) {
   const dispatch = await dispatchLocalAgent({
     requestId: item.id,
     pedido: rest.pedido,
-    engine: engine ?? "auto",
+    engine: await motorDoPedido(engine),
     projectHf: rest.projetoHf,
     projectDir,
     pagina: rest.pagina,

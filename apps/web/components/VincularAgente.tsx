@@ -1,20 +1,14 @@
 "use client";
 import { useState } from "react";
-import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
-
-interface AgenteDetectado {
-  id: string;
-  nome: string;
-  disponivel: boolean;
-  detalhe: string;
-}
+import { Button, Card, Icon } from "@vincere-studio/ui";
+import { PainelVincularCerebro } from "./PainelVincularCerebro";
 
 /**
- * Vincular o agente de IA da própria pessoa (Claude Code, Antigravity, Hermes, Codex...). Quem prefere
- * trabalhar por fora, num terminal, só precisa colar a instrução abaixo: o guia /AGENTES.md explica a
- * ferramenta, as funções e as regras de conduta.
+ * Vincular a IA da própria pessoa (Claude Code, Antigravity, Codex, Hermes ou uma LLM por chave). Ela vira o cérebro do
+ * Vince e executa as edições. Quem prefere trabalhar por fora, num terminal, só precisa colar a instrução abaixo:
+ * o guia /AGENTES.md explica a ferramenta, as funções e as regras de conduta.
  */
-export function VincularAgente({ agentes }: { agentes: AgenteDetectado[] }) {
+export function VincularAgente() {
   const [copiado, setCopiado] = useState(false);
   const instrucao = () =>
     `Leia ${window.location.origin}/AGENTES.md e siga o guia: ele explica o Vincere Studio, as telas, o pipeline, ` +
@@ -34,33 +28,24 @@ export function VincularAgente({ agentes }: { agentes: AgenteDetectado[] }) {
     <Card className="p-5" id="agente">
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold">
-          <Icon name="smart_toy" className="mr-1 align-middle text-primary-bright" />Vincular agente de IA
+          <Icon name="smart_toy" className="mr-1 align-middle text-primary-bright" />Vincular a sua IA ao Vince
         </h3>
         <a href="/AGENTES.md" target="_blank" rel="noreferrer">
-          <Button size="sm" variant="ghost" icon="description">Abrir o guia</Button>
+          <Button size="sm" variant="ghost" icon="description">Abrir o manual</Button>
         </a>
       </div>
       <p className="mt-1 text-xs text-fg-secondary">
-        Use o agente que você já tem. Ele edita os arquivos do projeto e o Studio recarrega sozinho; não precisa &quot;ver o navegador&quot;.
-        Para trabalhar por fora, num terminal, cole a instrução abaixo no seu agente.
+        A IA que você vincular lê o manual da ferramenta e passa a ser o cérebro do Vince, que guia você, sugere skills e prompts e ajuda a editar.
+        Ela edita os arquivos do projeto e o Studio recarrega sozinho; não precisa &quot;ver o navegador&quot;.
       </p>
-
-      <div className="mt-3 grid gap-2 sm:grid-cols-3">
-        {agentes.map((a) => (
-          <div key={a.id} className="rounded border border-line bg-void/40 p-3">
-            <div className="flex items-center justify-between">
-              <span className="text-sm font-semibold">{a.nome}</span>
-              <Badge tone={a.disponivel ? "success" : "neutral"} pill dot>{a.disponivel ? "detectado" : "não encontrado"}</Badge>
-            </div>
-            <div className="mt-1 break-words font-mono text-[10px] text-muted">{a.detalhe}</div>
-          </div>
-        ))}
+      <div className="mt-3">
+        <PainelVincularCerebro />
       </div>
 
-      <div className="mt-3 rounded border border-dashed border-line p-3">
-        <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Instrução para colar no seu agente</div>
+      <div className="mt-4 rounded border border-dashed border-line p-3">
+        <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Prefere trabalhar por fora, no terminal?</div>
         <p className="mt-1 text-xs text-fg-secondary">
-          Leia <code className="font-mono">/AGENTES.md</code> desta instância e siga o guia (ferramenta, telas, pipeline, HyperFrames e regras de conduta).
+          Cole esta instrução no seu agente: ele lê o manual <code className="font-mono">/AGENTES.md</code> desta instância e sabe como usar a ferramenta.
         </p>
         <div className="mt-2">
           <Button size="sm" variant="primary" icon={copiado ? "check" : "content_copy"} onClick={copiar}>

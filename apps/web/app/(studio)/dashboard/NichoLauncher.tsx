@@ -2,10 +2,12 @@
 
 import { useRef, useState } from "react";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { Badge, Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude } from "@/components/ClaudeButton";
 import { NICHOS, pedidoDoNicho, type Formato, type Nicho } from "@/lib/nichos";
 import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
+import { criarProjetoDoInicio } from "./actions";
 
 const FORMATOS_OPCOES: {
   id: Formato;
@@ -44,6 +46,29 @@ export function NichoLauncher() {
   const [notas, setNotas] = useState("");
   const [idiomaId, setIdiomaId] = useState("pt-BR");
   const carouselRef = useRef<HTMLDivElement | null>(null);
+  const router = useRouter();
+  const [criando, setCriando] = useState(false);
+
+  // Com um agente de IA vinculado ao Vince, ele cria o vídeo por você. Sem agente, abre o projeto direto no pipeline
+  // (ideias → roteiro → voz → render), então o botão nunca fica parado esperando uma ferramenta que a pessoa não tem.
+  const criar = async () => {
+    if (!sel || tema.trim().length < 3 || criando) return;
+    setCriando(true);
+    try {
+      const c = await fetch("/api/cerebro", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+      if (c?.cerebro?.tipo === "agente") {
+        chamarClaude({ pedido: pedidoDoNicho(sel, tema.trim(), formato, notas.trim() || undefined, idiomaPorId(idiomaId)) });
+        return;
+      }
+      if (formato === "1:1") {
+        router.push(`/workflow?formato=${encodeURIComponent(formato)}&estilo=${encodeURIComponent(sel.id)}`);
+        return;
+      }
+      await criarProjetoDoInicio({ formato, nichoId: sel.id, tema: tema.trim(), notas: notas.trim() || undefined });
+    } finally {
+      setCriando(false);
+    }
+  };
 
   const escolherEstilo = (n: Nicho) => {
     setSel(n);
@@ -224,24 +249,17 @@ export function NichoLauncher() {
             </select>
             <button
               type="button"
-              disabled={tema.trim().length < 3}
-              onClick={() =>
-                chamarClaude({
-                  pedido: pedidoDoNicho(
-                    sel,
-                    tema.trim(),
-                    formato,
-                    notas.trim() || undefined,
-                    idiomaPorId(idiomaId),
-                  ),
-                })
-              }
+              disabled={tema.trim().length < 3 || criando}
+              onClick={criar}
               className="apple-press inline-flex h-9 items-center justify-center gap-1.5 rounded-lg gradient-cta px-4 text-xs font-semibold text-fg shadow-glow-cta hover:brightness-110 disabled:opacity-40 disabled:pointer-events-none"
             >
               <Icon name="arrow_upward" className="text-[15px]" />
-              <span>Criar</span>
+              <span>{criando ? "Criando…" : "Criar"}</span>
             </button>
           </div>
+          <p className="text-[10px] leading-relaxed text-muted">
+            Com uma IA vinculada ao Vince, ela cria por você. Sem agente vinculado, o projeto abre direto no passo a passo (ideias, roteiro, voz e render).
+          </p>
         </div>
       )}
     </section>

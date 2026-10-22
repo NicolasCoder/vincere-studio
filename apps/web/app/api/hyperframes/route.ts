@@ -8,6 +8,7 @@ import { storageRoot } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
 import { deveIniciarPreviewLocal, portaAceitaConexao, timeoutConfigMs } from "@/lib/hyperframes-autostart";
+import { pastaPessoal } from "@/lib/pastas";
 import { lerAlvoHyperframes, resolverAlvo, type AlvoHyperframes } from "@/lib/hyperframes-config";
 
 export const dynamic = "force-dynamic";
@@ -24,9 +25,8 @@ function resolveWorkspaceDir(): string {
   if (process.env.HYPERFRAMES_PROJECTS_DIR && existsSync(process.env.HYPERFRAMES_PROJECTS_DIR)) {
     return process.env.HYPERFRAMES_PROJECTS_DIR;
   }
-  if (existsSync("C:\\Users\\Igor\\Videos-HF")) {
-    return "C:\\Users\\Igor\\Videos-HF";
-  }
+  const padrao = path.join(pastaPessoal(), "Videos-HF");
+  if (existsSync(padrao)) return padrao;
   return path.join(HF_STORAGE(), "workspace");
 }
 
@@ -383,7 +383,7 @@ const createProjectSchema = z.object({
   height: z.number().int().min(320).max(3840).default(1920),
   template: z.string().optional(),
   prompt: z.string().optional(),
-  engine: z.enum(["auto", "agy", "claude", "hermes", "inbox"]).optional(),
+  engine: z.enum(["auto", "agy", "claude", "codex", "hermes", "inbox"]).optional(),
 });
 
 const decisaoSchema = z.object({

@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, cn } from "@vincere-studio/ui";
+import { PainelVincularCerebro } from "./PainelVincularCerebro";
 
 // Vince: o assistente do canto. Duas abas —
 //   Conversar: guia na ferramenta (LLM de texto do servidor, grátis) com voz do navegador;
@@ -45,7 +46,7 @@ const STATUS_LABEL: Record<Pedido["status"], { label: string; cls: string }> = {
 const BOAS_VINDAS: Msg = {
   role: "assistant",
   content:
-    "Oi! Sou o Vince. Posso te explicar qualquer tela, sugerir o nicho e a skill certos e mandar o Agente local (Antigravity agy / Claude Code) editar para você. O que vamos fazer?",
+    "Oi! Sou o Vince. Posso te explicar qualquer tela, sugerir o estilo, as skills e os prompts certos e mandar o seu agente de IA editar para você. O que vamos fazer?",
 };
 
 const SUGESTOES = ["Por onde eu começo um vídeo?", "Qual skill uso agora?", "Como copio o estilo de um vídeo?", "O que esta tela faz?"];
@@ -114,12 +115,30 @@ export function ClaudeButton() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviando, setEnviando] = useState(false);
 
+  // IA que responde pelo Vince (a que a pessoa vinculou) e se falta vincular uma.
+  const [precisaVincular, setPrecisaVincular] = useState(false);
+  const [motor, setMotor] = useState<string | null>(null);
+
   const [erro, setErro] = useState<string | null>(null);
   const [ouvindo, setOuvindo] = useState(false);
   const recRef = useRef<{ stop: () => void } | null>(null);
 
   const projetoId = pathname.match(/^\/projects\/([^/]+)/)?.[1];
   const ativos = pedidos.filter((i) => i.status === "pendente" || i.status === "fazendo").length;
+
+  // Ao abrir o Vince, vê qual IA responde por ele; se nenhuma, mostra o convite para vincular a dela.
+  useEffect(() => {
+    if (!open) return;
+    fetch("/api/cerebro", { cache: "no-store" })
+      .then((x) => x.json())
+      .then((r) => {
+        if (!r?.ok) return;
+        setPrecisaVincular(!r.ativo);
+        const o = (r.opcoes as { tipo: string; id: string; nome: string }[]).find((x) => x.tipo === r.ativo?.tipo && x.id === r.ativo?.id);
+        setMotor(o?.nome ?? null);
+      })
+      .catch(() => {});
+  }, [open]);
 
   useEffect(() => {
     setMsgs(lerLocal<Msg[]>(CHAT_KEY, [BOAS_VINDAS]));
@@ -171,9 +190,14 @@ export function ClaudeButton() {
       .catch(() => null);
     setPensando(false);
     if (!r?.ok) {
+      if (r?.precisaVincular) {
+        setPrecisaVincular(true);
+        return;
+      }
       setErro(r?.error ?? "Sem resposta do assistente.");
       return;
     }
+    if (r.motor) setMotor(r.motor);
     setMsgs((m) => [...m, { role: "assistant", content: r.resposta, irPara: r.irPara, acaoClaude: r.acaoClaude, lembrou: r.lembrou }]);
     if (vozLigada) falar(r.resposta);
   };
@@ -262,7 +286,7 @@ export function ClaudeButton() {
             <VinceAvatar className="size-9 shrink-0" falando={pensando} />
             <div className="min-w-0 flex-1">
               <div className="font-display text-sm font-bold text-fg">Vince</div>
-              <p className="truncate text-[11px] text-muted">Seu guia no Vincere Studio · edições pelo Claude</p>
+              <p className="truncate text-[11px] text-muted">{motor ? `Seu guia no Vincere Studio · IA: ${motor}` : "Seu guia no Vincere Studio"}</p>
             </div>
             <button
               onClick={alternarVoz}
@@ -289,6 +313,19 @@ export function ClaudeButton() {
           </nav>
 
           {aba === "conversar" ? (
+            precisaVincular ? (
+              <div className="flex-1 overflow-y-auto p-4">
+                <h3 className="mb-2 font-display text-sm font-bold text-fg">Vincule a sua IA ao Vince</h3>
+                <PainelVincularCerebro
+                  onVinculado={(texto, nome) => {
+                    setMsgs([{ role: "assistant", content: texto }]);
+                    setMotor(nome);
+                    setPrecisaVincular(false);
+                  }}
+                  aoMudar={() => {}}
+                />
+              </div>
+            ) : (
             <>
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {msgs.map((m, i) => (
@@ -320,7 +357,7 @@ export function ClaudeButton() {
                               onClick={() => enviarPedido(m.acaoClaude!, undefined)}
                               className="rounded-full bg-primary/20 px-2.5 py-1 text-[11px] font-semibold text-primary-bright hover:bg-primary/30"
                             >
-                              Mandar o Claude fazer
+                              Mandar o agente fazer
                             </button>
                           )}
                         </div>
@@ -384,12 +421,16 @@ export function ClaudeButton() {
                   Limpar conversa
                 </button>
               )}
+              <button onClick={() => setPrecisaVincular(true)} className="pb-3 text-[10px] text-muted hover:text-fg">
+                Trocar a IA do Vince
+              </button>
             </>
+            )
           ) : aba === "claude" ? (
             <>
               <div className="space-y-2 border-b border-line p-4">
                 <p className="text-[11px] text-muted">
-                  Conectado ao <strong className="text-primary-bright">Antigravity CLI (`agy`) / Claude Code</strong> no seu PC. Os pedidos são executados localmente nos seus projetos.
+                  Os pedidos são executados pelo <strong className="text-primary-bright">agente de IA que você vinculou ao Vince</strong>, nos seus projetos locais.
                 </p>
                 {anexo && <span className="inline-block rounded border border-primary/40 px-1.5 py-0.5 font-mono text-[10px] text-primary-bright">+ anexo</span>}
                 <textarea
@@ -415,7 +456,7 @@ export function ClaudeButton() {
                     className="flex h-10 flex-1 items-center justify-center gap-2 rounded bg-primary text-sm font-bold text-void disabled:opacity-40"
                   >
                     <Icon name="send" className="text-[18px]" />
-                    {enviando ? "Executando…" : "Executar com Agente (agy / Claude)"}
+                    {enviando ? "Executando…" : "Executar com o agente vinculado"}
                   </button>
                 </div>
                 {erro && <p className="text-[11px] text-error">{erro}</p>}

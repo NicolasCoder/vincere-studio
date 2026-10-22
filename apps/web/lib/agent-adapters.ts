@@ -3,7 +3,7 @@ import path from "node:path";
 // Adaptadores dos agentes que o Vince/Studio pode comandar. Este módulo só monta o comando
 // (sem spawn nem acesso a disco), para ser testável; quem executa é o local-agent-runner.
 
-export type AgentEngineId = "auto" | "agy" | "claude" | "hermes" | "inbox";
+export type AgentEngineId = "auto" | "agy" | "claude" | "codex" | "hermes" | "inbox";
 
 export interface AgentInvocation {
   command: string;
@@ -13,6 +13,8 @@ export interface AgentInvocation {
   stdin?: string;
   /** Texto curto para mostrar ao usuário ("Hermes (SSH)"). */
   label: string;
+  /** Alguns agentes (Codex) gravam a resposta final num arquivo; a saída padrão traz só o andamento. */
+  arquivoSaida?: string;
 }
 
 /** Aspas simples POSIX: o conteúdo vira um único argumento literal no shell remoto. */

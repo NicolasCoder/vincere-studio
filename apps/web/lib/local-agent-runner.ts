@@ -1,6 +1,8 @@
 import { spawn } from "node:child_process";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { acharExecutavel, prepararExecutavel } from "./agente-executavel";
+import { pastaPessoal } from "./pastas";
 import { updateRequest } from "./claude-inbox";
 import {
   buildHermesInvocation,
@@ -17,28 +19,26 @@ export type { AgentEngineId } from "./agent-adapters";
 export interface DetectedAgents {
   agyPath: string | null;
   claudePath: string | null;
+  codexPath: string | null;
   preferred: "agy" | "claude" | "inbox";
   /** Só presente quando o Hermes foi configurado no .env; não entra na escolha "preferred". */
   hermes: DetectedHermes;
 }
 
-const AGY_CANDIDATES = [
-  process.env.AGY_BIN,
-  "C:\\Users\\Nicolas\\AppData\\Local\\agy\\bin\\agy.exe",
-  path.join(process.env.LOCALAPPDATA || "", "agy", "bin", "agy.exe"),
-].filter(Boolean) as string[];
-
-const CLAUDE_CANDIDATES = [
-  process.env.CLAUDE_BIN,
-  path.join(process.env.APPDATA || "", "npm", "claude.cmd"),
-  path.join(process.env.USERPROFILE || "", ".local", "bin", "claude.exe"),
-].filter(Boolean) as string[];
-
+// Procura primeiro os caminhos que o usuário informou (AGY_BIN, CLAUDE_BIN, CODEX_BIN) e os locais de
+// instalação conhecidos; depois o PATH do sistema (funciona em Windows, Mac e Linux).
 export function detectLocalAgents(): DetectedAgents {
-  const agyPath = AGY_CANDIDATES.find((p) => existsSync(p)) ?? null;
-  const claudePath = CLAUDE_CANDIDATES.find((p) => existsSync(p)) ?? null;
+  const local = process.env.LOCALAPPDATA;
+  const roaming = process.env.APPDATA;
+  const win = process.platform === "win32";
+  const agyPath = acharExecutavel(["agy"], [process.env.AGY_BIN, local && path.join(local, "agy", "bin", "agy.exe")]);
+  const claudePath = acharExecutavel(
+    ["claude"],
+    [process.env.CLAUDE_BIN, roaming && path.join(roaming, "npm", "claude.cmd"), path.join(pastaPessoal(), ".local", "bin", win ? "claude.exe" : "claude")],
+  );
+  const codexPath = acharExecutavel(["codex"], [process.env.CODEX_BIN, local && path.join(local, "Programs", "OpenAI", "Codex", "bin", "codex.exe")]);
   const preferred = agyPath ? "agy" : claudePath ? "claude" : "inbox";
-  return { agyPath, claudePath, preferred, hermes: describeHermes(readHermesConfig()) };
+  return { agyPath, claudePath, codexPath, preferred, hermes: describeHermes(readHermesConfig()) };
 }
 
 export interface AgentSelectionContext {
@@ -50,6 +50,7 @@ export interface AgentSelectionContext {
   textContent?: string | null;
   sourceFile?: string;
   inlineStyles?: Record<string, string>;
+  faixaAudio?: { trilha?: string; inicio?: number; fim?: number };
 }
 
 export interface RunLocalAgentInput {
@@ -89,6 +90,9 @@ function buildAgentPrompt(input: RunLocalAgentInput, dirOverride?: string): stri
         ? `- Tempo atual na timeline: ${Number(input.selection.currentTime).toFixed(2)}s`
         : "",
       input.selection.sourceFile ? `- Arquivo fonte: ${input.selection.sourceFile}` : "",
+      input.selection.faixaAudio
+        ? `- Faixa de áudio selecionada: ${input.selection.faixaAudio.trilha ?? "trilha"} de ${Number(input.selection.faixaAudio.inicio ?? 0).toFixed(2)}s até ${Number(input.selection.faixaAudio.fim ?? 0).toFixed(2)}s`
+        : "",
       input.selection.textContent ? `- Texto atual: "${input.selection.textContent}"` : "",
       input.selection.inlineStyles && Object.keys(input.selection.inlineStyles).length > 0
         ? `- Estilos inline: ${JSON.stringify(input.selection.inlineStyles)}`
@@ -115,8 +119,9 @@ function buildAgentPrompt(input: RunLocalAgentInput, dirOverride?: string): stri
   return lines.filter((l) => l !== undefined).join("\n");
 }
 
-// Pasta do Node 22 que o Nicolas usa com o agy; só entra no PATH se existir (e com o separador do sistema).
-const LEGACY_NODE_DIR = "C:\\Users\\Nicolas\\AppData\\Local\\nvm\\v22.11.0";
+// Pasta do Node 22 (nvm no Windows) que o agy pode precisar; só entra no PATH se existir, com o separador do
+// sistema. Em outros casos, use VINCERE_AGENT_PATH no .env.
+const LEGACY_NODE_DIR = path.join(pastaPessoal(), "AppData", "Local", "nvm", "v22.11.0");
 
 function agentEnv(): NodeJS.ProcessEnv {
   const extra = [process.env.VINCERE_AGENT_PATH, existsSync(LEGACY_NODE_DIR) ? LEGACY_NODE_DIR : undefined].filter(
@@ -126,11 +131,12 @@ function agentEnv(): NodeJS.ProcessEnv {
   return { ...process.env, PATH: [...extra, process.env.PATH || ""].join(path.delimiter) };
 }
 
-type EngineUsed = "agy" | "claude" | "hermes" | "inbox";
+type EngineUsed = "agy" | "claude" | "codex" | "hermes" | "inbox";
 
 const ENGINE_LABEL: Record<EngineUsed, string> = {
   agy: "Antigravity (agy)",
   claude: "Claude Code",
+  codex: "Codex",
   hermes: "Hermes",
   inbox: "fila",
 };
@@ -152,6 +158,9 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
   } else if (requested === "claude" && detected.claudePath) {
     engineUsed = "claude";
     binPath = detected.claudePath;
+  } else if (requested === "codex" && detected.codexPath) {
+    engineUsed = "codex";
+    binPath = detected.codexPath;
   } else if (requested === "hermes" && hermesCfg) {
     engineUsed = "hermes";
   } else if (requested === "auto") {
@@ -161,6 +170,9 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
     } else if (detected.claudePath) {
       engineUsed = "claude";
       binPath = detected.claudePath;
+    } else if (detected.codexPath) {
+      engineUsed = "codex";
+      binPath = detected.codexPath;
     } else if (hermesCfg) {
       // Último recurso: só existe se alguém configurou o Hermes de propósito.
       engineUsed = "hermes";
@@ -187,11 +199,27 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
     });
   } else {
     const fullPrompt = buildAgentPrompt(input);
-    const args: string[] =
-      engineUsed === "agy"
-        ? ["--mode", "auto", "--dangerously-skip-permissions", "--add-dir", cwd, "-p", fullPrompt]
-        : ["--dangerously-skip-permissions", "-p", fullPrompt];
-    invocation = { command: binPath as string, args, cwd, label: ENGINE_LABEL[engineUsed] };
+    // No Windows o claude costuma ser um atalho .cmd; o Node não o executa sem shell, então usamos o alvo real.
+    const pronto = prepararExecutavel(binPath as string);
+    if (!pronto) {
+      await updateRequest(input.requestId, {
+        status: "erro",
+        resposta: `Não consegui executar ${ENGINE_LABEL[engineUsed]} (${path.basename(binPath as string)}). Defina ${engineUsed.toUpperCase()}_BIN no .env com o caminho do executável (.exe).`,
+      });
+      return { dispatched: false, engineUsed };
+    }
+    let args: string[];
+    let stdin: string | undefined;
+    if (engineUsed === "agy") {
+      args = ["--mode", "auto", "--dangerously-skip-permissions", "--add-dir", cwd, "-p", fullPrompt];
+    } else if (engineUsed === "codex") {
+      // workspace-write: pode editar só dentro da pasta do projeto; o prompt vai por stdin.
+      args = ["exec", "--sandbox", "workspace-write", "--skip-git-repo-check", "--ephemeral", "-C", cwd, "-"];
+      stdin = fullPrompt;
+    } else {
+      args = ["--dangerously-skip-permissions", "-p", fullPrompt];
+    }
+    invocation = { command: pronto.command, args: [...pronto.prefixo, ...args], cwd, stdin, label: ENGINE_LABEL[engineUsed] };
   }
 
   await updateRequest(input.requestId, {
