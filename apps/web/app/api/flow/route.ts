@@ -192,7 +192,7 @@ export async function GET(req: Request) {
     return NextResponse.json({
       ok: false,
       running: false,
-      error: "Flow Daemon não detectado na porta 9334. Execute flow_queue_daemon.py para conectar.",
+      error: "Flow Daemon não detectado na porta 9334. Inicie o daemon (python flow_queue_daemon.py, na pasta flow-studio-mcp). Se o Vincere roda em um servidor, o túnel do seu computador até ele também precisa estar ativo.",
       details: err.message,
     });
   }

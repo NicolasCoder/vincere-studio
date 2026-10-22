@@ -7,6 +7,8 @@ import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
 import { updateBudget } from "./budget-actions";
 import { prisma } from "@vincere-studio/db";
+import { VincularAgente } from "@/components/VincularAgente";
+import { detectLocalAgents } from "@/lib/local-agent-runner";
 import { EdgeVoiceProvider, getYoutubeConnection, youtubeCredentialsConfigured, youtubePodeLegenda, getBudgetStatus } from "@vincere-studio/providers";
 import { VoiceGallery } from "@/components/VoiceGallery";
 import { JobWatcher } from "@/components/JobWatcher";
@@ -37,6 +39,12 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
     getBudgetStatus(),
   ]);
   const edgeVoices = new EdgeVoiceProvider().voices();
+  const detectados = detectLocalAgents();
+  const agentes = [
+    { id: "agy", nome: "Antigravity (agy)", disponivel: Boolean(detectados.agyPath), detalhe: detectados.agyPath ?? "defina AGY_BIN se estiver em outro lugar" },
+    { id: "claude", nome: "Claude Code", disponivel: Boolean(detectados.claudePath), detalhe: detectados.claudePath ?? "defina CLAUDE_BIN se estiver em outro lugar" },
+    { id: "hermes", nome: "Hermes", disponivel: detectados.hermes.available, detalhe: detectados.hermes.detail },
+  ];
   const ytCredentialsSet = youtubeCredentialsConfigured();
   const podeLegenda = await youtubePodeLegenda();
   return (
@@ -123,6 +131,7 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
             </form>
           </div>
         </Card>
+        <VincularAgente agentes={agentes} />
         <Card className="p-5" id="youtube">
           <div className="flex items-center justify-between">
             <h3 className="font-display text-lg font-semibold"><Icon name="smart_display" className="mr-1 align-middle text-primary-bright" />Canal do YouTube</h3>
