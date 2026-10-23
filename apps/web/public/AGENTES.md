@@ -23,7 +23,7 @@ O nome oficial é exclusivamente **Vincere Studio**.
   - `/api/v1/projects` (`GET` lista, `POST` cria projeto) e `/api/v1/projects/<id>` (`GET` árvore completa, `PATCH` atualiza, `DELETE` com `confirm: true`).
   - `/api/v1/projects/<id>/state` — diagnóstico detalhado de etapas concluídas, pendências e `proximasAcoes[]` liberadas/bloqueadas.
   - `/api/v1/projects/<id>/content` (`POST`) — o próprio agente injeta `ideas`, `script` (em atos), `scenes`, `edit_plan` ou `seo` sem depender de LLM interno.
-  - `/api/v1/projects/<id>/actions` (`POST`) — dispara ações do pipeline com validação de pré-condições e gates no servidor (`gerar_ideias`, `escolher_ideia`, `gerar_roteiro`, `sintetizar_voz`, `alinhar_legendas`, `planejar_cenas`, `buscar_broll`, `gerar_imagens`, `exportar_hyperframes`, `renderizar_video`, `aprovar_render`, `publicar_youtube`).
+  - `/api/v1/projects/<id>/actions` (`POST`) — dispara ações do pipeline com validação de pré-condições e gates no servidor (`auto_produce`, `gerar_ideias`, `escolher_ideia`, `gerar_roteiro`, `sintetizar_voz`, `alinhar_legendas`, `planejar_cenas`, `buscar_broll`, `gerar_imagens`, `exportar_hyperframes`, `renderizar_video`, `aprovar_render`, `publicar_youtube`).
   - `/api/v1/jobs/<id>/wait?timeoutMs=25000` — long-polling inteligente que aguarda o job terminar e devolve o resultado.
   - `/api/v1/workflows` (`GET`/`POST`) e `/api/v1/workflows/<id>` (`GET`/`PUT`/`POST`) — cria, valida e executa grafos de comercial/UGC.
   - `/api/health` — a instância está de pé e quantos projetos existem.

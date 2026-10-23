@@ -21,6 +21,10 @@ export async function synthesizeVoice(ctx: JobContext) {
   if (!profile) throw new Error("Nenhum perfil de voz. Crie um em Settings.");
   const fallbacks = JSON.parse(profile.fallbacks || "[]") as { provider: string; voiceId: string }[];
   const chain = [{ provider: profile.provider, voiceId: profile.voiceId }, ...fallbacks];
+  // Auto-healing: adiciona EDGE_TTS como rede de segurança resiliente se não estiver na cadeia
+  if (!chain.some((c) => c.provider === "EDGE_TTS")) {
+    chain.push({ provider: "EDGE_TTS", voiceId: "pt-BR-AntonioNeural" });
+  }
   const force = Boolean(ctx.payload.force ?? false) || !!only; // regravar tudo / atos específicos
   const done = new Set((Array.isArray(ctx.payload.doneBlockIds) ? (ctx.payload.doneBlockIds as string[]) : []));
   const withTracks = new Set((await prisma.voiceTrack.findMany({ where: { block: { scriptId: script.id } }, select: { scriptBlockId: true } })).map((t) => t.scriptBlockId));

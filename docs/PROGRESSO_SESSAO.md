@@ -811,3 +811,30 @@ Branch: **`fix/acesso-local-api-v1`**
 4. **Validação**:
    - `pnpm typecheck`: 7/7 pacotes aprovados (0 erros).
    - `pnpm test`: 5/5 suítes aprovadas (100% verde).
+
+---
+
+## Décima quarta rodada (23/10) — Implementação de AUTO_PRODUCE, Safe-Zones Visuais, SFX Procedurais, Auto-Healing e Bateria E2E
+
+Branch: **`fix/acesso-local-api-v1`**
+
+1. **Loop Autônomo de Produção (`AUTO_PRODUCE`)**:
+   - Criado `apps/worker/src/jobs/auto-produce.ts` que encadeia a criação do vídeo de ponta a ponta (roteiro -> voz -> legendas alinhadas -> cenas com B-roll e imagens IA -> plano de edição DVP -> renderização de prova).
+   - Trava de segurança ativa: Para rigorosamente antes da publicação, exigindo aprovação manual da versão renderizada.
+   - Suporte a webhook (`WEBHOOK_URL`) com payload de conclusão e link de revisão humana.
+   - Ação `action: "auto_produce"` exposta em `POST /api/v1/projects/[id]/actions` e catalogada em `/api/v1/capabilities`.
+
+2. **Auditoria Visual de Safe-Zones (`packages/core/src/safe-zones.ts`)**:
+   - Mapeamento das zonas seguras para vídeos verticais (`SHORT_9_16` para YouTube Shorts, TikTok e Instagram Reels) e horizontais (`LONG_16_9`).
+   - Evita sobreposição de elementos essenciais (legendas, lower-thirds e dados) com barras de status, perfis, descrições e botões de engajamento laterais.
+   - Integrado ao relatório de auditoria de qualidade em `apps/worker/src/jobs/render-video.ts`.
+   - Testes unitários dedicados em `packages/core/src/safe-zones.test.ts` (4 testes aprovados).
+
+3. **Biblioteca Procedural de SFX em FFmpeg (`packages/render/src/sfx.ts`)**:
+   - Efeitos sonoros gerados por síntese de áudio procedural em FFmpeg (sem download externo, sem violação de direitos autorais e 100% offline): `whoosh`, `impact`, `riser`, `click`.
+
+4. **Auto-Healing no Pipeline**:
+   - `apps/worker/src/jobs/synthesize-voice.ts`: Inserção automática de `EDGE_TTS` como rede de segurança resiliente no final da cadeia de sintetizadores para garantir que quotas esgotadas do Gemini ou falhas de rede nunca interrompam a esteira.
+
+5. **Bateria de Testes de Integração em Tempo Real**:
+   - 9 verificações sequenciais contra o servidor vivo na porta 3210 (Health, Capabilities com `auto_produce`, 6 Runbooks, Skills API, Lista de Projetos, Diagnóstico de Estado, Trava de Segurança `403 GATE_APROVACAO_OBRIGATORIO`, Despacho de `auto_produce` e Enfileiramento de `check-updates`). Todas com 100% de aprovação.

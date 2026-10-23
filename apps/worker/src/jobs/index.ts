@@ -18,6 +18,7 @@ import { applyVisualLayer } from "./apply-visual-layer";
 import { talkingHeadPipeline } from "./talking-head";
 import { sharinganClone } from "./sharingan-clone";
 import { checkSkillsUpdates } from "./skills-updates";
+import { autoProduce } from "./auto-produce";
 
 export type JobHandler = (ctx: JobContext) => Promise<unknown>;
 
@@ -51,4 +52,5 @@ export const handlers: Record<JobType, JobHandler> = {
   TALKING_HEAD_PIPELINE: talkingHeadPipeline,
   SHARINGAN_CLONE: sharinganClone,
   CHECK_SKILLS_UPDATES: checkSkillsUpdates,
+  AUTO_PRODUCE: autoProduce,
 };

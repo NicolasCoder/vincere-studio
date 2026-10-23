@@ -105,6 +105,10 @@ const actionSchema = z.discriminatedUnion("action", [
     privacyStatus: z.enum(["private", "unlisted", "public"]).default("private"),
     force: z.boolean().default(false),
   }),
+  z.object({
+    action: z.literal("auto_produce"),
+    force: z.boolean().default(false),
+  }),
 ]);
 
 export async function POST(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -458,6 +462,23 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         { force: d.force },
       );
       return NextResponse.json({ ok: true, action: d.action, reused, jobId: job.id, waitUrl: `/api/v1/jobs/${job.id}/wait` });
+    }
+
+    case "auto_produce": {
+      const { job, reused } = await enqueueProjectJob(
+        id,
+        "AUTO_PRODUCE",
+        {},
+        { force: d.force },
+      );
+      return NextResponse.json({
+        ok: true,
+        action: d.action,
+        reused,
+        jobId: job.id,
+        waitUrl: `/api/v1/jobs/${job.id}/wait`,
+        message: "Loop autônomo AUTO_PRODUCE iniciado. Conduzirá a produção até o render de prova e parará para aprovação humana.",
+      });
     }
   }
 }

@@ -26,6 +26,11 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
   - Rota de ações `POST /api/v1/projects/[id]/actions` (`gerar_imagens`) suporta seleção de motor de imagem (`POLLINATIONS`, `CLOUDFLARE`, `HUGGINGFACE`, `TOGETHER`, `GEMINI`, `OPENAI`, `KIE`) e preenchimento de cenas pendentes.
 - **Roadmap Atualizado & Fases 6 a 9 Delineadas**:
   - `docs/ROADMAP_AGENTE_PRIMEIRO.md` e `docs/ROADMAP_OPENAI_E_QUALIDADE.md` atualizados com status das integrações e com o planejamento das Fases 6 (`AUTO_PRODUCE`), 7 (Auto-Healing & Safe Zones), 8 (Multiplataforma Reels/TikTok + SFX) e 9 (Métricas reais do YouTube).
+- **Auto-Produce, Safe-Zones & SFX Procedurais (Fases 6, 7 e 8)**:
+  - Implementado `AUTO_PRODUCE` em `apps/worker/src/jobs/auto-produce.ts` com orquestração contínua do roteiro ao render de prova, trava inviolável de segurança no servidor e notificação via webhook (`WEBHOOK_URL`).
+  - Módulo de auditoria de Safe-Zones (`packages/core/src/safe-zones.ts` e testes) para prevenir sobreposições em formatos verticais (Shorts, Reels, TikTok) e horizontais.
+  - Biblioteca de efeitos sonoros procedurais gerados via FFmpeg (`packages/render/src/sfx.ts`: whoosh, impact, riser, click).
+  - Auto-healing no `synthesizeVoice` garantindo conclusão resiliente via `EDGE_TTS` em caso de instabilidade de quotas do Gemini.
 - **Portabilidade & HyperFrames Preview Sem Quedas**:
   - Eliminados caminhos hardcoded de drives e usuários alheios (`F:\Python Projects\...` e `C:\Users\Nicolas\...`) em `hyperframes/route.ts`, `pc-gpu-engine.ts`, `sharingan-clone.ts` e `talking-head.ts`.
   - O launcher do HyperFrames agora localiza dinamicamente o `hyperframes.mjs` no `%APPDATA%\npm\node_modules` e roda diretamente via `node.exe` com fallback seguro `shell: true`, eliminando o erro de `spawn npx ENOENT` no Windows.

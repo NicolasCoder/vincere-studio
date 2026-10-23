@@ -70,7 +70,7 @@ export async function GET(req: Request) {
       projectState: "GET /api/v1/projects/:id/state",
       submitContent: "POST /api/v1/projects/:id/content (kinds: ideas | script | scenes | edit_plan | seo)",
       runAction:
-        "POST /api/v1/projects/:id/actions (actions: gerar_ideias | escolher_ideia | gerar_roteiro | reescrever_bloco | sugerir_melhorias | sintetizar_voz | alinhar_legendas | planejar_cenas | buscar_broll | gerar_imagens | importar_inbox | gerar_plano_edicao | exportar_hyperframes | renderizar_video | gerar_thumbnail | aprovar_render | rejeitar_render | publicar_youtube)",
+        "POST /api/v1/projects/:id/actions (actions: auto_produce | gerar_ideias | escolher_ideia | gerar_roteiro | reescrever_bloco | sugerir_melhorias | sintetizar_voz | alinhar_legendas | planejar_cenas | buscar_broll | gerar_imagens | importar_inbox | gerar_plano_edicao | exportar_hyperframes | renderizar_video | gerar_thumbnail | aprovar_render | rejeitar_render | publicar_youtube)",
       waitJob: "GET /api/v1/jobs/:jobId/wait?timeoutMs=25000",
       workflows: "GET / POST /api/v1/workflows, GET / PUT / POST /api/v1/workflows/:id",
       terminalAgentDispatch: "GET / POST / PATCH /api/claude",

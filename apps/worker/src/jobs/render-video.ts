@@ -2,7 +2,7 @@ import path from "node:path";
 import { existsSync } from "node:fs";
 import { readdir, rm, stat, unlink } from "node:fs/promises";
 import { prisma } from "@vincere-studio/db";
-import { captionPresetFor, getVisualStyle, type CaptionMode, type EstiloLegenda, type VideoFormat, type Intensidade, eixosDe, legendaDe } from "@vincere-studio/core";
+import { captionPresetFor, getVisualStyle, type CaptionMode, type EstiloLegenda, type VideoFormat, type Intensidade, eixosDe, legendaDe, auditElementSafeZone } from "@vincere-studio/core";
 import { absPath, auditRenderedVideo, probeDurationMs, projectDir, relPath, storageRoot } from "@vincere-studio/providers";
 import { ACT_GAP_MS, amostrarTimeline, borrowNeighborMedia, ensureProceduralMusic, fitScenesToVoice, normalizeMotion, profileFor, randomizeVideoOffsets, renderTimeline, type Timeline, type TimelineScene } from "@vincere-studio/render";
 import type { JobContext } from "../queue";
@@ -220,10 +220,23 @@ export async function renderVideo(ctx: JobContext) {
     },
   });
   const durationMs = await probeDurationMs(outFile);
-  const qualityAudit = await auditRenderedVideo(outFile);
+  const qualityAuditBase = await auditRenderedVideo(outFile);
+  const safeZoneViolations =
+    captionStyle?.posicao === "bottom" && project.format === "SHORT_9_16"
+      ? auditElementSafeZone("SHORT_9_16", "Legenda no Rodapé", { topPct: 0.82, heightPct: 0.1, leftPct: 0.1, widthPct: 0.8 })
+      : [];
+
+  const qualityAudit = {
+    ...qualityAuditBase,
+    safeZones: { passed: safeZoneViolations.length === 0, violations: safeZoneViolations },
+  };
+
   await appendLog(`Auditoria: ${qualityAudit.blackSegments} trecho(s) preto(s), maior ${qualityAudit.longestBlackSec.toFixed(1)}s · ${qualityAudit.silenceSegments} silêncio(s), maior ${qualityAudit.longestSilenceSec.toFixed(1)}s`);
   if (qualityAudit.longestBlackSec >= 1 || qualityAudit.longestSilenceSec >= 3) {
     await appendLog("⚠ Revisão recomendada: o master contém quadro preto >=1s ou silêncio >=3s.");
+  }
+  if (!qualityAudit.safeZones.passed) {
+    await appendLog(`⚠ Auditoria de Safe-Zone (9:16): ${safeZoneViolations[0]?.message ?? "Atenção a sobreposições de interface."}`);
   }
 
   if (renderJob) {
