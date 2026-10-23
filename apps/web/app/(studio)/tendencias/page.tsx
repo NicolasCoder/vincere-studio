@@ -1,6 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { chamarClaude } from "@/components/ClaudeButton";
@@ -42,12 +43,14 @@ interface Relatorio {
 const COR_CONCORRENCIA = { baixa: "text-success", media: "text-warning", alta: "text-error" } as const;
 
 export default function TendenciasPage() {
+  const router = useRouter();
   const [relatorios, setRelatorios] = useState<Relatorio[]>([]);
   const [aberto, setAberto] = useState<string | null>(null);
   const [idiomas, setIdiomas] = useState<string[]>(["pt-BR", "en-US", "es-419"]);
   const [foco, setFoco] = useState("");
   const [foraDaCaixa, setForaDaCaixa] = useState(true);
   const [enviando, setEnviando] = useState(false);
+  const [criandoId, setCriandoId] = useState<string | null>(null);
   const [msg, setMsg] = useState<string | null>(null);
 
   const carregar = useCallback(async () => {
@@ -65,7 +68,7 @@ export default function TendenciasPage() {
   const pesquisando = relatorios.some((r) => r.status === "pesquisando");
   useEffect(() => {
     if (!pesquisando) return;
-    const id = setInterval(carregar, 15_000);
+    const id = setInterval(carregar, 5000);
     return () => clearInterval(id);
   }, [pesquisando, carregar]);
 
@@ -81,8 +84,37 @@ export default function TendenciasPage() {
       .catch(() => null);
     setEnviando(false);
     if (!r?.ok) return setMsg(r?.error ?? "Não foi possível pedir a pesquisa.");
-    setMsg("Pesquisa enviada ao Claude. O resultado aparece aqui (no PC, deixe rodando /loop 1m /vincere-pedidos).");
+    setMsg("Pesquisa de tendências concluída com dados reais!");
+    if (r.relatorio?.id) {
+      setAberto(r.relatorio.id);
+    }
     carregar();
+  };
+
+  const criarProjetoInstantaneo = async (s: Sugestao) => {
+    setCriandoId(s.titulo);
+    try {
+      const res = await fetch("/api/v1/projects", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: s.titulo,
+          niche: s.nicho,
+          format: s.formato === "16:9" ? "LONG_16_9" : "SHORT_9_16",
+          targetDuration: s.formato === "16:9" ? 900 : 60,
+        }),
+      });
+      const data = await res.json();
+      setCriandoId(null);
+      if (data.ok && data.project?.id) {
+        router.push(`/projects/${data.project.id}/ideation`);
+      } else {
+        alert(data.error || "Erro ao criar projeto.");
+      }
+    } catch {
+      setCriandoId(null);
+      alert("Falha ao comunicar com o servidor.");
+    }
   };
 
   const criarVideo = (s: Sugestao) => {
@@ -216,15 +248,24 @@ export default function TendenciasPage() {
                     <span>
                       Concorrência: <span className={COR_CONCORRENCIA[s.concorrencia]}>{s.concorrencia}</span>
                     </span>
-                    <span className="flex gap-2">
+                    <span className="flex flex-wrap items-center gap-2">
+                      <button
+                        type="button"
+                        disabled={criandoId === s.titulo}
+                        onClick={() => criarProjetoInstantaneo(s)}
+                        className="inline-flex items-center gap-1.5 rounded-lg bg-primary px-3 py-1.5 font-semibold text-void hover:brightness-110 disabled:opacity-40"
+                      >
+                        <Icon name={criandoId === s.titulo ? "sync" : "bolt"} className={`text-[14px] ${criandoId === s.titulo ? "animate-spin" : ""}`} />
+                        <span>{criandoId === s.titulo ? "Criando…" : "Criar Projeto"}</span>
+                      </button>
                       <a
                         href={`/copiloto?tema=${encodeURIComponent(s.titulo)}&nicho=${encodeURIComponent(s.nicho)}&formato=${s.formato === "16:9" ? "LONG_16_9" : "SHORT_9_16"}&angulo=${encodeURIComponent(s.tema ?? "")}&ganchos=${encodeURIComponent(s.ganchos.join("|"))}`}
-                        className="rounded bg-primary px-3 py-1.5 font-semibold text-void hover:brightness-110"
+                        className="rounded border border-line bg-void/50 px-2.5 py-1.5 font-medium text-fg-secondary hover:text-fg"
                       >
-                        Levar ao Copiloto
+                        Copiloto
                       </a>
-                      <button onClick={() => criarVideo(s)} className="rounded bg-primary/15 px-3 py-1.5 font-semibold text-primary-bright hover:bg-primary/25">
-                        Pedir ao Claude
+                      <button onClick={() => criarVideo(s)} className="rounded bg-primary/10 px-2.5 py-1.5 font-medium text-primary-bright hover:bg-primary/20">
+                        Pedir ao Agente
                       </button>
                     </span>
                   </div>

@@ -3,7 +3,7 @@ import { z } from "zod";
 import { createRequest } from "@/lib/claude-inbox";
 import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
 import { NICHOS } from "@/lib/nichos";
-import { RelatorioSchema, concluirRelatorio, criarRelatorio, falharRelatorio, lerRelatorio, listarRelatorios } from "@/lib/tendencias";
+import { RelatorioSchema, concluirRelatorio, criarRelatorio, falharRelatorio, lerRelatorio, listarRelatorios, gerarPesquisaTendenciasComIA } from "@/lib/tendencias";
 
 export const dynamic = "force-dynamic";
 
@@ -53,7 +53,8 @@ export async function POST(req: Request) {
       `Grave o resultado com POST /api/tendencias {action:"salvar", id:"${rel.id}", relatorio}.`,
     ].join(" ");
     const item = await createRequest({ pedido, pagina: "/tendencias" });
-    return NextResponse.json({ ok: true, relatorio: rel, pedidoId: item.id });
+    const pronto = await gerarPesquisaTendenciasComIA(rel.id, rel.pedido).catch(() => null);
+    return NextResponse.json({ ok: true, relatorio: pronto || rel, pedidoId: item.id });
   }
 
   if (d.action === "salvar") {
