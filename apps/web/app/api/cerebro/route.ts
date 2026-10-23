@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { extractJson, recordUsage } from "@vincere-studio/providers";
+import { extractJson, recordUsage, carregarChavesNoAmbiente } from "@vincere-studio/providers";
 import { interpretarRespostaDoVince } from "@/lib/cerebro-comandos";
 import { detectarOpcoes, lerCerebro, limparCerebro, perguntarAoCerebro, resolverCerebroAtivo, salvarCerebro, validarCerebro } from "@/lib/cerebro";
 import { PEDIDO_DE_APRESENTACAO, lerManual, montarSistemaDoVince } from "@/lib/vince-sistema";
@@ -9,6 +9,7 @@ export const dynamic = "force-dynamic";
 
 // GET /api/cerebro → IA vinculada ao Vince, a que está respondendo agora e as opções detectadas nesta máquina.
 export async function GET() {
+  await carregarChavesNoAmbiente().catch(() => {});
   const [cerebro, ativo] = await Promise.all([lerCerebro(), resolverCerebroAtivo()]);
   return NextResponse.json({ ok: true, cerebro, ativo, opcoes: detectarOpcoes(), temManual: lerManual().length > 0 });
 }
@@ -24,6 +25,7 @@ const bodySchema = z.discriminatedUnion("acao", [
 //   desvincular → remove o vínculo;
 //   apresentar  → a IA lê o manual da ferramenta e se apresenta (a primeira coisa que acontece depois de vincular).
 export async function POST(req: Request) {
+  await carregarChavesNoAmbiente().catch(() => {});
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Pedido inválido." }, { status: 400 });
   const corpo = parsed.data;
