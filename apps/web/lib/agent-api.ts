@@ -1,9 +1,11 @@
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import path from "node:path";
+import { timingSafeEqual } from "node:crypto";
 import { NextResponse } from "next/server";
 import { prisma } from "@vincere-studio/db";
 import { storageRoot } from "@vincere-studio/providers";
+import { requisicaoLocal } from "./acesso-local";
 import { pastaDeProjetosHyperframes } from "./pastas";
 import { createRequest } from "./claude-inbox";
 
@@ -64,17 +66,21 @@ export interface ProjectAgentState {
   proximasAcoes: AgentNextAction[];
 }
 
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+function mesmoToken(a: string, b: string): boolean {
+  const ba = Buffer.from(a);
+  const bb = Buffer.from(b);
+  return ba.length === bb.length && timingSafeEqual(ba, bb);
+}
 
 /**
  * Verifica autorização para chamadas da API de agente (/api/v1/*).
- * - Em localhost: sempre liberado.
- * - Fora de localhost: aceita Authorization: Bearer <VINCERE_AGENT_TOKEN | ADMIN_TOKEN | LAN_PIN>
+ * - Na própria máquina (ou túnel SSH do dono): liberado. "Local" = Host de loopback e sem a marca do lan-proxy
+ *   (x-vincere-origem); só o Host não basta, ver lib/acesso-local.ts.
+ * - Pela rede: aceita Authorization: Bearer <VINCERE_AGENT_TOKEN | ADMIN_TOKEN | LAN_PIN>
  *   ou cabeçalho x-vincere-token.
  */
 export function checkAgentAuth(req: Request): NextResponse | null {
-  const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
-  if (!host || LOCAL_HOSTS.has(host)) return null;
+  if (requisicaoLocal(req.headers)) return null;
 
   const authHeader = req.headers.get("authorization") ?? "";
   const bearer = authHeader.startsWith("Bearer ") ? authHeader.slice(7).trim() : "";
@@ -87,7 +93,7 @@ export function checkAgentAuth(req: Request): NextResponse | null {
     process.env.LAN_PIN,
   ].filter((t): t is string => Boolean(t && t.trim().length > 0));
 
-  if (provided && validTokens.includes(provided)) {
+  if (provided && validTokens.some((t) => mesmoToken(t, provided))) {
     return null;
   }
 

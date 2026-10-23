@@ -10,7 +10,7 @@
 
 import readline from "node:readline";
 
-const BASE_URL = (process.env.VINCERE_URL || "http://localhost:3210").replace(/\/+$/, "");
+const BASE_URL = (process.env.VINCERE_URL || "http://127.0.0.1:3210").replace(/\/+$/, "");
 const AGENT_TOKEN = process.env.VINCERE_AGENT_TOKEN || process.env.ADMIN_TOKEN || "";
 
 async function callApi(pathname, { method = "GET", body } = {}) {

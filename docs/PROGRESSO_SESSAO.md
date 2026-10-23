@@ -743,3 +743,21 @@ ser feitas em `packages/core/src/edit-plan.ts` e verificadas também no `editor-
 - **Manutenção e Higienização 24/7 da VPS:**
   - Script `/opt/vincere-studio/scripts/cleanup-vps.sh` instalado no crontab diário da VPS (`0 4 * * *`).
   - Higienização de `/tmp`, trabalho efêmero, rotação de logs PM2 e cache do pnpm/Docker. Telemetria: 338 GB livres (29% de uso).
+
+## Décima segunda rodada (23/10) — acesso "local" da API v1 sem depender do `Host`, testes das rotas e variáveis documentadas
+
+Branch: **`fix/acesso-local-api-v1`** (sobre o trabalho agente-primeiro do Nicolas, `87dd123`). Pedido pelo Igor após a leitura do roadmap.
+
+1. **Acesso "local" não confia mais só no cabeçalho `Host`.** Qualquer aparelho da rede podia mandar `Host: localhost` e passar pelo PIN e pelo token (o mesmo critério estava no `middleware.ts` e, copiado, no `/api/v1`). Agora:
+   - `apps/web/lib/acesso-local.ts` (`requisicaoLocal`): local = `Host` de loopback **e** sem o cabeçalho `x-vincere-origem`. Usado pelo `middleware.ts` e por `checkAgentAuth` (`lib/agent-api.ts`).
+   - `scripts/lan-proxy.mjs`: a porta 3210 passou a ser um **proxy HTTP** (com upgrade/WebSocket) que apaga qualquer `x-vincere-origem` do cliente e grava `x-vincere-origem: rede`. As demais portas (3010) continuam repasse TCP. `LAN_HTTP_PORTS` escolhe quais são HTTP.
+   - `apps/web/package.json`: `dev` e `start` agora usam `--hostname 127.0.0.1`. Antes o `next start` escutava em todas as interfaces e um aparelho da rede falava direto com ele (com `Host` forjado). Pela rede só se entra pelo `lan-proxy`. Na VPS isso já era assim (`ecosystem.config.cjs`).
+   - `checkAgentAuth` compara tokens em tempo constante (`timingSafeEqual`).
+   - **Atenção ao atualizar:** reinicie o `lan-proxy` (feche o `node` antigo e rode `Iniciar Vincere.bat`); o antigo é TCP puro e não marca a origem, então não protege. Na VPS, o deploy leva o código novo, e o túnel SSH do dono continua sendo "local".
+   - Quem abre `http://localhost:3210` no próprio PC não muda nada. Acesso pelo IP do PC (`http://192.168.x.x:3210`) sem o `lan-proxy` deixa de funcionar: use o `lan-proxy`.
+2. **Testes**: `lib/acesso-local.test.ts` (5) e `app/api/v1/seguranca-v1.test.ts` (16: autenticação com token/Bearer/x-vincere-token/ADMIN_TOKEN/LAN_PIN, `Host` forjado, trava `403 GATE_APROVACAO_OBRIGATORIO` (inclusive com token e `force:true`), 404, 400, `DELETE` com confirmação). O banco e os serviços são simulados. Total do web: **88** testes. O teste do `Host` forjado falha com o código antigo (conferido). `vitest.unit.config.ts` ganhou o alias `@` e inclui `app/api/v1/**/*.test.ts`.
+3. **`.env.example`**: `LAN_PIN`, `VINCERE_AGENT_TOKEN` e `VINCERE_URL` (MCP) documentados. O MCP passou a usar `http://127.0.0.1:3210` por padrão (o servidor agora só escuta no IPv4).
+
+Verificado: `pnpm typecheck` 7/7, build, e ao vivo (`next start` + proxy de teste): `Host` forjado e marca forjada pelo proxy → 401 em `/api/v1/capabilities` e `DELETE`; página → 307 para `/entrar`; acesso direto local → 200. O proxy foi testado com `Host` e marca forjados, upgrade e destino fora do ar (502).
+
+Fora do escopo (segue aberto): o Remotion que sobrou em `EditarInsercao.tsx`, `skills-catalog.ts`, `apply-visual-layer.ts` e `packages/core/src/edit-plan*.ts`; teste do `worker` + render nesta máquina; criptografar as chaves salvas.

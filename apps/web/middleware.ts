@@ -1,14 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
+import { requisicaoLocal } from "@/lib/acesso-local";
 import { LAN_COOKIE, pinHash } from "@/lib/lan-pin";
 
 // Acesso pela rede Wi-Fi (lan-proxy → http://<IP-do-PC>:3210) exige o PIN do .env (LAN_PIN).
 // No PC o acesso é por localhost (túnel SSH) e segue livre. Sem isso, qualquer aparelho da rede
 // poderia mandar pedidos que o Claude Code executa no PC (/api/claude).
-const LOCAL_HOSTS = new Set(["localhost", "127.0.0.1", "[::1]", "::1"]);
+// "Local" não é só o cabeçalho Host (qualquer aparelho pode enviar `Host: localhost`): o lan-proxy marca o que
+// repassa com x-vincere-origem e o servidor escuta só em 127.0.0.1. Ver lib/acesso-local.ts.
 
 export async function middleware(req: NextRequest) {
-  const host = (req.headers.get("host") ?? "").replace(/:\d+$/, "");
-  if (LOCAL_HOSTS.has(host)) return NextResponse.next();
+  if (requisicaoLocal(req.headers)) return NextResponse.next();
 
   const pin = process.env.LAN_PIN;
   const cookie = req.cookies.get(LAN_COOKIE)?.value;
