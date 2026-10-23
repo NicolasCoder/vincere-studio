@@ -1,7 +1,7 @@
 // Catálogo das skills de vídeo instaladas no Claude do PC. Usado pela biblioteca (/skills)
 // e pelo assistente, para recomendar a skill certa em cada momento.
 
-export type Motor = "HyperFrames" | "Remotion" | "Google Flow" | "Pesquisa" | "Legendas" | "Código" | "Imagem" | "Estratégia";
+export type Motor = "HyperFrames" | "Google Flow" | "Pesquisa" | "Legendas" | "Código" | "Imagem" | "Estratégia";
 export type Preview = "slash" | "lockup" | "grid" | "zoom" | "stamp" | "frames" | "orbit" | "nodes" | "wave";
 
 export interface Skill {
@@ -121,7 +121,7 @@ export const SKILLS: Skill[] = [
     id: "motion-aplicar",
     nome: "Aplicar motions do catálogo",
     comando: "/motion-aplicar-da-biblioteca",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Marcar no roteiro onde entra cada motion pronto do Editor-Video.",
     voceDa: "O roteiro",
     voceRecebe: "Falas marcadas com [motion: nome @segundos texto]",
@@ -132,10 +132,10 @@ export const SKILLS: Skill[] = [
     id: "editar-documentario",
     nome: "Documentário narrado",
     comando: "/editar-documentario-narrado",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Documentários e curiosidades no Editor-Video, com fontes e imagens de arquivo.",
     voceDa: "Tema ou roteiro com fontes",
-    voceRecebe: "Vídeo narrado montado no Remotion",
+    voceRecebe: "Vídeo narrado montado no HyperFrames",
     exemplo: "/editar-documentario-narrado sobre a anomalia gravitacional do Atlântico, 60s vertical.",
     preview: "stamp",
   },
@@ -143,7 +143,7 @@ export const SKILLS: Skill[] = [
     id: "editar-igor",
     nome: "Vídeo de fala estilo Igor",
     comando: "/editar-igor",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Vídeos com você (ou seu clone) falando: legenda dinâmica, zooms e cortes.",
     voceDa: "O vídeo gravado",
     voceRecebe: "Edição pronta para Reels/TikTok",
@@ -154,7 +154,7 @@ export const SKILLS: Skill[] = [
     id: "caosanimado",
     nome: "Cortes de desenho e anime",
     comando: "/caosanimado-video-pipeline",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Cortes do Caos Animado: transcrição, legenda, revisão e publicação.",
     voceDa: "Os episódios ou trechos",
     voceRecebe: "Cortes renderizados e prontos para publicar",
@@ -187,7 +187,7 @@ export const SKILLS: Skill[] = [
     id: "edicao-profissional",
     nome: "Edição profissional (fancy editing + Katana)",
     comando: "/anthropic-skills:edicao-profissional",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Vídeos longos 16:9 ou curtos 9:16 com tipografia pop em neon, roadmaps, zooms, light leaks e cortes Katana.",
     voceDa: "A gravação ou o roteiro narrado",
     voceRecebe: "Edição no estilo Isaac/isaacverse com motion e sound design",
@@ -198,7 +198,7 @@ export const SKILLS: Skill[] = [
     id: "editor-video-vertical",
     nome: "Editor de vídeo vertical (Editor_AI)",
     comando: "/anthropic-skills:editor-video-vertical",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Reels/TikTok com legendas animadas e estilos por nicho: motivacional, cortes de filmes, Vô Tião e Doña Cida.",
     voceDa: "O vídeo e o nicho",
     voceRecebe: "Vertical editado com legenda, motion e catálogo de prompts",
@@ -209,7 +209,7 @@ export const SKILLS: Skill[] = [
     id: "brabo-edicao",
     nome: "Edição dinâmica de apresentador",
     comando: "/brabo-edicao-video-dinamica",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Conteúdo narrado com você (ou seu clone) e ilustrações interativas em cima, lettering e texto em tela cheia.",
     voceDa: "O vídeo do apresentador",
     voceRecebe: "Edição sincronizada à fala, com ilustrações e lettering",
@@ -242,7 +242,7 @@ export const SKILLS: Skill[] = [
     id: "editar-video",
     nome: "Mapa de edições (qual skill usar)",
     comando: "/editar-video",
-    motor: "Remotion",
+    motor: "HyperFrames",
     quando: "Não sabe qual skill de edição usar: ela decide pelo tipo de vídeo e chama a certa.",
     voceDa: "O tipo de vídeo que vai fazer",
     voceRecebe: "A skill certa já acionada",

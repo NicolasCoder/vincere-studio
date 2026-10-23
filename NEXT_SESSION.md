@@ -10,6 +10,23 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 23/10/2026 — Arquitetura Agente-Primeiro (`/api/v1/*`, Runbooks, Servidor MCP e Unificação HyperFrames)
+
+- **Contrato REST Completo para Agentes (`/api/v1/*` + `apps/web/lib/agent-api.ts`)**:
+  - `GET /api/v1/capabilities`: manifesto da instância em tempo real (motores Worker, HyperFrames, PC GPU Bridge RTX 3060, agentes CLI detectados, chaves ativas e runbooks).
+  - `GET / POST /api/v1/projects`, `GET / PATCH / DELETE /api/v1/projects/[id]` e `GET /api/v1/projects/[id]/state` (diagnóstico completo de etapas concluídas, pendências e `proximasAcoes[]` com payloads prontos).
+  - `POST /api/v1/projects/[id]/content`: o próprio agente injeta `ideas`, `script` (em atos), `scenes`, `edit_plan` ou `seo` diretamente, sem depender de LLM interno.
+  - `POST /api/v1/projects/[id]/actions`: dispara todas as ações do pipeline com validação de pré-condições, idempotência, exportação direta de composição HTML5/GSAP para o HyperFrames (`exportar_hyperframes`) e trava de aprovação no servidor antes de publicar (`403 GATE_APROVACAO_OBRIGATORIO`).
+  - `GET /api/v1/jobs/[id]/wait`: long-polling inteligente que aguarda a conclusão do job no worker.
+  - `GET / POST /api/v1/workflows` e `GET / PUT / POST /api/v1/workflows/[id]`: criação, edição validada (`canConnect`) e execução de grafos de comercial/UGC por API.
+- **Motor de Runbooks e Verificadores (`apps/web/lib/runbooks.ts` + `/api/v1/runbooks`)**:
+  - 6 Runbooks executáveis (`curiosidades-short-9x16`, `dossie-documentario-16x9`, `hyperframes-motion-pure`, `clone-motion-sharingan`, `talking-head-cortes`, `ugc-comercial-workflow`) com avaliador determinístico (`evaluateRunbookForProject`).
+- **Servidor MCP Nativo (`scripts/vincere-mcp-server.mjs` · `pnpm mcp:server`)**:
+  - 10 ferramentas `vincere_*` sobre `stdio` (JSON-RPC 2.0) compatíveis com Antigravity (`agy`), Claude Code, Cursor e Codex.
+- **Unificação em HyperFrames e Central `/docs`**:
+  - Removidas rotas/componentes órfãos do Remotion Studio; catálogo de skills e plano de edição unificados no HyperFrames Studio; `/docs` transformada na Central Agente-Primeiro & Documentação.
+- **Checklist detalhado**: `docs/TAREFAS_AGENTE_PRIMEIRO.md` (100% concluído e validado E2E em todas as 21 rotas + worker + MCP).
+
 ## Estado deixado em 21/10/2026 (noite, Claude) — para o Nicolas puxar
 
 - Branch **`fix/varredura-pre-video`** (parte de `feat/restaura-copiloto`): `git fetch origin && git switch fix/varredura-pre-video`.

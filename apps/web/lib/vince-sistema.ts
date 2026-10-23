@@ -26,6 +26,7 @@ export const TELAS: Record<string, string> = {
   "/copiloto": "Esteira Linear Clássica (Ideia → Roteiro → Narração → Cenas → Bruto)",
   "/talking-head": "Talking Head & Cortes (reels_tools)",
   "/projects": "Quadro de Projetos (Kanban)",
+  "/docs": "Central Agente-Primeiro & Documentação (/api/v1/*, Runbooks e Servidor MCP)",
 };
 
 let manualEmCache: string | null = null;
@@ -76,6 +77,9 @@ Regras:
     `TELAS:\n${Object.entries(TELAS).map(([k, v]) => `- ${k}: ${v}`).join("\n")}`,
     `NICHOS (Início → O que vamos criar hoje?):\n${NICHOS.map((n) => `- ${n.nome} (${n.formato}, ${n.skill}): ${n.resumo} Passos: ${n.passos.join(" → ")}`).join("\n")}`,
     `SKILLS:\n${SKILLS.map((s) => `- ${s.comando} [${s.motor}]: ${s.quando}`).join("\n")}`,
+    `API AGENTE-PRIMEIRO (/api/v1/*) E EXECUÇÃO DE TERMINAL:
+- O agente vinculado (${"`agy`"}, ${"`claude`"}, ${"`codex`"}, ${"`hermes`"}) pode controlar todo o Vincere Studio via REST (/api/v1/capabilities, /api/v1/runbooks, /api/v1/projects, /api/v1/projects/[id]/state, /api/v1/projects/[id]/content, /api/v1/projects/[id]/actions, /api/v1/jobs/[id]/wait, /api/v1/workflows) ou via Servidor MCP (pnpm mcp:server).
+- Quando a pessoa pedir uma execução no projeto ou terminal, gere "acaoClaude" instruindo o agente a usar os endpoints /api/v1/* ou editar a composição no HyperFrames Studio.`,
     `BIBLIOTECA DE PROMPTS (/prompts): ${PROMPT_CATEGORIAS.map((c) => `${c.nome}: ${PROMPTS.filter((p) => p.categoria === c.id).map((p) => p.titulo).join(", ")}`).join(" | ")}`,
     memoria ?? "",
   ]

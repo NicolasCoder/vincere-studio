@@ -18,13 +18,22 @@ O nome oficial é exclusivamente **Vincere Studio**.
 - Endereço padrão: `http://localhost:3210`. No computador onde a ferramenta roda, o acesso é livre; por
   outro aparelho da rede é preciso o PIN (`LAN_PIN`).
 - Rotas úteis para um agente (todas `GET`, só leitura, salvo indicação):
+  - `/api/v1/capabilities` — manifesto completo da instância (motores ativos, agentes CLI, chaves, endpoints e runbooks).
+  - `/api/v1/runbooks` — lista os 6 Runbooks executáveis; `POST /api/v1/runbooks` (`{ projectId, runbookId }`) avalia o progresso real do projeto contra os verificadores do runbook e devolve o próximo passo exato.
+  - `/api/v1/projects` (`GET` lista, `POST` cria projeto) e `/api/v1/projects/<id>` (`GET` árvore completa, `PATCH` atualiza, `DELETE` com `confirm: true`).
+  - `/api/v1/projects/<id>/state` — diagnóstico detalhado de etapas concluídas, pendências e `proximasAcoes[]` liberadas/bloqueadas.
+  - `/api/v1/projects/<id>/content` (`POST`) — o próprio agente injeta `ideas`, `script` (em atos), `scenes`, `edit_plan` ou `seo` sem depender de LLM interno.
+  - `/api/v1/projects/<id>/actions` (`POST`) — dispara ações do pipeline com validação de pré-condições e gates no servidor (`gerar_ideias`, `escolher_ideia`, `gerar_roteiro`, `sintetizar_voz`, `alinhar_legendas`, `planejar_cenas`, `buscar_broll`, `gerar_imagens`, `exportar_hyperframes`, `renderizar_video`, `aprovar_render`, `publicar_youtube`).
+  - `/api/v1/jobs/<id>/wait?timeoutMs=25000` — long-polling inteligente que aguarda o job terminar e devolve o resultado.
+  - `/api/v1/workflows` (`GET`/`POST`) e `/api/v1/workflows/<id>` (`GET`/`PUT`/`POST`) — cria, valida e executa grafos de comercial/UGC.
   - `/api/health` — a instância está de pé e quantos projetos existem.
   - `/api/jobs` e `/api/jobs/<id>` — fila e estado dos jobs do worker.
   - `/api/hyperframes` — estado do preview do HyperFrames (`running`, `port`, `activeProject`) e agentes detectados.
   - `/api/flow` — estado do daemon do Google Flow (porta 9334).
-  - `/api/claude` — pedidos enviados pelo Vince/Studio e agentes detectados. `POST` cria um pedido (ver abaixo).
+  - `/api/claude` — pedidos enviados pelo Vince/Studio e agentes detectados. `POST` cria um pedido e aciona o agente CLI vinculado (`agy`, `claude`, `codex`, `hermes`).
   - `/api/cerebro` — qual IA está vinculada ao Vince e as opções detectadas nesta máquina. `POST` com `acao`: `vincular`
     (`tipo` + `id`), `desvincular` ou `apresentar` (a IA lê este manual e se apresenta).
+- **Servidor MCP nativo**: execute `node scripts/vincere-mcp-server.mjs` (ou `pnpm mcp:server`) para expor todas as ferramentas `vincere_*` via protocolo MCP (`stdio`).
 - Não existe login por usuário: quem acessa a instância usa o que está configurado nela. **Nunca** exponha a
   instância na internet sem proteção.
 

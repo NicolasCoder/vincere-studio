@@ -16,7 +16,6 @@ import { Button, Card, Chip, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { JobWatcher } from "@/components/JobWatcher";
-import { OpenRemotionStudio } from "@/components/OpenRemotionStudio";
 import { getUsageSummary, fmtMs } from "@/lib/data";
 import { applyVisualLayer, editarInsercao, generateEditPlan, generateEvidences, setIntensidade } from "./actions";
 import { EditarInsercao } from "./EditarInsercao";
@@ -188,7 +187,9 @@ export default async function EditPlanPage({
                 Aplicar camada no vídeo
               </Button>
             </form>
-            <OpenRemotionStudio projectId={project.id} />
+            <Link href="/studio">
+              <Button variant="ghost" icon="movie_filter">Abrir HyperFrames Studio</Button>
+            </Link>
           </div>
         </Card>
 

@@ -19,3 +19,13 @@ export function pastaTemporaria(env: Ambiente = process.env): string {
 export function pastaDeProjetosHyperframes(env: Ambiente = process.env): string {
   return env.HYPERFRAMES_PROJECTS_DIR?.trim() || path.join(pastaPessoal(env), "Videos-HF");
 }
+
+/** Pasta das ferramentas locais de Reels / Video-Sharingan (REELS_TOOLS_DIR). */
+export function pastaReelsTools(env: Ambiente = process.env): string {
+  return env.REELS_TOOLS_DIR?.trim() || path.resolve(process.cwd(), "..", "reels_tools");
+}
+
+/** Pasta do motor local Video-Sharingan (SHARINGAN_DIR). */
+export function pastaSharingan(env: Ambiente = process.env): string {
+  return env.SHARINGAN_DIR?.trim() || path.join(pastaReelsTools(env), "video-sharingan");
+}

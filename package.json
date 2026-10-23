@@ -12,6 +12,7 @@
     "db:seed": "pnpm --filter @vincere-studio/db seed",
     "db:studio": "pnpm --filter @vincere-studio/db studio",
     "setup": "node scripts/setup.mjs",
+    "mcp:server": "node scripts/vincere-mcp-server.mjs",
     "test": "turbo run test"
   },
   "devDependencies": {

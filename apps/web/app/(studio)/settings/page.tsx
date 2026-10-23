@@ -2,8 +2,8 @@ import { COST_MODES } from "@vincere-studio/core";
 import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
-import { ensureDefaultVoiceProfiles, getSettings, getUsageSummary, listJobs } from "@/lib/data";
-import { enqueueDemoJob, disconnectYoutubeAction } from "./actions";
+import { ensureDefaultVoiceProfiles, getSettings, getUsageSummary } from "@/lib/data";
+import { disconnectYoutubeAction } from "./actions";
 import { createVoiceProfile, deleteVoiceProfile, setDefaultVoiceProfile } from "./voice-actions";
 import { updateBudget } from "./budget-actions";
 import { prisma } from "@vincere-studio/db";
@@ -19,10 +19,9 @@ import { AtualizarVersao } from "@/components/AtualizarVersao";
 export default async function SettingsPage({ searchParams }: { searchParams: Promise<{ job?: string; youtube?: string; msg?: string; channel?: string; chave?: string; n?: string; cmsg?: string; hf?: string; hfmsg?: string }> }) {
   const { job, youtube, msg, channel, chave, n, cmsg, hf, hfmsg } = await searchParams;
   await ensureDefaultVoiceProfiles();
-  const [usage, settings, jobs, profiles, youtubeConnection, budget] = await Promise.all([
+  const [usage, settings, profiles, youtubeConnection, budget] = await Promise.all([
     getUsageSummary(),
     getSettings(),
-    listJobs(8),
     prisma.voiceProfile.findMany({ orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }] }),
     getYoutubeConnection(),
     getBudgetStatus(),

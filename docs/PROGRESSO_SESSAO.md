@@ -159,6 +159,25 @@ Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Com
   (local / nuvem / PC forte), pasta de projetos e de mídia por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`),
   voz clonada do VoiceStudio como provedor completo do pipeline e edição por voz com LLM/agente configurável.
 
+## Décima primeira rodada (23/10) — Arquitetura Agente-Primeiro (`/api/v1/*`, Runbooks, Servidor MCP e Unificação HyperFrames)
+
+Checklist completo e validado em [`docs/TAREFAS_AGENTE_PRIMEIRO.md`](./TAREFAS_AGENTE_PRIMEIRO.md).
+
+1. **Unificação Visual no HyperFrames e Limpeza (Fase 0)**:
+   - Removidos componentes e rotas órfãs do Remotion Studio (`OpenRemotionStudio.tsx`, `remotion-studio.ts`, `/api/remotion-studio`, `/api/projects/[id]/remotion-props`) e unificado o catálogo de skills (`skills-catalog.ts`, `SystemSkillsCatalog.tsx`) e o Plano de Edição (`edit-plan/page.tsx`) no **HyperFrames Studio**.
+   - Removido `enqueueDemoJob` obsoleto de `/settings`, consolidado `/history` para `/projects?modo=todos`, reescrita `/docs` como **Central Agente-Primeiro & Documentação** e centralizados `pastaReelsTools()` e `pastaSharingan()` em `apps/web/lib/pastas.ts`.
+2. **Contrato REST Agente-Primeiro `/api/v1/*` + Gates no Servidor (Fases 1 e 2)**:
+   - `apps/web/lib/agent-api.ts`: inspeção completa de estado (`computeProjectAgentState`), enfileiramento idempotente (`enqueueProjectJob`), autenticação de agente (`checkAgentAuth`) e exportador real de composição HTML5/GSAP para o HyperFrames (`exportProjectToHyperFrames`, gerando `index.html` + `vincere-manifest.json` sincronizados com `window.__timelines["main"]`).
+   - Rotas criadas: `GET/POST /api/v1/projects`, `GET/PATCH/DELETE /api/v1/projects/[id]`, `GET /api/v1/projects/[id]/state`, `POST /api/v1/projects/[id]/content` (injeção direta pelo agente de `ideas`, `script`, `scenes`, `edit_plan` e `seo`), `POST /api/v1/projects/[id]/actions` (com trava `403 GATE_APROVACAO_OBRIGATORIO` em `publicar_youtube`), `GET /api/v1/jobs/[id]/wait` (long-polling) e `GET/POST/PUT /api/v1/workflows`.
+3. **Motor de Runbooks com Verificadores Medidos (Fase 3)**:
+   - `apps/web/lib/runbooks.ts` + `GET/POST /api/v1/runbooks`: 6 runbooks canônicos (`curiosidades-short-9x16`, `dossie-documentario-16x9`, `hyperframes-motion-pure`, `clone-motion-sharingan`, `talking-head-cortes`, `ugc-comercial-workflow`) avaliados em tempo real contra o estado do projeto e arquivos em disco.
+4. **Manifesto `/api/v1/capabilities`, Servidor MCP e Vince (Fase 4)**:
+   - `GET /api/v1/capabilities`: status ao vivo do Worker (`worker_heartbeat`), HyperFrames, PC GPU Bridge (`RTX 3060`), agentes CLI locais, cérebro do Vince e chaves configuradas.
+   - `scripts/vincere-mcp-server.mjs` (`pnpm mcp:server`): servidor MCP JSON-RPC 2.0 sobre `stdio` com 10 ferramentas `vincere_*`.
+   - `vince-sistema.ts` e `public/AGENTES.md` atualizados com o contrato `/api/v1/*`, Runbooks e despacho de agente via `/api/claude`.
+5. **Validação Ponta a Ponta (Fase 5)**:
+   - `tsc --noEmit` aprovado em todos os pacotes; **67/67 testes unitários** aprovados (`runbooks.test.ts` incluso); fluxo completo E2E (REST + Worker `sintetizar_voz` + `wait` + exportação HyperFrames + gate 403 + Workflows + MCP `stdio` + 21/21 rotas HTTP 200 OK) validado ao vivo.
+
 ## Décima rodada (22/10, madrugada, Claude) — o Vince com a IA da pessoa e as melhorias da lista
 
 Mesma branch: **`fix/varredura-pre-video`**. Validação: `pnpm typecheck` 7/7; testes providers 42, worker 2, db 2, web (unit) 64. Verificado numa instância

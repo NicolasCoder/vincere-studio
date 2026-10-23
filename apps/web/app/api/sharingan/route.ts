@@ -7,10 +7,11 @@ import { prisma } from "@vincere-studio/db";
 import { storageRoot } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 import { callPcGpuBridge, getPcGpuStatus } from "@/lib/pc-gpu-engine";
+import { pastaReelsTools } from "@/lib/pastas";
 
 export const dynamic = "force-dynamic";
 
-const REELS_TOOLS_DIR = process.env.REELS_TOOLS_DIR || "F:\\Python Projects\\reels_tools";
+const REELS_TOOLS_DIR = pastaReelsTools();
 const OLLAMA_URL = process.env.SHARINGAN_LOCAL_BASE_URL || "http://127.0.0.1:11434/v1";
 
 function toMediaUrl(absPath: string): string {

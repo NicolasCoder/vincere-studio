@@ -10,14 +10,13 @@ import { SKILLS, type Motor, type Preview } from "@/lib/skills-catalog";
 
 const RECEITAS = NICHOS.map((n) => ({ titulo: `${n.nome} · ${n.formato}`, passos: n.passos }));
 
-const MOTORES: Array<Motor | "Todos"> = ["Todos", "HyperFrames", "Remotion", "Google Flow", "Legendas", "Pesquisa", "Código", "Imagem", "Estratégia"];
+const MOTORES: Array<Motor | "Todos"> = ["Todos", "HyperFrames", "Google Flow", "Legendas", "Pesquisa", "Código", "Imagem", "Estratégia"];
 
 const MOTOR_COR: Record<Motor, string> = {
   HyperFrames: "border-primary/40 bg-primary/10 text-primary-bright",
   Legendas: "border-warning/40 bg-warning/10 text-warning",
   Pesquisa: "border-success/40 bg-success/10 text-success",
   "Google Flow": "border-secondary/50 bg-secondary/15 text-secondary-soft",
-  Remotion: "border-line bg-surface-mid text-fg-secondary",
   Código: "border-line-bright bg-void text-fg",
   Imagem: "border-secondary/40 bg-secondary/10 text-secondary-soft",
   Estratégia: "border-warning/30 bg-transparent text-warning",
