@@ -220,15 +220,24 @@ Executar somente depois de os itens anteriores estarem verdes:
 Critério de conclusão: não restar nome antigo, exceto em histórico Git ou referência arquivada
 explicitamente identificada.
 
-### 6. Melhorias de produto — executar nesta prioridade
+### 6. Melhorias de produto e Próximas Fases do Roadmap — executar nesta prioridade
 
-1. Fechar o ciclo de retenção: comparar retenção prevista com dados reais do YouTube.
-2. Criar inbox automática para pacotes gerados no Google Flow.
-3. Permitir inserir legendas retroativamente em vídeos já publicados.
-4. Ativar o modo teleprompter.
-5. Corrigir e validar os layouts verticais `cronologia` e `mesa-arquivo`.
-6. Evoluir `MesaArquivo` com papel sobre fundo escuro, fotos sobrepostas e cartão rasgado.
-7. Planejar motores visuais adicionais ao documentário dark como features independentes.
+1. **Fase 7.3 — Detecção Perceptual de Imagens Parecidas (pHash / dHash)**:
+   - Evitar tomadas repetitivas consecutivas geradas por IA no worker (`generate-images.ts` e `buscar-broll`), aplicando cálculo de distância de Hamming entre hashes perceptuais de cenas adjacentes.
+2. **Fase 8.2 — Conexão OAuth Multiplataforma (TikTok & Meta Graph API / Instagram Reels)**:
+   - Conexão e publicação de vídeos verticais diretamente da interface no `/settings`, com validação de safe-zones 9:16 e gate de aprovação humana.
+3. **Fase 8.3 — Sonorização Dinâmica Sincronizada com Legendas Lockup e Cortes**:
+   - Mapear timestamps de cortes e palavras-chave de destaque das legendas Lockup (`/subtitles-studio`) e inserir SFX procedurais (`whoosh`, `impact`, `riser` de `packages/render/src/sfx.ts`) com ducking automático em FFmpeg.
+4. **Fase 9 — Calibração por Aprendizado com Dados Reais do YouTube Analytics API**:
+   - Conectar à YouTube Analytics API v3 para ingestão segundo a segundo da curva de retenção e CTR, comparando com o previsto no roteiro e alimentando a memória de edição do Vince.
+5. **Fase 10 — Bíblia Visual & Sistema de Design por Canal**:
+   - Presets reutilizáveis de paleta, tipografia Lockup e assinatura de SFX salvos no SQLite por nicho/canal e aplicáveis em 1 clique.
+6. **Criar inbox automática para pacotes gerados no Google Flow**.
+7. **Permitir inserir legendas retroativamente em vídeos já publicados**.
+8. **Ativar o modo teleprompter**.
+9. **Corrigir e validar os layouts verticais `cronologia` e `mesa-arquivo`**.
+10. **Evoluir `MesaArquivo` com papel sobre fundo escuro, fotos sobrepostas e cartão rasgado**.
+11. **Planejar motores visuais adicionais ao documentário dark como features independentes**.
 
 ## Conduta para o agente
 

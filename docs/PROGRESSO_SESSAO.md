@@ -42,6 +42,13 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
 - **Atualização do HyperFrames para v0.8.189 & Token Administrativo**:
   - `hyperframes` atualizado globalmente no Node para a versão mais recente (`0.8.189`).
   - Token de atualização `vincere-admin-2026` configurado no `.env` e botão "Usar padrão" adicionado ao modal `AtualizarVersao.tsx`.
+- **Roadmap & Tarefas Agente-Primeiro Expandidos com as Próximas Fases**:
+  - `docs/ROADMAP_AGENTE_PRIMEIRO.md` e `docs/TAREFAS_AGENTE_PRIMEIRO.md` atualizados com as etapas concluídas e o detalhamento técnico completo das fases pendentes:
+    - **Fase 7.3**: Detecção Perceptual de Imagens Parecidas (pHash / dHash) para evitar tomadas consecutivas repetitivas no worker.
+    - **Fase 8.2**: Conexão OAuth Multiplataforma (TikTok & Meta Graph API / Instagram Reels) com publicação vertical e validação de safe-zones 9:16.
+    - **Fase 8.3**: Sonorização Dinâmica Sincronizada com Legendas Lockup e Cortes, mixando SFX procedurais (`whoosh`, `impact`, `riser`) com ducking automático em FFmpeg.
+    - **Fase 9**: Calibração por Aprendizado com Dados Reais do YouTube Analytics API v3, fechando o loop de retenção real com a memória do Vince.
+    - **Fase 10**: Bíblia Visual & Sistema de Design por Canal, salvando presets de paleta, tipografia Lockup e sonorização no SQLite para aplicação em 1 clique.
 - **Qualidade & Validação**:
   - `pnpm typecheck`: 7/7 pacotes aprovados (0 erros).
   - `pnpm test`: 5/5 suítes aprovadas (89 testes unitários + testes de integração verdes).

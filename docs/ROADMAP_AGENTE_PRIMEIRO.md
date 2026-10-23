@@ -1,4 +1,4 @@
-# Roadmap — Vincere Studio "Agente-Primeiro" (100% Concluído)
+# Roadmap — Vincere Studio "Agente-Primeiro" (Fases 0 a 6 Concluídas • Fases 7 a 10 em Andamento)
 
 Meta: o agente de IA (**Antigravity `agy`**, **Claude Code**, **Codex**, **Hermes**) é quem **conduz** todo o processo de criação de ponta a ponta. O **Vincere Studio** atua como **caixa de ferramentas + memória + verificador + palco visual (HyperFrames)**, enquanto o **Vince** na interface serve como ponte direta para disparar execuções de terminal e fluxos no agente sem precisar abrir o terminal.
 
@@ -7,7 +7,7 @@ Meta: o agente de IA (**Antigravity `agy`**, **Claude Code**, **Codex**, **Herme
 ## Status de Execução do Roadmap
 
 - [x] **Decisão 1 — Motor Visual Único**: Mantido exclusivamente o **HyperFrames** (componentes e rotas órfãs do Remotion Studio removidos; skills e Plano de Edição unificados no HyperFrames Studio).
-- [x] **Decisão 2 — Papel do Vince**: Mantido como assistente e ponte de execução de terminal via agente externo (`agy`, `claude`, `codex`, `hermes`) em `/api/claude` e atualizado com todo o contrato `/api/v1/*`.
+- [x] **Decisão 2 — Papel do Vince**: Mantido como assistente flutuante ativo e contextual, ponte de execução de terminal via agente externo (`agy`, `claude`, `codex`, `hermes`) e executor de ações nativas no projeto via contrato `/api/v1/*`.
 - [x] **Decisão 3 — Cérebro Híbrido (Agente Livre + LLM Interno Opcional)**: O agente pode injetar conteúdo autoral direto (`POST /api/v1/projects/[id]/content`) ou acionar os geradores internos (`POST /api/v1/projects/[id]/actions`).
 - [x] **Decisão 4 — REST `/api/v1/*` + Servidor MCP Nativo**: Implementada a camada REST `/api/v1/*` completa e o servidor MCP oficial em `scripts/vincere-mcp-server.mjs` (`pnpm mcp:server`).
 - [x] **Fase 0 — Limpeza, Unificação em HyperFrames e Higiene de Rotas** (Concluída)
@@ -16,6 +16,11 @@ Meta: o agente de IA (**Antigravity `agy`**, **Claude Code**, **Codex**, **Herme
 - [x] **Fase 3 — Runbooks Executáveis & Verificadores Medidos** (Concluída)
 - [x] **Fase 4 — Manifesto de Capacidades, Servidor MCP & Vince Integrado** (Concluída)
 - [x] **Fase 5 — Validação Ponta a Ponta (Typecheck, Testes Unitários e E2E ao Vivo)** (Concluída)
+- [x] **Fase 6 — Automação Contínua & Loop de Produção Autônomo (`AUTO_PRODUCE`)** (Concluída)
+- [ ] **Fase 7 — Auto-Healing & Safe-Zones Visuais** (Parcial: 7.1 e 7.2 Concluídos, 7.3 Pendente)
+- [ ] **Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX)** (Parcial: 8.1 Concluído, 8.2 e 8.3 Pendentes)
+- [ ] **Fase 9 — Calibração por Aprendizado com Dados Reais do YouTube** (Pendente)
+- [ ] **Fase 10 — Bíblia Visual & Sistema de Design por Canal** (Pendente)
 
 ---
 
@@ -108,9 +113,10 @@ flowchart LR
 
 ```mermaid
 flowchart TD
-  F6["Fase 6: Loop Autônomo AUTO_PRODUCE"] --> F7["Fase 7: Auto-Healing & Safe-Zones Visuais"]
-  F7 --> F8["Fase 8: Publicação Multiplataforma (TikTok/Reels) + SFX"]
-  F8 --> F9["Fase 9: Loop Fechado com Métricas Reais do YouTube"]
+  F6["Fase 6: Loop Autônomo AUTO_PRODUCE ✅"] --> F7["Fase 7: Auto-Healing & Safe-Zones Visuais 🟡"]
+  F7 --> F8["Fase 8: Multiplataforma (TikTok/Reels) + SFX 🟡"]
+  F8 --> F9["Fase 9: Loop Fechado com Métricas Reais do YouTube ⏳"]
+  F9 --> F10["Fase 10: Bíblia Visual & Sistema de Design de Canal ⏳"]
 ```
 
 ### ✅ Fase 6 — Automação Contínua & Loop de Produção Autônomo (`AUTO_PRODUCE`) (Concluída)
@@ -118,16 +124,36 @@ flowchart TD
 - [x] **Garantia Inviolável de Gate Humano**: O loop para estritamente na aprovação do render (`403 GATE_APROVACAO_OBRIGATORIO`). Nenhuma publicação ocorre de forma automática sem o OK do editor humano no servidor.
 - [x] **Webhooks de Notificação Instantânea**: Disparo de payload configurável (`WEBHOOK_URL`) com preview e link de aprovação assim que o render for concluído no worker.
 
-### ✅ Fase 7 — Auto-Healing & Auditoria Visual de Safe-Zones (Concluída)
-- [x] **Recuperação de Falhas em Camadas (Auto-Healing)**: Se a síntese de voz ou busca de acervo oscilar ou atingir limites de taxa, o worker chaveia automaticamente para provedores secundários resilientes (inserção automática de `EDGE_TTS` no `apps/worker/src/jobs/synthesize-voice.ts` e cascata de motores grátis no `generate-images.ts`) sem interromper o fluxo global.
-- [x] **Verificação de Safe-Zones para Formato Vertical (`9:16`)**: Auditoria automatizada (`packages/core/src/safe-zones.ts` e `safe-zones.test.ts`) para impedir que legendas, lower-thirds e elementos gráficos caiam nas áreas cobertas pela interface nativa do TikTok, Instagram Reels e YouTube Shorts (zona inferior e lateral direita), com integração direta no `apps/worker/src/jobs/render-video.ts`.
-- [ ] **Detecção Perceptual de Imagens Parecidas**: Comparação de embeddings/hashes perceptuais para garantir diversidade visual entre tomadas consecutivas do vídeo.
+### 🟡 Fase 7 — Auto-Healing & Auditoria Visual de Safe-Zones (Parcial)
+- [x] **7.1 — Recuperação de Falhas em Camadas (Auto-Healing)**: Se a síntese de voz ou busca de acervo oscilar ou atingir limites de taxa, o worker chaveia automaticamente para provedores secundários resilientes (inserção automática de `EDGE_TTS` no `apps/worker/src/jobs/synthesize-voice.ts` e cascata de motores grátis no `generate-images.ts`) sem interromper o fluxo global.
+- [x] **7.2 — Verificação de Safe-Zones para Formato Vertical (`9:16`)**: Auditoria automatizada (`packages/core/src/safe-zones.ts` e `safe-zones.test.ts`) para impedir que legendas, lower-thirds e elementos gráficos caiam nas áreas cobertas pela interface nativa do TikTok, Instagram Reels e YouTube Shorts (zona inferior e lateral direita), com integração direta no `apps/worker/src/jobs/render-video.ts`.
+- [ ] **7.3 — Detecção Perceptual de Imagens Parecidas (pHash / dHash)**:
+  - Comparação de distância de Hamming entre hashes perceptuais (dHash 64-bit / pHash) de cenas consecutivas geradas por IA ou acervo.
+  - Alerta automático ou regeneração com novo enquadramento caso a similaridade visual ultrapasse 85%, prevenindo planos repetitivos ou estáticos.
+  - Verificação integrada na validação do Runbook e no job `GENERATE_IMAGES` do worker.
 
-### 🌐 Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX) (Em Andamento)
-- [x] **Biblioteca de Efeitos Sonoros Procedurais em FFmpeg**: Ingestão de whooshes, risers, swooshes e impactos sonoros via síntese direta de áudio sem dependência externa, royalties ou risco de direitos autorais (`packages/render/src/sfx.ts`).
-- [ ] **Conexão OAuth com TikTok & Meta Graph API (Instagram Reels)**: Painel de canais no `/settings` para conectar contas adicionais e agendar vídeos verticais diretamente da interface.
-- [ ] **Efeitos Sonoros Vinculados às Legendas**: Sincronização automática dos SFX de whoosh/impacto com as palavras de destaque dos estilos Lockup e cortes de cena.
+### 🟡 Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX) (Em Andamento)
+- [x] **8.1 — Biblioteca de Efeitos Sonoros Procedurais em FFmpeg**: Ingestão de whooshes, risers, swooshes e impactos sonoros via síntese direta de áudio sem dependência externa, royalties ou risco de direitos autorais (`packages/render/src/sfx.ts`).
+- [ ] **8.2 — Conexão OAuth com TikTok & Meta Graph API (Instagram Reels)**:
+  - Painel de conexões em `/settings` ("Canais e Redes Conectadas") gerenciando tokens com auto-refresh para TikTok Content Posting API e Instagram Graph API.
+  - Ação `publicar_multiplataforma` no pipeline com validação estrita de pré-condições (render aprovado, safe-zones OK, proporção 9:16).
+  - Agendamento de postagens e sincronização de thumbnails personalizadas para cada rede.
+- [ ] **8.3 — Sonorização Dinâmica Sincronizada com Legendas Lockup e Cortes**:
+  - Motor em `packages/render/src/sfx-sync.ts` que analisa os timestamps de transição de cena e palavras-chave de impacto marcadas nas legendas Lockup (geradas pelo `/subtitles-studio`).
+  - Posicionamento milimétrico de SFX procedurais (`whoosh` em cortes de cena, `impact` em números/palavras de choque, `riser` no fim de ganchos).
+  - Mixagem de áudio em FFmpeg com sidechain ducking automático (reduzindo a música de fundo em 4 dB durante falas e batidas de efeito).
 
-### 📈 Fase 9 — Calibração por Aprendizado com Dados Reais
-- [ ] **Ingestão de Retenção do YouTube Analytics API**: Coleta das curvas de retenção segundo a segundo e taxas de cliques (CTR) dos vídeos publicados no canal.
-- [ ] **Fechamento do Ciclo com o Vince**: Comparação da curva prevista no roteiro com os números reais do YouTube, retroalimentando as preferências e os estilos de gancho na geração dos próximos roteiros.
+### ⏳ Fase 9 — Calibração por Aprendizado com Dados Reais do YouTube
+- [ ] **9.1 — Ingestão de Retenção do YouTube Analytics API v3**:
+  - Endpoint `GET /api/v1/analytics/youtube` e job de sincronização periódica de métricas reais (curva de retenção segundo a segundo, taxa de retenção aos 30s e CTR de thumbnail).
+  - Visualização gráfica comparativa no `/projects/[id]` sobrepondo a retenção real sobre os atos do roteiro e os cortes de cena.
+- [ ] **9.2 — Retroalimentação do Roteiro e Aprendizado Ativo do Vince**:
+  - Vince correlaciona automaticamente os pontos de fuga da audiência (quedas > 15% na retenção) com o tipo de cena, velocidade da fala (PPM) ou ausência de estímulo visual.
+  - As conclusões alimentam as regras do nicho e o gerador de roteiro, ajustando hooks e ritmo das próximas produções.
+
+### ⏳ Fase 10 — Bíblia Visual & Sistema de Design por Canal
+- [ ] **10.1 — Presets de Identidade Visual e Áudio por Canal/Nicho**:
+  - Armazenamento no SQLite de regras visuais do canal: paleta de cores primária/secundária, família tipográfica Lockup, estilo de transição de câmera (zoom in, pan, tilt) e curva de SFX.
+  - Aplicação automática desses presets ao iniciar novos projetos pelo Início Multi-Nicho (`NichoLauncher.tsx`) ou via comando do Vince.
+- [ ] **10.2 — Exportação e Importação de Pacotes de Identidade (Stylepacks)**:
+  - Exportação em JSON/zip de identidades visuais prontas para compartilhamento e backup entre instâncias do Vincere Studio.

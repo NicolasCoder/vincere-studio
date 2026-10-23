@@ -13,6 +13,11 @@ Este documento organiza todas as tarefas executadas e validadas para tornar o **
 - [x] **Fase 3** — Runbooks Executáveis & Verificadores Medidos
 - [x] **Fase 4** — Manifesto de Capacidades, Servidor MCP Nativo & Vince Integrado
 - [x] **Fase 5** — Execução e Validação Ponta a Ponta de Todos os Fluxos
+- [x] **Fase 6** — Automação Contínua & Loop de Produção (`AUTO_PRODUCE`)
+- [ ] **Fase 7** — Auto-Healing & Auditoria Visual de Safe-Zones (7.1 e 7.2 Concluídos, 7.3 Pendente)
+- [ ] **Fase 8** — Multiplataforma (Reels & TikTok) e SFX Procedurais (8.1 Concluído, 8.2 e 8.3 Pendentes)
+- [ ] **Fase 9** — Calibração por Aprendizado com Dados Reais do YouTube
+- [ ] **Fase 10** — Bíblia Visual & Sistema de Design por Canal
 
 ---
 
@@ -127,11 +132,42 @@ Este documento organiza todas as tarefas executadas e validadas para tornar o **
   - Integrado ao relatório de auditoria de qualidade em `apps/worker/src/jobs/render-video.ts`.
 - [x] **7.2 — Auto-Healing de Voz (`apps/worker/src/jobs/synthesize-voice.ts`)**:
   - Insere dinamicamente `EDGE_TTS` como rede de segurança resiliente no final da cadeia de sintetizadores, impedindo paradas por limites de quota ou instabilidade de rede.
+- [ ] **7.3 — Detecção Perceptual de Imagens Parecidas (pHash / dHash)**:
+  - Implementar cálculo de hash perceptual 64-bit (`packages/core/src/perceptual-hash.ts`) e distância de Hamming entre cenas adjacentes.
+  - Integrar no pipeline de `GENERATE_IMAGES` e `BUSCAR_BROLL`: se similaridade > 85%, solicitar automaticamente variação de ângulo/composição para garantir ritmo visual diversificado.
 
 ---
 
-## Fase 8 — SFX Procedurais em FFmpeg
+## Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX)
 
 - [x] **8.1 — Biblioteca de Efeitos Sonoros (`packages/render/src/sfx.ts`)**:
   - Gera `whoosh`, `impact`, `riser` e `click` por síntese de áudio procedural em FFmpeg (100% offline, sem royalties, sem downloads externos).
+- [ ] **8.2 — Conexão OAuth com TikTok & Meta Graph API (Instagram Reels)**:
+  - Adicionar tabela/armazenamento de contas sociais conectadas com renovação de refresh token (`apps/web/lib/social-oauth.ts`).
+  - Painel de conexões em `/settings` com fluxo de login e verificação de escopos de publicação.
+  - Ação `publicar_multiplataforma` em `apps/web/app/api/v1/projects/[id]/actions/route.ts` exigindo gate de aprovação humana e validação de safe-zones 9:16.
+- [ ] **8.3 — Sonorização Dinâmica Sincronizada com Legendas Lockup e Cortes**:
+  - Criar `packages/render/src/sfx-sync.ts` para analisar timestamps de corte de cena e palavras de impacto nas legendas Lockup (`/subtitles-studio`).
+  - Inserir efeitos de transição (`whoosh`) e pontuação dramática (`impact`/`riser`) mixados em FFmpeg com ducking automático na trilha de fundo.
+
+---
+
+## Fase 9 — Calibração por Aprendizado com Dados Reais do YouTube
+
+- [ ] **9.1 — Ingestão de Retenção do YouTube Analytics API v3**:
+  - Implementar coleta de dados de retenção segundo a segundo (`audienceWatchRatio`), retenção aos 30 segundos e CTR via API oficial do YouTube.
+  - Gráfico de retenção interativo na página do projeto (`/projects/[id]`), mapeado com a minutagem do roteiro e dos atos.
+- [ ] **9.2 — Retroalimentação do Roteiro e Aprendizado Ativo do Vince**:
+  - Detecção automática de pontos de abandono no vídeo e correlação com ritmo de locução (PPM), densidade de cortes ou ausência de estímulo.
+  - Atualização do perfil do nicho/canal e refinamento automático dos prompts de roteiro e planos de edição para as próximas produções.
+
+---
+
+## Fase 10 — Bíblia Visual & Sistema de Design por Canal
+
+- [ ] **10.1 — Presets de Identidade Visual e Áudio por Canal/Nicho**:
+  - Modelagem e persistência no SQLite de identidades completas de canal: paletas de cor, famílias tipográficas Lockup, transições de câmera e assinatura sonora.
+  - Aplicação com 1 clique ao iniciar novos projetos pelo Início Multi-Nicho (`NichoLauncher.tsx`) ou via comando do Vince.
+- [ ] **10.2 — Exportação e Importação de Pacotes de Identidade (Stylepacks)**:
+  - Exportação/importação em JSON de manuais de identidade e estilos prontos para replicação ágil entre instâncias e canais.
 
