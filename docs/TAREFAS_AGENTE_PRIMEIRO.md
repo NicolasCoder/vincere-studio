@@ -106,3 +106,32 @@ Este documento organiza todas as tarefas executadas e validadas para tornar o **
     5. `POST /api/v1/workflows` + `GET /api/v1/workflows/:id` (criação e validação de grafo UGC com 4 nós).
     6. `scripts/vincere-mcp-server.mjs` respondendo a `initialize`, `tools/list` (10 ferramentas) e `tools/call` (`vincere_capabilities`).
     7. **21/21 rotas da interface** respondendo com **HTTP 200 OK**.
+
+---
+
+## Fase 6 — Automação Contínua & Loop de Produção (`AUTO_PRODUCE`)
+
+- [x] **6.1 — Job Handler `autoProduce` (`apps/worker/src/jobs/auto-produce.ts`)**:
+  - Orquestra roteiro, locução, alinhamento, planejamento de cenas, coleta mista (B-roll + IA), camada visual DVP e renderização de prova.
+  - Para rigorosamente no render de prova: publicação nunca ocorre sem aprovação manual do editor (`403 GATE_APROVACAO_OBRIGATORIO`).
+  - Suporte a webhooks de notificação (`WEBHOOK_URL`) com link de revisão.
+- [x] **6.2 — Exposição em API e Manifesto (`actions/route.ts` e `capabilities/route.ts`)**:
+  - `POST /api/v1/projects/[id]/actions` (`action: "auto_produce"`) enfileira e devolve o jobId com URL de long-polling.
+
+---
+
+## Fase 7 — Auto-Healing & Auditoria Visual de Safe-Zones
+
+- [x] **7.1 — Auditor de Safe-Zones (`packages/core/src/safe-zones.ts` e `safe-zones.test.ts`)**:
+  - Mapeia margens seguras para YouTube Shorts, Reels e TikTok (`SHORT_9_16`) e telas horizontais (`LONG_16_9`).
+  - Integrado ao relatório de auditoria de qualidade em `apps/worker/src/jobs/render-video.ts`.
+- [x] **7.2 — Auto-Healing de Voz (`apps/worker/src/jobs/synthesize-voice.ts`)**:
+  - Insere dinamicamente `EDGE_TTS` como rede de segurança resiliente no final da cadeia de sintetizadores, impedindo paradas por limites de quota ou instabilidade de rede.
+
+---
+
+## Fase 8 — SFX Procedurais em FFmpeg
+
+- [x] **8.1 — Biblioteca de Efeitos Sonoros (`packages/render/src/sfx.ts`)**:
+  - Gera `whoosh`, `impact`, `riser` e `click` por síntese de áudio procedural em FFmpeg (100% offline, sem royalties, sem downloads externos).
+

@@ -6,27 +6,31 @@
 
 ## Primeira vez
 ```powershell
-cd C:\Users\Igor\Documents\PulseStudio
+cd C:\dev\vincere-validacao
 copy .env.example .env        # único .env, na raiz; edite as chaves quando tiver
 pnpm setup                    # install + prisma generate + db push + seed
 pnpm dev                      # sobe o app web (http://localhost:3210) e o worker
 ```
+Ou dê duplo clique em `Iniciar Vincere Local.bat` para iniciar o ambiente completo automaticamente.
 
 ## Scripts úteis
 | Comando | O que faz |
 |---|---|
+| `Iniciar Vincere Local.bat` | Inicia web e worker locais em 1 clique |
 | `pnpm dev` | Web + worker em modo desenvolvimento (Turborepo) |
-| `pnpm build` | Build de produção de tudo |
+| `pnpm build` | Build de produção de tudo (com limite de heap de 4GB) |
 | `pnpm typecheck` | Checagem de tipos em todos os pacotes |
-| `pnpm db:studio` | Prisma Studio para ver/editar o SQLite |
+| `pnpm test` | Executa suíte completa de testes automatizados e smoke tests |
+| `pnpm mcp:server` | Inicia o servidor MCP nativo sobre `stdio` para agentes de IA |
+| `pnpm db:studio` | Prisma Studio para ver/editar o SQLite (`vista.db`) |
 | `pnpm db:seed` | Recria os projetos de exemplo |
 | `pnpm db:push` | Aplica mudanças do `schema.prisma` no banco |
 
 ## Estrutura
 - `apps/web` — interface (Next.js 15, Tailwind v4)
-- `apps/worker` — executa os jobs pesados (TTS, B-roll, render, upload)
-- `packages/core` — formatos 16:9/9:16, máquina de estados do pipeline, tipos
-- `packages/db` — Prisma + SQLite (`storage/docupulse.db`)
+- `apps/worker` — executa os jobs pesados (TTS, B-roll, render, auto-produce, upload)
+- `packages/core` — formatos 16:9/9:16, safe-zones, pipeline, tipos
+- `packages/db` — Prisma + SQLite oficial (`vista.db` na raiz)
 - `packages/ui` — tokens do design system Obsidian Studio + componentes base
 - `design-reference/` — telas originais do Stitch (referência visual)
 - `storage/` — mídia gerada (ignorada pelo git)

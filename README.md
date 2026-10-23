@@ -7,6 +7,11 @@
 
 ## ✨ Principais Funcionalidades
 
+* **🤖 Modo Agente-Primeiro & Servidor MCP:** Controle total da estação via agentes de IA (`Antigravity agy`, `Claude Code`, `Codex`, `Hermes`) via API REST `/api/v1/*` com 6 Runbooks executáveis ou pelo servidor MCP nativo (`pnpm mcp:server`).
+* **🚀 Loop Autônomo de Produção (`AUTO_PRODUCE`):** Encadeamento automático do início ao render de prova (roteiro → voz → legendas → cenas IA/B-roll → plano DVP → render) com parada inviolável no portão de aprovação humana antes de publicar (`403 GATE_APROVACAO_OBRIGATORIO`).
+* **🛡️ Auditoria Visual de Safe-Zones:** Validação automática de zonas seguras para vídeos verticais (`9:16` - Shorts, Reels, TikTok) impedindo que legendas e lower-thirds sofram sobreposição por botões e interfaces sociais.
+* **🔊 Sonorização Dinâmica (SFX Procedurais):** Efeitos sonoros (`whoosh`, `impact`, `riser`, `click`) gerados por síntese de áudio procedural em FFmpeg (100% offline, sem custos ou direitos autorais).
+* **🔄 Sincronizador de Skills Locais:** Job e painel interativo no `/skills` que varre diretórios de agentes no PC (`~/.gemini`, `~/.claude`, `~/.agents`) e atualiza as skills automaticamente.
 * **🧠 Copiloto Criativo Multi-Nicho (`/copilot`):** Estruturação de narrativas em "beats" de 5 a 15 segundos para Dossiê Investigativo, Cinema, Character Sheets, Comercial UGC e Curiosidades.
 * **👁️ Video-Sharingan com IA Local (`/sharingan`):** Engenharia reversa óptica e clonagem de ritmo/técnica de vídeos (`sharingan.py` + `Qwen2.5-VL-7B` via Ollama na GPU Local RTX 3060 a custo US$ 0.00), com extração multi-pass (`Keyframes`, `Step=5`, `Adaptive High-Motion Burst` e `Forense Step=1 1:1`), grade `10%×10%`, palco HTML5/GSAP interativo, comparativo 3-vias e 12 Portões de Qualidade (QC Gates).
 * **🎬 Estúdio Talking Head & Reels (`/talking-head`):** Pipeline dual-mode (GPU Local ↔ Cloud) para remoção de silêncios por palavras (`CrisperWhisper`), reenquadramento dinâmico (`MediaPipe`), legendas Lockup e sincronização na batida.

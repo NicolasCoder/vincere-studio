@@ -113,19 +113,20 @@ flowchart TD
   F8 --> F9["Fase 9: Loop Fechado com Métricas Reais do YouTube"]
 ```
 
-### 🚀 Fase 6 — Automação Contínua & Loop de Produção Autônomo (`AUTO_PRODUCE`)
-- [ ] **Ação Unificada `auto_produce`**: Um comando único via MCP ou `/api/v1/projects/[id]/actions` (`action: "auto_produce"`) que orquestra todo o ciclo do vídeo (ideação -> roteiro -> narração -> legendas -> cenas IA/B-roll -> HyperFrames -> render de prova) sem intervenção humana no meio.
-- [ ] **Garantia Inviolável de Gate Humano**: O loop para estritamente na aprovação do render (`403 GATE_APROVACAO_OBRIGATORIO`). Nenhuma publicação ocorre de forma automática sem o OK do editor.
-- [ ] **Webhooks de Notificação Instantânea**: Disparo de payload configurável (`WEBHOOK_URL`) com preview e link de aprovação assim que o render for concluído no worker.
+### ✅ Fase 6 — Automação Contínua & Loop de Produção Autônomo (`AUTO_PRODUCE`) (Concluída)
+- [x] **Ação Unificada `auto_produce`**: Um comando único via MCP ou `/api/v1/projects/[id]/actions` (`action: "auto_produce"`) que orquestra todo o ciclo do vídeo (ideação -> roteiro -> narração -> legendas -> cenas IA/B-roll -> HyperFrames -> render de prova) sem intervenção humana no meio (`apps/worker/src/jobs/auto-produce.ts`).
+- [x] **Garantia Inviolável de Gate Humano**: O loop para estritamente na aprovação do render (`403 GATE_APROVACAO_OBRIGATORIO`). Nenhuma publicação ocorre de forma automática sem o OK do editor humano no servidor.
+- [x] **Webhooks de Notificação Instantânea**: Disparo de payload configurável (`WEBHOOK_URL`) com preview e link de aprovação assim que o render for concluído no worker.
 
-### 🛡 Fase 7 — Auto-Healing & Auditoria Visual Automatizada
-- [ ] **Recuperação de Falhas em Camadas**: Se a síntese de voz ou busca de acervo falhar por limite de taxa (429/503), o worker chaveia automaticamente para provedores secundários (Edge TTS / VoiceStudio / Pollinations / Cloudflare) sem interromper o fluxo global.
-- [ ] **Verificação de Safe-Zones para Formato Vertical (`9:16`)**: Auditoria automatizada para impedir que legendas, lower-thirds e elementos gráficos caiam nas áreas cobertas pela interface nativa do TikTok, Instagram Reels e YouTube Shorts (zona inferior e lateral direita).
+### ✅ Fase 7 — Auto-Healing & Auditoria Visual de Safe-Zones (Concluída)
+- [x] **Recuperação de Falhas em Camadas (Auto-Healing)**: Se a síntese de voz ou busca de acervo oscilar ou atingir limites de taxa, o worker chaveia automaticamente para provedores secundários resilientes (inserção automática de `EDGE_TTS` no `apps/worker/src/jobs/synthesize-voice.ts` e cascata de motores grátis no `generate-images.ts`) sem interromper o fluxo global.
+- [x] **Verificação de Safe-Zones para Formato Vertical (`9:16`)**: Auditoria automatizada (`packages/core/src/safe-zones.ts` e `safe-zones.test.ts`) para impedir que legendas, lower-thirds e elementos gráficos caiam nas áreas cobertas pela interface nativa do TikTok, Instagram Reels e YouTube Shorts (zona inferior e lateral direita), com integração direta no `apps/worker/src/jobs/render-video.ts`.
 - [ ] **Detecção Perceptual de Imagens Parecidas**: Comparação de embeddings/hashes perceptuais para garantir diversidade visual entre tomadas consecutivas do vídeo.
 
-### 🌐 Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX)
+### 🌐 Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX) (Em Andamento)
+- [x] **Biblioteca de Efeitos Sonoros Procedurais em FFmpeg**: Ingestão de whooshes, risers, swooshes e impactos sonoros via síntese direta de áudio sem dependência externa, royalties ou risco de direitos autorais (`packages/render/src/sfx.ts`).
 - [ ] **Conexão OAuth com TikTok & Meta Graph API (Instagram Reels)**: Painel de canais no `/settings` para conectar contas adicionais e agendar vídeos verticais diretamente da interface.
-- [ ] **Biblioteca de Efeitos Sonoros Dinâmicos (SFX Sincronizados)**: Ingestão de whooshes, risers, swooshes e impactos sonoros vinculados automaticamente às palavras de destaque das legendas lockup e aos cortes de cena no master de áudio.
+- [ ] **Efeitos Sonoros Vinculados às Legendas**: Sincronização automática dos SFX de whoosh/impacto com as palavras de destaque dos estilos Lockup e cortes de cena.
 
 ### 📈 Fase 9 — Calibração por Aprendizado com Dados Reais
 - [ ] **Ingestão de Retenção do YouTube Analytics API**: Coleta das curvas de retenção segundo a segundo e taxas de cliques (CTR) dos vídeos publicados no canal.

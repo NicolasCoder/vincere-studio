@@ -90,15 +90,17 @@ resolve em Avançado → prosseguir. Para uso na própria conta, é o caminho ce
 
 ---
 
-## Fase 4 — AUTO_PRODUCE
+## Fase 4 — AUTO_PRODUCE · CONCLUÍDA
 
-Encadear as seis etapas sozinho, com agendamento. Aprovada em 09/09.
+Encadear as etapas sozinho, com parada obrigatória no render de prova.
 
 **Regra que não muda:** para no render. Publicação nunca é automática — quem aperta o
-botão é você.
+botão é o editor humano no servidor (`403 GATE_APROVACAO_OBRIGATORIO`).
 
-**Critério de pronto:** um projeto sai de "ideia" a "render pronto para revisão" sem
-nenhuma intervenção manual no meio.
+**Pronto porque:** implementado o job handler `autoProduce` em `apps/worker/src/jobs/auto-produce.ts`
+e exposto em `POST /api/v1/projects/[id]/actions` (`action: "auto_produce"`). Ele encadeia roteiro,
+voz, alinhamento, cenas, B-roll/imagens IA, camada visual DVP e render de prova, notificando via
+webhook (`WEBHOOK_URL`) com link para aprovação.
 
 ---
 
@@ -115,12 +117,13 @@ de palpite.
 
 ---
 
-## Fase 6 — Operação por agente (MCP)
+## Fase 6 — Operação por agente (MCP) · CONCLUÍDA
 
-Expor o pipeline como ferramentas MCP, para operar por Claude/Gemini/ChatGPT.
+Expor o pipeline como ferramentas MCP e REST v1, para operar por Antigravity (`agy`), Claude Code, Codex ou Hermes.
 
-**Deliberadamente por último.** Enquanto o pipeline muda toda semana, a superfície MCP
-teria que ser reescrita junto. Vale quando estabilizar.
+**Pronto porque:** implementado o servidor MCP nativo em `scripts/vincere-mcp-server.mjs` (`pnpm mcp:server`)
+com 10 ferramentas (`vincere_*`) sobre `stdio` e contrato REST completo em `/api/v1/*` com gates de
+aprovação no servidor e runbooks executáveis.
 
 ---
 
