@@ -1,197 +1,29 @@
 import fs from "node:fs/promises";
-import { existsSync, readdirSync } from "node:fs";
+import { existsSync } from "node:fs";
 import path from "node:path";
-import { spawn } from "node:child_process";
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { storageRoot } from "@vincere-studio/providers";
 import { createRequest } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
-import { deveIniciarPreviewLocal, portaAceitaConexao, timeoutConfigMs } from "@/lib/hyperframes-autostart";
-import { pastaPessoal } from "@/lib/pastas";
+import { deveIniciarPreviewLocal, portaAceitaConexao } from "@/lib/hyperframes-autostart";
 import { lerAlvoHyperframes, resolverAlvo, type AlvoHyperframes } from "@/lib/hyperframes-config";
+import {
+  HF_STORAGE,
+  buildStarterCompositionHtml,
+  ensureHyperframesRunning,
+  ensureStarterProject,
+  getLastHyperframesBootError,
+  getRunningHfConfig,
+  getRunningSelection,
+  listWorkspaceProjects,
+  resolveWorkspaceDir,
+} from "@/lib/hyperframes-runtime";
 
 export const dynamic = "force-dynamic";
 
-// Onde o HyperFrames roda vem da tela de Configurações (ou do .env, se nada foi salvo); lido a cada
-// requisição para a troca valer na hora.
 let alvo: AlvoHyperframes = resolverAlvo({}, process.env);
 async function atualizarAlvo() {
   alvo = await lerAlvoHyperframes();
-}
-const HF_STORAGE = () => path.join(storageRoot(), "hyperframes");
-
-function resolveWorkspaceDir(): string {
-  if (process.env.HYPERFRAMES_PROJECTS_DIR && existsSync(process.env.HYPERFRAMES_PROJECTS_DIR)) {
-    return process.env.HYPERFRAMES_PROJECTS_DIR;
-  }
-  const padrao = path.join(pastaPessoal(), "Videos-HF");
-  if (existsSync(padrao)) return padrao;
-  return path.join(HF_STORAGE(), "workspace");
-}
-
-function resolveNodeAndHyperframes(): {
-  nodeBin: string;
-  hfMjs: string | null;
-  npxBin: string;
-  envPath: string;
-} {
-  const nodeBin = process.execPath;
-  const appData = process.env.APPDATA || "";
-  const userProfile = process.env.USERPROFILE || process.env.HOME || "";
-
-  const hfCandidates = [
-    appData ? path.join(appData, "npm", "node_modules", "hyperframes", "bin", "hyperframes.mjs") : "",
-    userProfile ? path.join(userProfile, "AppData", "Roaming", "npm", "node_modules", "hyperframes", "bin", "hyperframes.mjs") : "",
-    path.resolve(process.cwd(), "..", "..", "node_modules", "hyperframes", "bin", "hyperframes.mjs"),
-  ].filter(Boolean);
-
-  const hfMjs = hfCandidates.find((p) => existsSync(p)) ?? null;
-
-  const npxCli = path.join(path.dirname(nodeBin), "node_modules", "npm", "bin", "npx-cli.js");
-  const npxBin = existsSync(npxCli)
-    ? npxCli
-    : (process.platform === "win32" ? "npx.cmd" : "npx");
-
-  return {
-    nodeBin,
-    hfMjs,
-    npxBin,
-    envPath: process.env.PATH || "",
-  };
-}
-
-// No Windows "npx" é npx.cmd, e o Node recusa executar .cmd sem shell (ENOENT/EINVAL). O npx-cli.js que
-// acompanha o npm roda direto com o node, sem shell. Se cair no cmd, passa shell: true como fallback.
-function npxInvocation(npxBin: string, nodeBin: string): { cmd: string; prefix: string[]; useShell: boolean } {
-  if (process.platform !== "win32") return { cmd: npxBin, prefix: [], useShell: false };
-  if (npxBin.endsWith(".js") && existsSync(npxBin)) {
-    return { cmd: nodeBin, prefix: [npxBin], useShell: false };
-  }
-  const cli = path.join(path.dirname(nodeBin), "node_modules", "npm", "bin", "npx-cli.js");
-  if (existsSync(cli)) {
-    return { cmd: nodeBin, prefix: [cli], useShell: false };
-  }
-  return { cmd: npxBin, prefix: [], useShell: true };
-}
-
-interface HfConfigResponse {
-  isHyperframes: boolean;
-  pid: number;
-  projectName: string;
-  projectDir: string;
-  version: string;
-}
-
-async function getRunningHfConfig(): Promise<HfConfigResponse | null> {
-  for (const baseUrl of alvo.urls) {
-    try {
-      const res = await fetch(`${baseUrl}/__hyperframes_config`, {
-        signal: AbortSignal.timeout(timeoutConfigMs()),
-        cache: "no-store",
-      });
-      if (!res.ok) continue;
-      const data = (await res.json()) as HfConfigResponse;
-      if (data?.isHyperframes) return data;
-    } catch {}
-  }
-  return null;
-}
-
-async function getRunningSelection(projectId: string) {
-  for (const baseUrl of alvo.urls) {
-    try {
-      const res = await fetch(`${baseUrl}/api/projects/${encodeURIComponent(projectId)}/selection`, {
-        signal: AbortSignal.timeout(Math.max(1000, timeoutConfigMs() / 2)),
-        cache: "no-store",
-      });
-      if (!res.ok) continue;
-      const data = await res.json();
-      return data?.selection ?? null;
-    } catch {}
-  }
-  return null;
-}
-
-function listWorkspaceProjects(workspaceDir: string): Array<{ name: string; path: string; title: string }> {
-  if (!existsSync(workspaceDir)) return [];
-  try {
-    const entries = readdirSync(workspaceDir, { withFileTypes: true });
-    const out: Array<{ name: string; path: string; title: string }> = [];
-    for (const entry of entries) {
-      if (entry.name.startsWith(".") || entry.name.startsWith("_")) continue;
-      const fullDir = path.join(workspaceDir, entry.name);
-      if (existsSync(path.join(fullDir, "index.html"))) {
-        out.push({
-          name: entry.name,
-          path: fullDir,
-          title: entry.name,
-        });
-      }
-    }
-    return out.sort((a, b) => a.name.localeCompare(b.name));
-  } catch {
-    return [];
-  }
-}
-
-let bootPromise: Promise<HfConfigResponse | null> | null = null;
-
-async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfConfigResponse | null> {
-  const targetName = path.basename(targetProjectDir);
-  const current = await getRunningHfConfig();
-  if (current && current.projectName === targetName) {
-    return current;
-  }
-
-  if (bootPromise) {
-    return bootPromise;
-  }
-
-  bootPromise = (async () => {
-    try {
-      // Se já havia outro projeto ocupando a porta 3010, encerra o processo anterior
-      if (current?.pid) {
-        try {
-          process.kill(current.pid);
-        } catch {}
-        await new Promise((r) => setTimeout(r, 450));
-      }
-
-      const { nodeBin, hfMjs, npxBin, envPath } = resolveNodeAndHyperframes();
-      const npx = npxInvocation(npxBin, nodeBin);
-      const cmd = hfMjs ? nodeBin : npx.cmd;
-      const args = hfMjs
-        ? [hfMjs, "preview", targetProjectDir, "--background", "--force-new", "--port", String(alvo.port), "--no-open"]
-        : [...npx.prefix, "hyperframes", "preview", targetProjectDir, "--background", "--force-new", "--port", String(alvo.port), "--no-open"];
-
-      const child = spawn(cmd, args, {
-        cwd: targetProjectDir,
-        env: { ...process.env, PATH: envPath },
-        detached: true,
-        stdio: "ignore",
-        windowsHide: true,
-        shell: hfMjs ? false : npx.useShell,
-      });
-      // Sem este ouvinte, um ENOENT vira uncaughtException e derruba o servidor inteiro.
-      child.on("error", (err) => console.error("[hyperframes] não foi possível iniciar o preview:", err.message));
-      child.unref();
-
-      // Aguarda até 6s pelo servidor responder em /__hyperframes_config
-      for (let i = 0; i < 20; i++) {
-        await new Promise((r) => setTimeout(r, 300));
-        const cfg = await getRunningHfConfig();
-        if (cfg && cfg.projectName === targetName) {
-          return cfg;
-        }
-      }
-      return await getRunningHfConfig();
-    } finally {
-      bootPromise = null;
-    }
-  })();
-
-  return bootPromise;
 }
 
 const NOME_RE = /^[\p{L}\p{N}_-]{1,80}$/u;
@@ -233,95 +65,6 @@ async function listarTemplates() {
   return itens.filter((t): t is NonNullable<typeof t> => !!t?.nome);
 }
 
-function buildStarterCompositionHtml(title: string, width: number, height: number): string {
-  return `<!DOCTYPE html>
-<html lang="pt-BR">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=${width}, height=${height}" />
-  <title>${title}</title>
-  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    html, body {
-      width: ${width}px;
-      height: ${height}px;
-      overflow: hidden;
-      background: #0a0b10;
-      font-family: system-ui, -apple-system, sans-serif;
-      color: #f2f3f7;
-    }
-    #main {
-      position: relative;
-      width: ${width}px;
-      height: ${height}px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at 50% 35%, rgba(77, 107, 255, 0.22), #0a0b10 70%);
-    }
-    #hero-card {
-      padding: 48px 56px;
-      border-radius: 28px;
-      background: rgba(20, 22, 31, 0.78);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      text-align: center;
-      box-shadow: 0 24px 60px rgba(0, 0, 0, 0.6);
-    }
-    #hero-badge {
-      display: inline-block;
-      padding: 8px 18px;
-      border-radius: 999px;
-      background: rgba(77, 107, 255, 0.18);
-      color: #8297ff;
-      font-size: 20px;
-      font-weight: 600;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-      margin-bottom: 20px;
-    }
-    #hero-title {
-      font-size: 64px;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-      line-height: 1.08;
-      margin-bottom: 16px;
-    }
-    #hero-sub {
-      font-size: 26px;
-      color: #a4a9b9;
-      max-width: 720px;
-    }
-  </style>
-</head>
-<body>
-  <div id="main" data-composition-id="main" data-width="${width}" data-height="${height}" data-fps="30" data-duration="6">
-    <div id="hero-card" data-start="0" data-duration="6" data-track-index="1">
-      <div id="hero-badge">Vincere Studio · HyperFrames</div>
-      <h1 id="hero-title">${title}</h1>
-      <p id="hero-sub">Clique em qualquer elemento e peça ao Agente (Antigravity / Claude) para animar.</p>
-    </div>
-  </div>
-  <script>
-    window.__timelines = window.__timelines || {};
-    const tl = gsap.timeline({ paused: true });
-    tl.fromTo("#hero-card",
-      { scale: 0.92, y: 40, opacity: 0 },
-      { scale: 1, y: 0, opacity: 1, duration: 0.85, ease: "expo.out" },
-      0
-    );
-    tl.fromTo("#hero-title",
-      { y: 20, opacity: 0 },
-      { y: 0, opacity: 1, duration: 0.65, ease: "power3.out" },
-      0.18
-    );
-    window.__timelines["main"] = tl;
-  </script>
-</body>
-</html>`;
-}
-
 // GET /api/hyperframes
 export async function GET(req: Request) {
   await atualizarAlvo();
@@ -338,25 +81,34 @@ export async function GET(req: Request) {
 
   const workspaceDir = resolveWorkspaceDir();
   await fs.mkdir(workspaceDir, { recursive: true }).catch(() => {});
-  const localProjects = listWorkspaceProjects(workspaceDir);
   const requestedProject = params.get("project") || "";
   const autoStart = params.get("autoStart") !== "false";
+  const forceRestart = params.get("forceRestart") === "true";
 
-  let cfg = await getRunningHfConfig();
+  let localProjects = listWorkspaceProjects(workspaceDir);
+  if (localProjects.length === 0 && autoStart) {
+    localProjects = await ensureStarterProject(workspaceDir);
+  }
+
+  let cfg = await getRunningHfConfig(alvo);
 
   // Auto-inicia o HyperFrames localmente ao abrir a tela /studio
   // No modo "vps" o preview roda no servidor (túnel na porta 3010); não há o que iniciar neste PC.
   const modoVps = alvo.modoVps;
-  // Só sobe outro preview se a porta estiver FECHADA: um preview vivo, mas ocupado compilando, demora a
-  // responder e antes era reiniciado (--force-new) a cada travada.
   const portaAberta = cfg ? true : await portaAceitaConexao(alvo.port);
-  if (deveIniciarPreviewLocal({ rodando: Boolean(cfg), portaAberta, autoStart, modoVps, temProjetos: localProjects.length > 0 })) {
+  const deveSubir =
+    (!modoVps && forceRestart && localProjects.length > 0) ||
+    deveIniciarPreviewLocal({ rodando: Boolean(cfg), portaAberta, autoStart, modoVps, temProjetos: localProjects.length > 0 }) ||
+    // Se autoStart=true foi pedido explicitamente na tela /studio e /__hyperframes_config não respondeu mesmo com porta aberta (processo travado):
+    (!cfg && autoStart && !modoVps && localProjects.length > 0);
+
+  if (deveSubir) {
     const target =
       localProjects.find((p) => p.name === requestedProject) ??
       localProjects.find((p) => p.name === "referenciamotion-pro") ??
       localProjects[0];
     if (target) {
-      cfg = await ensureHyperframesRunning(target.path);
+      cfg = await ensureHyperframesRunning(target.path, { forceRestart, alvo });
     }
   }
 
@@ -366,7 +118,7 @@ export async function GET(req: Request) {
     localProjects.find((p) => p.name === activeProject)?.path ||
     path.join(workspaceDir, activeProject);
 
-  const selection = cfg ? await getRunningSelection(cfg.projectName) : null;
+  const selection = cfg ? await getRunningSelection(cfg.projectName, alvo) : null;
   const agents = detectLocalAgents();
 
   return NextResponse.json({
@@ -382,6 +134,7 @@ export async function GET(req: Request) {
     baseDir: workspaceDir,
     selection,
     agents,
+    bootError: !cfg ? getLastHyperframesBootError() : null,
   });
 }
 
@@ -420,11 +173,13 @@ export async function POST(req: Request) {
     const parsed = switchSchema.safeParse(body);
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Projeto inválido" }, { status: 400 });
     const workspaceDir = resolveWorkspaceDir();
-    const targetDir = path.join(workspaceDir, parsed.data.project);
+    const allProjects = listWorkspaceProjects(workspaceDir);
+    const found = allProjects.find((p) => p.name === parsed.data.project);
+    const targetDir = found?.path ?? path.join(workspaceDir, parsed.data.project);
     if (!existsSync(path.join(targetDir, "index.html"))) {
       return NextResponse.json({ ok: false, error: "Projeto não encontrado no workspace local" }, { status: 404 });
     }
-    const cfg = await ensureHyperframesRunning(targetDir);
+    const cfg = await ensureHyperframesRunning(targetDir, { alvo });
     return NextResponse.json({
       ok: true,
       running: Boolean(cfg),
@@ -433,12 +188,14 @@ export async function POST(req: Request) {
     });
   }
 
-  // 1.1 Apagar projeto do workspace local (Videos-HF)
+  // 1.1 Apagar projeto do workspace local (Videos-HF / storage/hyperframes/workspace)
   if (body.action === "delete") {
     const parsed = z.object({ action: z.literal("delete"), project: z.string().regex(NOME_RE) }).safeParse(body);
     if (!parsed.success) return NextResponse.json({ ok: false, error: "Projeto inválido" }, { status: 400 });
     const workspaceDir = resolveWorkspaceDir();
-    const targetDir = path.join(workspaceDir, parsed.data.project);
+    const allProjects = listWorkspaceProjects(workspaceDir);
+    const found = allProjects.find((p) => p.name === parsed.data.project);
+    const targetDir = found?.path ?? path.join(workspaceDir, parsed.data.project);
     if (existsSync(targetDir)) {
       await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {});
     }
@@ -454,15 +211,15 @@ export async function POST(req: Request) {
     const workspaceDir = resolveWorkspaceDir();
     const newDir = path.join(workspaceDir, name);
 
-    await fs.mkdir( path.join(newDir, "assets"), { recursive: true });
-    await fs.mkdir( path.join(newDir, "renders"), { recursive: true });
+    await fs.mkdir(path.join(newDir, "assets"), { recursive: true });
+    await fs.mkdir(path.join(newDir, "renders"), { recursive: true });
 
     const indexHtml = path.join(newDir, "index.html");
     if (!existsSync(indexHtml)) {
       await fs.writeFile(indexHtml, buildStarterCompositionHtml(name, width, height), "utf8");
     }
 
-    const cfg = await ensureHyperframesRunning(newDir);
+    const cfg = await ensureHyperframesRunning(newDir, { alvo });
 
     let agentRequestId: string | undefined;
     if (prompt && prompt.trim().length >= 3) {
@@ -496,16 +253,17 @@ export async function POST(req: Request) {
   const parsed = decisaoSchema.safeParse(body);
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Dados inválidos" }, { status: 400 });
   const { projeto, arquivo, decisao, nota } = parsed.data;
-  const alvo = path.join(HF_STORAGE(), projeto, "previas", arquivo);
-  if (!(await fs.stat(alvo).catch(() => null))) {
+  const alvoPrevia = path.join(HF_STORAGE(), projeto, "previas", arquivo);
+  if (!(await fs.stat(alvoPrevia).catch(() => null))) {
     return NextResponse.json({ ok: false, error: "Prévia não encontrada" }, { status: 404 });
   }
 
   const registro = { decisao, nota: nota?.trim() || undefined, em: new Date().toISOString() };
-  await fs.writeFile(`${alvo}.decisao.json`, JSON.stringify(registro, null, 2), "utf8");
+  await fs.writeFile(`${alvoPrevia}.decisao.json`, JSON.stringify(registro, null, 2), "utf8");
 
   const workspaceDir = resolveWorkspaceDir();
-  const projectDir = path.join(workspaceDir, projeto);
+  const found = listWorkspaceProjects(workspaceDir).find((p) => p.name === projeto);
+  const projectDir = found?.path ?? path.join(workspaceDir, projeto);
   const pedido =
     decisao === "aprovado"
       ? `Prévia ${arquivo} do projeto ${projeto} APROVADA. Faça o render final (npx hyperframes render) em ${projectDir}\\renders.`

@@ -29,6 +29,7 @@ O nome oficial é exclusivamente **Vincere Studio**.
   - `/api/health` — a instância está de pé e quantos projetos existem.
   - `/api/jobs` e `/api/jobs/<id>` — fila e estado dos jobs do worker.
   - `/api/hyperframes` — estado do preview do HyperFrames (`running`, `port`, `activeProject`) e agentes detectados.
+  - `/api/auto-heal` — motor global de Auto-Healing da plataforma (`GET` lista incidentes ativos/recentes e faz varredura com `?checkHealth=true`; `POST` com `action: "heal"` dispara o auto-reparo híbrido com o Agente/IA vinculado).
   - `/api/flow` — estado do daemon do Google Flow (porta 9334).
   - `/api/claude` — pedidos enviados pelo Vince/Studio e agentes detectados. `POST` cria um pedido e aciona o agente CLI vinculado (`agy`, `claude`, `codex`, `hermes`).
   - `/api/cerebro` — qual IA está vinculada ao Vince e as opções detectadas nesta máquina. `POST` com `acao`: `vincular`

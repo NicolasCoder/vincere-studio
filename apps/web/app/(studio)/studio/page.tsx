@@ -3,6 +3,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { Badge, Button, Card, Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude, HF_PROJECT_KEY } from "@/components/ClaudeButton";
+import { acionarAutoHealing, AUTO_HEAL_RESOLVED_EVENT } from "@/components/AutoHealingMonitor";
 import { NICHOS } from "@/lib/nichos";
 import { PreviasPanel } from "./PreviasPanel";
 import { AtualizarVersao } from "@/components/AtualizarVersao";
@@ -82,6 +83,8 @@ export default function HyperFramesStudioPage() {
   const [templateSel, setTemplateSel] = useState("");
   const [search, setSearch] = useState("");
   const [iframeKey, setIframeKey] = useState(1);
+  const [bootError, setBootError] = useState<string | null>(null);
+  const autoHealTriggeredRef = useRef(false);
 
   useEffect(() => {
     fetch("/api/hyperframes?action=templates", { cache: "no-store" })
@@ -96,13 +99,19 @@ export default function HyperFramesStudioPage() {
     } catch {}
   }, [activeProject]);
 
-  const fetchStatus = useCallback(async (firstBoot = false) => {
+  const fetchStatus = useCallback(async (firstBoot = false, forceRestart = false) => {
     try {
-      const res = await fetch(`/api/hyperframes?autoStart=${firstBoot ? "true" : "false"}`, {
+      const qs = new URLSearchParams({
+        autoStart: firstBoot ? "true" : "false",
+        ...(forceRestart ? { forceRestart: "true" } : {}),
+      });
+      const res = await fetch(`/api/hyperframes?${qs.toString()}`, {
         cache: "no-store",
       });
       const data = await res.json();
-      setEngineOnline(Boolean(data.running));
+      const online = Boolean(data.running);
+      setEngineOnline(online);
+      setBootError(typeof data.bootError === "string" ? data.bootError : null);
       setHfBaseUrl(typeof data.hfBaseUrl === "string" ? data.hfBaseUrl : null);
       if (data.activeProject) {
         setActiveProject(data.activeProject);
@@ -117,8 +126,33 @@ export default function HyperFramesStudioPage() {
       if (data.agents) {
         setDetectedAgents(data.agents);
       }
-    } catch {
+
+      if (online) {
+        autoHealTriggeredRef.current = false;
+      } else if (firstBoot && !autoHealTriggeredRef.current) {
+        autoHealTriggeredRef.current = true;
+        acionarAutoHealing({
+          subsystem: "hyperframes",
+          titulo: "HyperFrames Studio não iniciou no primeiro boot",
+          detalheErro:
+            data.bootError ||
+            "Servidor HyperFrames não respondeu na porta 3010. Acionando sincronização de diretórios e reinicialização automática.",
+          pagina: "/studio",
+          projetoHf: data.activeProject || "referenciamotion-pro",
+          projectDir: data.activeProjectDir,
+        });
+      }
+    } catch (err) {
       setEngineOnline(false);
+      if (firstBoot && !autoHealTriggeredRef.current) {
+        autoHealTriggeredRef.current = true;
+        acionarAutoHealing({
+          subsystem: "hyperframes",
+          titulo: "Falha ao consultar motor HyperFrames Studio",
+          detalheErro: err instanceof Error ? err.message : "Erro de rede em /api/hyperframes",
+          pagina: "/studio",
+        });
+      }
     }
   }, []);
 
@@ -126,7 +160,15 @@ export default function HyperFramesStudioPage() {
   useEffect(() => {
     fetchStatus(true);
     const interval = setInterval(() => fetchStatus(false), 2500);
-    return () => clearInterval(interval);
+    const onHealed = () => {
+      void fetchStatus(false);
+      setIframeKey((k) => k + 1);
+    };
+    window.addEventListener(AUTO_HEAL_RESOLVED_EVENT, onHealed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(AUTO_HEAL_RESOLVED_EVENT, onHealed);
+    };
   }, [fetchStatus]);
 
   // Acompanha andamento quando o Agente (agy / claude) está operando
@@ -401,6 +443,26 @@ export default function HyperFramesStudioPage() {
             Catálogo ({MOTIONS_CATALOG.length})
           </Button>
 
+          <Button
+            size="sm"
+            variant="secondary"
+            icon="auto_fix_high"
+            onClick={() =>
+              acionarAutoHealing({
+                subsystem: "hyperframes",
+                titulo: `Auto-Healing do HyperFrames (${activeProject})`,
+                detalheErro:
+                  bootError ||
+                  `Verificação completa do servidor :3010 e da composição ${activeProject} solicitada pelo usuário.`,
+                pagina: "/studio",
+                projetoHf: activeProject,
+                projectDir: activeProjectDir,
+              })
+            }
+          >
+            Auto-Healing
+          </Button>
+
           <AtualizarVersao id="hyperframes" />
 
           <a
@@ -584,15 +646,41 @@ export default function HyperFramesStudioPage() {
                   Subindo o servidor local na porta 3010 com Node 22 para o projeto{" "}
                   <strong className="text-fg">{activeProject}</strong>.
                 </p>
+                {bootError && (
+                  <p className="mt-2 rounded-lg border border-warning/30 bg-warning/10 p-2 font-mono text-[11px] text-warning">
+                    {bootError}
+                  </p>
+                )}
               </div>
-              <Button
-                size="sm"
-                variant="primary"
-                icon="play_arrow"
-                onClick={() => fetchStatus(true)}
-              >
-                Iniciar Agora
-              </Button>
+              <div className="flex flex-wrap items-center justify-center gap-2">
+                <Button
+                  size="sm"
+                  variant="primary"
+                  icon="play_arrow"
+                  onClick={() => fetchStatus(true, true)}
+                >
+                  Iniciar Agora
+                </Button>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  icon="auto_fix_high"
+                  onClick={() =>
+                    acionarAutoHealing({
+                      subsystem: "hyperframes",
+                      titulo: "Auto-Healing do HyperFrames Studio (:3010)",
+                      detalheErro:
+                        bootError ||
+                        `O servidor HyperFrames na porta 3010 não iniciou para o projeto "${activeProject}".`,
+                      pagina: "/studio",
+                      projetoHf: activeProject,
+                      projectDir: activeProjectDir,
+                    })
+                  }
+                >
+                  Auto-Corrigir com IA
+                </Button>
+              </div>
             </div>
           </div>
         )}

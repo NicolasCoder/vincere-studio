@@ -57,6 +57,8 @@ export interface RunLocalAgentInput {
   requestId: string;
   pedido: string;
   engine?: AgentEngineId;
+  modelo?: string;
+  esforco?: "low" | "medium" | "high" | "xhigh" | "max";
   projectHf?: string;
   projectDir?: string;
   pagina?: string;
@@ -211,15 +213,46 @@ export async function dispatchLocalAgent(input: RunLocalAgentInput): Promise<{
     let args: string[];
     let stdin: string | undefined;
     if (engineUsed === "agy") {
-      args = ["--mode", "auto", "--dangerously-skip-permissions", "--add-dir", cwd, "-p", fullPrompt];
+      args = [
+        "--mode",
+        "auto",
+        "--dangerously-skip-permissions",
+        ...(input.modelo ? ["--model", input.modelo] : []),
+        ...(input.esforco ? ["--effort", input.esforco] : []),
+        "--add-dir",
+        cwd,
+        "-p",
+        fullPrompt,
+      ];
     } else if (engineUsed === "codex") {
       // workspace-write: pode editar só dentro da pasta do projeto; o prompt vai por stdin.
-      args = ["exec", "--sandbox", "workspace-write", "--skip-git-repo-check", "--ephemeral", "-C", cwd, "-"];
+      const nivelCodex = input.esforco === "xhigh" || input.esforco === "max" ? "high" : input.esforco;
+      args = [
+        "exec",
+        "--sandbox",
+        "workspace-write",
+        "--skip-git-repo-check",
+        "--ephemeral",
+        ...(input.modelo ? ["-m", input.modelo] : []),
+        ...(nivelCodex ? ["-c", `model_reasoning_effort="${nivelCodex}"`] : []),
+        "-C",
+        cwd,
+        "-",
+      ];
       stdin = fullPrompt;
     } else {
-      args = ["--dangerously-skip-permissions", "-p", fullPrompt];
+      const nivelClaude = input.esforco === "xhigh" ? "high" : input.esforco;
+      args = [
+        "--dangerously-skip-permissions",
+        ...(input.modelo ? ["--model", input.modelo] : []),
+        ...(nivelClaude ? ["--effort", nivelClaude] : []),
+        "-p",
+        fullPrompt,
+      ];
     }
-    invocation = { command: pronto.command, args: [...pronto.prefixo, ...args], cwd, stdin, label: ENGINE_LABEL[engineUsed] };
+    const sufixoModelo = [input.modelo, input.esforco ? `força ${input.esforco}` : undefined].filter(Boolean).join(" · ");
+    const rotuloMotor = sufixoModelo ? `${ENGINE_LABEL[engineUsed]} (${sufixoModelo})` : ENGINE_LABEL[engineUsed];
+    invocation = { command: pronto.command, args: [...pronto.prefixo, ...args], cwd, stdin, label: rotuloMotor };
   }
 
   await updateRequest(input.requestId, {

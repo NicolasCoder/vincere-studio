@@ -36,6 +36,17 @@ describe("validarCerebro", () => {
     expect(() => validarCerebro("llm", "claude")).toThrow(/desconhecida/);
     expect(() => validarCerebro("agente", "rm -rf")).toThrow(/desconhecida/);
   });
+
+  it("preserva modelo e esforço válidos quando informados", () => {
+    expect(validarCerebro("agente", "agy", { modelo: "claude-sonnet-5-5-high", esforco: "high" })).toEqual({
+      tipo: "agente",
+      id: "agy",
+      modelo: "claude-sonnet-5-5-high",
+      esforco: "high",
+    });
+    expect(() => validarCerebro("agente", "agy", { esforco: "ultra-invalido" })).toThrow(/força/);
+    expect(() => validarCerebro("agente", "agy", { modelo: "rm -rf; echo $HOME" })).toThrow(/modelo/);
+  });
 });
 
 describe("lerCerebro", () => {

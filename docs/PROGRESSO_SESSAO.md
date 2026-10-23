@@ -875,3 +875,21 @@ Branch: **`fix/acesso-local-api-v1`**
 
 5. **Bateria de Testes de Integração em Tempo Real**:
    - 9 verificações sequenciais contra o servidor vivo na porta 3210 (Health, Capabilities com `auto_produce`, 6 Runbooks, Skills API, Lista de Projetos, Diagnóstico de Estado, Trava de Segurança `403 GATE_APROVACAO_OBRIGATORIO`, Despacho de `auto_produce` e Enfileiramento de `check-updates`). Todas com 100% de aprovação.
+
+---
+
+## Décima quinta rodada (23/10) — Correção do Carregamento Infinito do HyperFrames Studio, Sistema Global de Auto-Healing com IA/Agente e Unificação de Branches
+
+Branch: **`fix/acesso-local-api-v1`**
+
+1. **Correção do Carregamento Infinito no HyperFrames Studio (`apps/web/lib/hyperframes-runtime.ts`, `apps/web/app/api/hyperframes/route.ts`, `apps/web/app/(studio)/studio/page.tsx`)**:
+   - **Causa raiz 1:** `C:\Users\Nicolas\Videos-HF` existia em disco porém vazia (`[]`), fazendo o antigo `resolveWorkspaceDir()` escolher a pasta vazia e ignorar `storage/hyperframes/workspace` (onde ficam os projetos reais). Com `localProjects.length === 0`, o servidor nunca iniciava a porta `3010`.
+   - **Causa raiz 2:** Quando outro projeto ocupava a porta `3010`, `--force-new` não liberava a porta e o HyperFrames subia silenciosamente na porta `3011` enquanto o iframe aguardava `3010`.
+   - **Solução:** `listWorkspaceProjects()` agora varre e unifica todas as pastas candidatas (`HYPERFRAMES_PROJECTS_DIR`, `storage/hyperframes/workspace` e `Videos-HF`); `ensureStarterProject()` cria automaticamente o projeto inicial `referenciamotion-pro` se não houver nenhum; e `ensureHyperframesRunning()` executa `--kill-all` e aguarda a porta `3010` liberar antes de iniciar o preview, preservando também a exclusão de projetos (`action: "delete"`) e resolução dinâmica do `hyperframes.mjs`.
+
+2. **Sistema Global de Auto-Healing com Notificação Persistente Ao Vivo (`apps/web/lib/auto-heal.ts`, `apps/web/app/api/auto-heal/route.ts`, `apps/web/components/AutoHealingMonitor.tsx`, `apps/web/app/(studio)/error.tsx`)**:
+   - Playbooks determinísticos por subsistema (`hyperframes`, `worker`, `jobs`, `flow`, `api`, `frontend`, `geral`) combinados com diagnóstico e reparo pelo **Agente/IA vinculado pelo usuário** (`Antigravity agy`, `Claude Code`, `Codex`, `Hermes` ou LLM vinculada em `cerebro.json`).
+   - `AutoHealingMonitor` global em `apps/web/app/(studio)/layout.tsx` intercepta falhas HTTP `>= 500`, `window.onerror`, `unhandledrejection` e monitora a saúde da plataforma, exibindo um banner flutuante ao vivo (`"Auto-Healing em andamento..."` com cronômetro, nome da IA/Agente e checklist passo a passo) até concluir (`"Auto-Healing Concluído ✓"`).
+
+3. **Unificação Completa do Assistente Vince (`apps/web/components/ClaudeButton.tsx`, `apps/web/lib/cerebro-catalogo.ts`, `apps/web/lib/cerebro-comandos.ts`)**:
+   - Mescladas as 4 abas (`Conversar`, `Pedidos`, `Limites`, `Memória`), barra de seleção de Família (`Gemini`/`Claude`/`GPT`), Modelo e Força (`Low`/`Med`/`High`/`Max`), sessão contínua (`conversaId`), telemetria de janela de 5h/tokens e botão de Auto-Healing com as sugestões contextuais por tela, execução direta de `acaoStudio` (`/api/v1/projects/[id]/actions`), `skillSugerida` e limpeza da caixa de `Pedidos`.

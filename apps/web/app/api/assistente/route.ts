@@ -14,13 +14,14 @@ const bodySchema = z.object({
     .min(1)
     .max(30),
   pagina: z.string().max(200).optional(),
+  conversaId: z.string().max(120).nullable().optional(),
 });
 
 export async function POST(req: Request) {
   await carregarChavesNoAmbiente().catch(() => {});
   const parsed = bodySchema.safeParse(await req.json().catch(() => null));
   if (!parsed.success) return NextResponse.json({ ok: false, error: "Mensagem inválida." }, { status: 400 });
-  const { mensagens, pagina } = parsed.data;
+  const { mensagens, pagina, conversaId } = parsed.data;
 
   // Quem responde é a IA que a pessoa vinculou ao Vince (ou uma LLM já configurada). Sem nenhuma, o Vince
   // pede o vínculo em vez de mandar a conversa para um serviço qualquer.
@@ -33,11 +34,15 @@ export async function POST(req: Request) {
     .slice(-12)
     .map((m) => `${m.role === "user" ? "Pessoa" : "Vince"}: ${m.content}`)
     .join("\n");
-  const prompt = `Tela atual: ${pagina ?? "desconhecida"} (${TELAS[pagina ?? ""] ?? "—"})\n\nConversa:\n${conversa}\n\nResponda como Vince em JSON {resposta, irPara, acaoClaude, lembrar}.`;
+  const prompt = `Tela atual: ${pagina ?? "desconhecida"} (${TELAS[pagina ?? ""] ?? "—"})\n\nConversa:\n${conversa}\n\nResponda como Vince em JSON {resposta, irPara, acaoClaude, acaoStudio, skillSugerida, lembrar}.`;
   const system = montarSistemaDoVince(await contextoDaMemoria());
 
   try {
-    const { texto, motor, usage } = await perguntarAoCerebro(ativo, { system, prompt });
+    const { texto, motor, usage, conversaId: novaConversaId, usoDetalhado } = await perguntarAoCerebro(ativo, {
+      system,
+      prompt,
+      conversaId: conversaId ?? undefined,
+    });
     if (usage) await recordUsage(null, usage).catch(() => {});
     const data = interpretarRespostaDoVince(texto, extractJson);
     const irPara = data.irPara && TELAS[data.irPara] ? data.irPara : null;
@@ -52,6 +57,8 @@ export async function POST(req: Request) {
       lembrou: lembrou?.texto ?? null,
       motor,
       cerebro: ativo,
+      conversaId: novaConversaId ?? null,
+      uso: usoDetalhado ?? usage ?? null,
     });
   } catch (err) {
     return NextResponse.json(

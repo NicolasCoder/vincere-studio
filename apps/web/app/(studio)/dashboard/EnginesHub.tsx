@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import { Icon } from "@vincere-studio/ui";
+import { acionarAutoHealing, AUTO_HEAL_RESOLVED_EVENT } from "@/components/AutoHealingMonitor";
 
 interface EngineStatus {
   hyperframes: boolean;
@@ -77,7 +78,14 @@ export function EnginesHub() {
   useEffect(() => {
     checkEngines();
     const interval = setInterval(checkEngines, 12000);
-    return () => clearInterval(interval);
+    const onHealed = () => {
+      void checkEngines();
+    };
+    window.addEventListener(AUTO_HEAL_RESOLVED_EVENT, onHealed);
+    return () => {
+      clearInterval(interval);
+      window.removeEventListener(AUTO_HEAL_RESOLVED_EVENT, onHealed);
+    };
   }, []);
 
   return (
@@ -91,16 +99,28 @@ export function EnginesHub() {
             </span>
             <span className="font-display font-semibold text-xs text-fg">HyperFrames Studio</span>
           </div>
-          <span
+          <button
+            type="button"
+            onClick={() => {
+              if (!status.hyperframes) {
+                acionarAutoHealing({
+                  subsystem: "hyperframes",
+                  titulo: "Iniciando e verificando HyperFrames Studio (:3010)",
+                  detalheErro: "Motor HyperFrames estava pausado no Centro de Comando.",
+                  pagina: "/dashboard",
+                });
+              }
+            }}
             className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-mono ${
               status.hyperframes
                 ? "border-success/40 bg-success/10 text-success"
-                : "border-warning/40 bg-warning/10 text-warning"
+                : "border-warning/40 bg-warning/10 text-warning hover:border-warning cursor-pointer"
             }`}
+            title={status.hyperframes ? "HyperFrames ativo na porta 3010" : "Clique para auto-iniciar via Auto-Healing"}
           >
             <span className={`size-1.5 rounded-full ${status.hyperframes ? "bg-success" : "bg-warning"}`} />
-            {status.hyperframes ? "Porta 3010" : "Pausado"}
-          </span>
+            {status.hyperframes ? "Porta 3010" : "Auto-Iniciar"}
+          </button>
         </div>
         <p className="text-[11px] text-muted">
           Timeline ao vivo dos seus projetos do HyperFrames.

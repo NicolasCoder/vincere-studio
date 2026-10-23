@@ -12,8 +12,8 @@ interface Opcao {
 }
 
 interface Estado {
-  cerebro: { tipo: string; id: string } | null;
-  ativo: { tipo: string; id: string } | null;
+  cerebro: { tipo: string; id: string; modelo?: string; esforco?: string } | null;
+  ativo: { tipo: string; id: string; modelo?: string; esforco?: string } | null;
   opcoes: Opcao[];
 }
 
@@ -21,7 +21,13 @@ interface Estado {
  * Vincular a IA da própria pessoa ao Vince. Ao vincular, a IA lê o manual da ferramenta (/AGENTES.md) e se apresenta;
  * dali em diante ela é o cérebro do Vince. Usado no Vince (primeiro acesso) e em Configurações.
  */
-export function PainelVincularCerebro({ onVinculado, aoMudar }: { onVinculado?: (apresentacao: string, motor: string) => void; aoMudar?: () => void }) {
+export function PainelVincularCerebro({
+  onVinculado,
+  aoMudar,
+}: {
+  onVinculado?: (apresentacao: string, motor: string, conversaId?: string | null) => void;
+  aoMudar?: () => void;
+}) {
   const [estado, setEstado] = useState<Estado | null>(null);
   const [vinculando, setVinculando] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
@@ -59,7 +65,7 @@ export function PainelVincularCerebro({ onVinculado, aoMudar }: { onVinculado?: 
     setTrocando(false);
     await carregar();
     aoMudar?.();
-    if (a?.ok) onVinculado?.(a.resposta, a.motor);
+    if (a?.ok) onVinculado?.(a.resposta, a.motor, a.conversaId ?? null);
     else setErro(`Vinculei, mas a IA não respondeu agora: ${a?.error ?? "sem resposta"}. Você pode tentar conversar com o Vince mesmo assim.`);
   };
 
@@ -110,6 +116,8 @@ export function PainelVincularCerebro({ onVinculado, aoMudar }: { onVinculado?: 
           <Icon name="check_circle" className="text-[16px]" />
           <span className="min-w-0 flex-1">
             IA vinculada ao Vince: <strong>{nomeVinculado ?? estado.cerebro.id}</strong>
+            {estado.cerebro.modelo ? ` · ${estado.cerebro.modelo}` : ""}
+            {estado.cerebro.esforco ? ` (${estado.cerebro.esforco})` : ""}
           </span>
           <button type="button" onClick={() => setTrocando(true)} className="underline">trocar</button>
           <button type="button" onClick={desvincular} className="underline">desvincular</button>

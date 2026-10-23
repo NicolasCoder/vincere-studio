@@ -2,6 +2,7 @@ import Image from "next/image";
 import { Icon } from "@vincere-studio/ui";
 import { Sidebar } from "@/components/Sidebar";
 import { ClaudeButton } from "@/components/ClaudeButton";
+import { AutoHealingMonitor } from "@/components/AutoHealingMonitor";
 import { getUsageSummary, listProjects } from "@/lib/data";
 import { getYoutubeConnection } from "@vincere-studio/providers";
 
@@ -31,6 +32,7 @@ export default async function StudioLayout({ children }: { children: React.React
         </div>
         <div data-cost={usage.costUsd}>{children}</div>
       </div>
+      <AutoHealingMonitor />
       <ClaudeButton />
     </div>
   );

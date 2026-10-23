@@ -5,7 +5,14 @@ import { prisma } from "@vincere-studio/db";
 import { OpenAICompatTextProvider, getTextProvider, type UsageInfo } from "@vincere-studio/providers";
 import { readHermesConfig, type AgentInvocation } from "./agent-adapters";
 import { prepararExecutavel } from "./agente-executavel";
-import { montarComandoChat, type AgenteChat } from "./cerebro-comandos";
+import {
+  extrairEnvelopeCliJson,
+  montarComandoChat,
+  NIVEIS_ESFORCO,
+  type AgenteChat,
+  type EsforcoModelo,
+  type UsoCliExtraido,
+} from "./cerebro-comandos";
 import { detectLocalAgents } from "./local-agent-runner";
 import { pastaTemporaria } from "./pastas";
 
@@ -14,10 +21,13 @@ import { pastaTemporaria } from "./pastas";
 // fica só nesta instância.
 
 export type CerebroTipo = "agente" | "llm";
+export type { EsforcoModelo } from "./cerebro-comandos";
 
 export interface Cerebro {
   tipo: CerebroTipo;
   id: string;
+  modelo?: string;
+  esforco?: EsforcoModelo;
 }
 
 export interface OpcaoCerebro extends Cerebro {
@@ -29,7 +39,7 @@ export interface OpcaoCerebro extends Cerebro {
 const CHAVE = "vince:cerebro";
 export const IDS_AGENTE = ["claude", "agy", "codex", "hermes"] as const;
 export const IDS_LLM = ["gemini", "openai_compat", "ollama"] as const;
-const NOMES: Record<string, string> = {
+export const NOMES_CEREBRO: Record<string, string> = {
   claude: "Claude Code",
   agy: "Antigravity (agy)",
   codex: "Codex",
@@ -38,26 +48,46 @@ const NOMES: Record<string, string> = {
   openai_compat: "LLM compatível com OpenAI",
   ollama: "Ollama (modelo local)",
 };
+const NOMES = NOMES_CEREBRO;
 
-export function validarCerebro(tipo: string, id: string): Cerebro {
-  if (tipo === "agente" && (IDS_AGENTE as readonly string[]).includes(id)) return { tipo, id };
-  if (tipo === "llm" && (IDS_LLM as readonly string[]).includes(id)) return { tipo, id };
-  throw new Error("Opção de IA desconhecida.");
+const MODELO_SEGURO_RE = /^[a-zA-Z0-9._:/ ()-]{1,100}$/;
+
+export function validarCerebro(
+  tipo: string,
+  id: string,
+  extra?: { modelo?: unknown; esforco?: unknown },
+): Cerebro {
+  const ehAgente = tipo === "agente" && (IDS_AGENTE as readonly string[]).includes(id);
+  const ehLlm = tipo === "llm" && (IDS_LLM as readonly string[]).includes(id);
+  if (!ehAgente && !ehLlm) throw new Error("Opção de IA desconhecida.");
+
+  const base: Cerebro = { tipo: tipo as CerebroTipo, id };
+  if (typeof extra?.modelo === "string" && extra.modelo.trim()) {
+    const m = extra.modelo.trim();
+    if (!MODELO_SEGURO_RE.test(m)) throw new Error("Identificador de modelo inválido.");
+    base.modelo = m;
+  }
+  if (typeof extra?.esforco === "string" && extra.esforco.trim()) {
+    const e = extra.esforco.trim() as EsforcoModelo;
+    if (!NIVEIS_ESFORCO.includes(e)) throw new Error("Nível de força inválido.");
+    base.esforco = e;
+  }
+  return base;
 }
 
 export async function lerCerebro(): Promise<Cerebro | null> {
   try {
     const linha = await prisma.setting.findUnique({ where: { key: CHAVE } });
     if (!linha) return null;
-    const j = JSON.parse(linha.value) as { tipo?: string; id?: string };
-    return validarCerebro(String(j.tipo), String(j.id));
+    const j = JSON.parse(linha.value) as { tipo?: string; id?: string; modelo?: unknown; esforco?: unknown };
+    return validarCerebro(String(j.tipo), String(j.id), { modelo: j.modelo, esforco: j.esforco });
   } catch {
     return null;
   }
 }
 
 export async function salvarCerebro(c: Cerebro): Promise<void> {
-  const valido = validarCerebro(c.tipo, c.id);
+  const valido = validarCerebro(c.tipo, c.id, { modelo: c.modelo, esforco: c.esforco });
   const value = JSON.stringify(valido);
   await prisma.setting.upsert({ where: { key: CHAVE }, update: { value }, create: { key: CHAVE, value } });
 }
@@ -141,6 +171,8 @@ export interface RespostaBruta {
   texto: string;
   motor: string;
   usage?: UsageInfo;
+  conversaId?: string;
+  usoDetalhado?: UsoCliExtraido;
 }
 
 /** Pasta vazia onde os agentes rodam ao conversar: eles não enxergam os projetos nem o .env. */
@@ -150,17 +182,42 @@ async function pastaDeConversa(): Promise<string> {
   return dir;
 }
 
+function nomeProvedorAgente(agente: AgenteChat): string {
+  if (agente === "agy") return "AGY";
+  if (agente === "claude") return "CLAUDE_CODE";
+  if (agente === "codex") return "CODEX";
+  return "HERMES";
+}
+
+function descreverMotorAtivo(c: Cerebro): string {
+  const base = NOMES[c.id] ?? (c.id === "publico" ? "IA pública gratuita" : c.id);
+  const partes = [base];
+  if (c.modelo) partes.push(c.modelo);
+  if (c.esforco) partes.push(`força ${c.esforco}`);
+  return partes.join(" · ");
+}
+
 export async function perguntarAoCerebro(
   c: Cerebro,
-  { system, prompt, timeoutMs = 150_000 }: { system: string; prompt: string; timeoutMs?: number },
+  {
+    system,
+    prompt,
+    conversaId,
+    timeoutMs = 150_000,
+  }: { system: string; prompt: string; conversaId?: string; timeoutMs?: number },
 ): Promise<RespostaBruta> {
   if (c.tipo === "llm") {
     const provedor =
       c.id === "publico"
         ? new OpenAICompatTextProvider("https://text.pollinations.ai", "", "openai", "https://text.pollinations.ai/openai")
         : getTextProvider(c.id.toUpperCase());
-    const { text, usage } = await provedor.generateText(prompt, { system, temperature: 0.4, maxOutputTokens: 1500 });
-    return { texto: text, motor: NOMES[c.id] ?? "IA pública gratuita", usage };
+    const { text, usage } = await provedor.generateText(prompt, {
+      system,
+      temperature: 0.4,
+      maxOutputTokens: 1500,
+      ...(c.modelo ? { model: c.modelo } : {}),
+    });
+    return { texto: text, motor: descreverMotorAtivo(c), usage };
   }
 
   const agente = c.id as AgenteChat;
@@ -169,35 +226,72 @@ export async function perguntarAoCerebro(
   if (agente !== "hermes" && !bin) throw new Error(`${NOMES[agente]} não foi encontrado nesta máquina. Escolha outra IA ou informe o caminho no .env.`);
 
   const cwd = await pastaDeConversa();
-  const arquivoSaida = agente === "codex" ? path.join(cwd, `saida-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`) : undefined;
-  let inv = montarComandoChat(agente, {
-    prompt: `${system}\n\n---\n${prompt}`,
-    bin: bin ?? undefined,
-    cwd,
-    hermes: agente === "hermes" ? readHermesConfig() : null,
-    arquivoSaida,
-  });
+  const suportaJsonEnvelope = agente === "agy" || agente === "claude";
+  const promptCompleto = `${system}\n\n---\n${prompt}`;
 
-  if (agente !== "hermes") {
-    const pronto = prepararExecutavel(inv.command);
-    if (!pronto) throw new Error(`Não consegui executar ${NOMES[agente]} (${path.basename(inv.command)}). Informe o caminho do .exe em ${agente.toUpperCase()}_BIN no .env.`);
-    inv = { ...inv, command: pronto.command, args: [...pronto.prefixo, ...inv.args] };
-  }
+  const rodarUmaVez = async (idConversaAtual?: string) => {
+    const arquivoSaida = agente === "codex" ? path.join(cwd, `saida-${Date.now()}-${Math.random().toString(36).slice(2, 8)}.txt`) : undefined;
+    let inv = montarComandoChat(agente, {
+      prompt: promptCompleto,
+      bin: bin ?? undefined,
+      cwd,
+      hermes: agente === "hermes" ? readHermesConfig() : null,
+      arquivoSaida,
+      modelo: c.modelo,
+      esforco: c.esforco,
+      conversaId: idConversaAtual,
+      formatoJson: suportaJsonEnvelope,
+    });
 
-  const r = await executarComando(inv, timeoutMs);
-  let texto = r.stdout.trim();
-  if (arquivoSaida) {
-    try {
-      texto = (await readFile(arquivoSaida, "utf8")).trim() || texto;
-    } catch {
-      // sem arquivo: usa a saída padrão
-    } finally {
-      await rm(arquivoSaida, { force: true }).catch(() => {});
+    if (agente !== "hermes") {
+      const pronto = prepararExecutavel(inv.command);
+      if (!pronto) throw new Error(`Não consegui executar ${NOMES[agente]} (${path.basename(inv.command)}). Informe o caminho do .exe em ${agente.toUpperCase()}_BIN no .env.`);
+      inv = { ...inv, command: pronto.command, args: [...pronto.prefixo, ...inv.args] };
     }
+
+    const r = await executarComando(inv, timeoutMs);
+    let textoBruto = r.stdout.trim();
+    if (arquivoSaida) {
+      try {
+        textoBruto = (await readFile(arquivoSaida, "utf8")).trim() || textoBruto;
+      } catch {
+        // sem arquivo: usa a saída padrão
+      } finally {
+        await rm(arquivoSaida, { force: true }).catch(() => {});
+      }
+    }
+    return { r, textoBruto };
+  };
+
+  let tentativa = await rodarUmaVez(conversaId);
+  // Se tentamos continuar uma conversa anterior que não existe mais no CLI, cria uma nova conversa automaticamente.
+  if (!tentativa.textoBruto && conversaId) {
+    tentativa = await rodarUmaVez(undefined);
   }
-  if (!texto) {
+
+  const { r, textoBruto } = tentativa;
+  if (!textoBruto) {
     const dica = r.stderr.trim().split(/\r?\n/).slice(-2).join(" ").slice(0, 300);
     throw new Error(`${NOMES[agente]} não respondeu${r.codigo ? ` (código ${r.codigo})` : ""}${dica ? `: ${dica}` : ""}.`);
   }
-  return { texto, motor: NOMES[agente] };
+
+  const envelope = suportaJsonEnvelope ? extrairEnvelopeCliJson(textoBruto) : { texto: textoBruto };
+  const textoFinal = envelope.texto || textoBruto;
+  const tokensIn = envelope.uso?.tokensIn ?? Math.max(1, Math.ceil(promptCompleto.length / 4));
+  const tokensOut = envelope.uso?.tokensOut ?? Math.max(1, Math.ceil(textoFinal.length / 4));
+  const usage: UsageInfo = {
+    provider: nomeProvedorAgente(agente),
+    model: c.modelo ?? agente,
+    tokensIn,
+    tokensOut,
+    costUsd: envelope.uso?.costUsd ?? 0,
+  };
+
+  return {
+    texto: textoFinal,
+    motor: descreverMotorAtivo(c),
+    usage,
+    conversaId: envelope.conversaId ?? conversaId,
+    usoDetalhado: envelope.uso,
+  };
 }

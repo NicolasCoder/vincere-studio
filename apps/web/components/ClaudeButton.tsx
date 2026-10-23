@@ -4,10 +4,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import { Icon, cn } from "@vincere-studio/ui";
 import { PainelVincularCerebro } from "./PainelVincularCerebro";
+import { acionarAutoHealing } from "./AutoHealingMonitor";
 
-// Vince: o assistente flutuante ativo do Vincere Studio.
-//   Conversar: guia contextual na tela atual, sugere skills na hora certa e executa ações de edição diretamente no projeto;
-//   Pedidos:   caixa de pedidos para o agente local (Antigravity agy / Claude Code);
+// Vince: o assistente flutuante ativo do Vincere Studio. Quatro abas —
+//   Conversar: guia contextual na tela atual (com continuidade de sessão no agy/claude), sugere skills e executa ações direto no projeto;
+//   Pedidos:   caixa de pedidos que o agente local (Antigravity agy, Claude Code, Codex, Hermes) executa nos arquivos;
+//   Limites:   painel em tempo real de modelos, janela de 5h, tokens e orçamento da IA conectada;
 //   Memória:   aprendizado contínuo de preferências de estilo, formato, nicho e voz.
 
 interface Pedido {
@@ -45,9 +47,85 @@ interface SugestaoItem {
   payloadStudio?: Record<string, unknown>;
 }
 
+type FamiliaModelo = "Gemini" | "Claude" | "GPT" | "Local" | "Outro";
+type EsforcoModelo = "low" | "medium" | "high" | "xhigh" | "max";
+
+interface ModeloDisponivel {
+  id: string;
+  nome: string;
+  familia: FamiliaModelo;
+  grupoBase: string;
+  forcaEmbutida?: "low" | "medium" | "high";
+}
+
+interface OpcaoEsforco {
+  id: EsforcoModelo;
+  rotulo: string;
+  curto: string;
+  descricao: string;
+}
+
+interface CatalogoCerebro {
+  motorId: string;
+  motorNome: string;
+  suportaConversaContinua: boolean;
+  suportaEsforco: boolean;
+  esforcosDisponiveis: OpcaoEsforco[];
+  modeloPadrao: string | null;
+  esforcoPadrao: EsforcoModelo | null;
+  familias: FamiliaModelo[];
+  modelos: ModeloDisponivel[];
+  origemCatalogo: string;
+}
+
+interface BlocoConsumoTokens {
+  tokensIn: number;
+  tokensOut: number;
+  totalTokens: number;
+  chamadas: number;
+  custoEstimadoUsd: number;
+}
+
+interface ResumoLimitesCerebro {
+  motorId: string;
+  motorNome: string;
+  atualizadoEm: string;
+  telemetriaLocal: {
+    contaConectada: string | null;
+    planoOuModo: string | null;
+    modeloConfiguradoCli: string | null;
+    promptsJanela5h: number;
+    promptsHoje: number;
+    conversasAtivas: number;
+    statusCota: "ok" | "atencao" | "limite";
+    mensagemCota: string;
+  };
+  consumoMotor: {
+    janela5h: BlocoConsumoTokens;
+    hoje: BlocoConsumoTokens;
+    mes: BlocoConsumoTokens;
+  };
+  orcamentoVincere: {
+    capUsd: number;
+    spentUsd: number;
+    remainingUsd: number;
+    estimatedUsd: number;
+  };
+}
+
+interface UsoUltimaResposta {
+  tokensIn?: number;
+  tokensOut?: number;
+  tokensPensamento?: number;
+  tokensCache?: number;
+  totalTokens?: number;
+}
+
+/** Outras telas abrem a aba de Pedidos já preenchida: chamarClaude({ pedido, anexo, projetoId }). */
 export const CLAUDE_EVENT = "vincere:chamar-claude";
 export const HF_PROJECT_KEY = "vincere.hfProject";
 const CHAT_KEY = "vincere.vince.chat";
+const CONVERSA_ID_KEY = "vincere.vince.conversaId";
 const VOZ_KEY = "vincere.vince.voz";
 
 export function chamarClaude(detail: { pedido: string; anexo?: string; projetoId?: string }) {
@@ -78,8 +156,16 @@ function lerLocal<T>(key: string, fallback: T): T {
 
 function salvarLocal(key: string, value: unknown) {
   try {
-    localStorage.setItem(key, JSON.stringify(value));
+    if (value === null || value === undefined) localStorage.removeItem(key);
+    else localStorage.setItem(key, JSON.stringify(value));
   } catch {}
+}
+
+function formatarTokens(n: number): string {
+  if (!Number.isFinite(n) || n <= 0) return "0";
+  if (n >= 1_000_000) return `${(n / 1_000_000).toFixed(2)}M`;
+  if (n >= 1_000) return `${(n / 1_000).toFixed(1)}k`;
+  return String(Math.round(n));
 }
 
 function falar(texto: string) {
@@ -92,6 +178,7 @@ function falar(texto: string) {
   window.speechSynthesis.speak(u);
 }
 
+/** Mascote: um pequeno robô com o "V" da marca na antena. */
 function VinceAvatar({ className, falando }: { className?: string; falando?: boolean }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
@@ -192,26 +279,33 @@ export function ClaudeButton() {
   const pathname = usePathname();
   const router = useRouter();
   const [open, setOpen] = useState(false);
-  const [aba, setAba] = useState<"conversar" | "claude" | "memoria">("conversar");
+  const [aba, setAba] = useState<"conversar" | "claude" | "limites" | "memoria">("conversar");
 
-  // Conversa com o Vince
+  // Conversa com o Vince + ID da conversa no agente (agy / claude)
   const [msgs, setMsgs] = useState<Msg[]>([BOAS_VINDAS]);
+  const [conversaId, setConversaId] = useState<string | null>(null);
+  const [ultimoUso, setUltimoUso] = useState<UsoUltimaResposta | null>(null);
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
   const [vozLigada, setVozLigada] = useState(false);
   const [executandoStudio, setExecutandoStudio] = useState(false);
   const fimRef = useRef<HTMLDivElement>(null);
 
-  // Pedidos ao Claude
+  // Pedidos ao agente local
   const [pedido, setPedido] = useState("");
   const [anexo, setAnexo] = useState<string | undefined>();
   const [overrideProjetoId, setOverrideProjetoId] = useState<string | undefined>();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviando, setEnviando] = useState(false);
 
-  // IA vinculada
+  // IA vinculada, catálogo de modelos/força e telemetria de limites
   const [precisaVincular, setPrecisaVincular] = useState(false);
   const [motor, setMotor] = useState<string | null>(null);
+  const [ativo, setAtivo] = useState<{ tipo: string; id: string; modelo?: string; esforco?: EsforcoModelo } | null>(null);
+  const [catalogo, setCatalogo] = useState<CatalogoCerebro | null>(null);
+  const [limites, setLimites] = useState<ResumoLimitesCerebro | null>(null);
+  const [salvandoCfg, setSalvandoCfg] = useState(false);
+  const [atualizandoLimites, setAtualizandoLimites] = useState(false);
 
   const [erro, setErro] = useState<string | null>(null);
   const [ouvindo, setOuvindo] = useState(false);
@@ -222,23 +316,33 @@ export function ClaudeButton() {
   const contextoTela = identificarContextoTela(pathname);
   const sugestoesContextuais = obterSugestoesContextuais(pathname);
 
+  const carregarEstadoCerebro = useCallback(async (forcar = false) => {
+    if (forcar) setAtualizandoLimites(true);
+    try {
+      const r = await fetch(forcar ? "/api/cerebro?atualizar=1" : "/api/cerebro", { cache: "no-store" }).then((x) => x.json());
+      if (!r?.ok) return;
+      setPrecisaVincular(!r.ativo);
+      setAtivo(r.ativo ?? null);
+      setCatalogo(r.catalogo ?? null);
+      setLimites(r.limites ?? null);
+      const o = (r.opcoes as { tipo: string; id: string; nome: string }[]).find((x) => x.tipo === r.ativo?.tipo && x.id === r.ativo?.id);
+      const partes = [o?.nome, r.ativo?.modelo, r.ativo?.esforco ? `força ${r.ativo.esforco}` : null].filter(Boolean);
+      setMotor(partes.length > 0 ? partes.join(" · ") : null);
+    } catch {
+      // ignora falha transitória de rede
+    } finally {
+      if (forcar) setAtualizandoLimites(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (!open) return;
-    fetch("/api/cerebro", { cache: "no-store" })
-      .then((x) => x.json())
-      .then((r) => {
-        if (!r?.ok) return;
-        setPrecisaVincular(!r.ativo);
-        const o = (r.opcoes as { tipo: string; id: string; nome: string }[]).find(
-          (x) => x.tipo === r.ativo?.tipo && x.id === r.ativo?.id,
-        );
-        setMotor(o?.nome ?? null);
-      })
-      .catch(() => {});
-  }, [open]);
+    carregarEstadoCerebro(false);
+  }, [open, carregarEstadoCerebro]);
 
   useEffect(() => {
     setMsgs(lerLocal<Msg[]>(CHAT_KEY, [BOAS_VINDAS]));
+    setConversaId(lerLocal<string | null>(CONVERSA_ID_KEY, null));
     setVozLigada(lerLocal<boolean>(VOZ_KEY, false));
   }, []);
 
@@ -246,6 +350,10 @@ export function ClaudeButton() {
     salvarLocal(CHAT_KEY, msgs.slice(-30));
     fimRef.current?.scrollIntoView({ block: "end" });
   }, [msgs]);
+
+  useEffect(() => {
+    salvarLocal(CONVERSA_ID_KEY, conversaId);
+  }, [conversaId]);
 
   const atualizarPedidos = useCallback(async () => {
     const r = await fetch("/api/claude", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
@@ -271,6 +379,68 @@ export function ClaudeButton() {
     return () => window.removeEventListener(CLAUDE_EVENT, onOpen);
   }, []);
 
+  const configurarModeloOuForca = async (novoModelo?: string | null, novoEsforco?: EsforcoModelo | null) => {
+    setSalvandoCfg(true);
+    setErro(null);
+    const r = await fetch("/api/cerebro", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        acao: "configurar",
+        ...(novoModelo !== undefined ? { modelo: novoModelo } : {}),
+        ...(novoEsforco !== undefined ? { esforco: novoEsforco } : {}),
+      }),
+    })
+      .then((x) => x.json())
+      .catch(() => null);
+    setSalvandoCfg(false);
+    if (!r?.ok) {
+      setErro(r?.error ?? "Não foi possível trocar o modelo/força.");
+      return;
+    }
+    setAtivo(r.ativo ?? null);
+    if (r.catalogo) setCatalogo(r.catalogo);
+    if (r.limites) setLimites(r.limites);
+    const partes = [r.catalogo?.motorNome, r.ativo?.modelo, r.ativo?.esforco ? `força ${r.ativo.esforco}` : null].filter(Boolean);
+    if (partes.length > 0) setMotor(partes.join(" · "));
+  };
+
+  const modeloAtualId = ativo?.modelo ?? catalogo?.modeloPadrao ?? catalogo?.modelos[0]?.id ?? "";
+  const modeloAtualObj = catalogo?.modelos.find((m) => m.id === modeloAtualId) ?? catalogo?.modelos[0] ?? null;
+  const familiaAtual: FamiliaModelo = modeloAtualObj?.familia ?? catalogo?.familias[0] ?? "Gemini";
+  const esforcoAtual: EsforcoModelo | null = ativo?.esforco ?? modeloAtualObj?.forcaEmbutida ?? catalogo?.esforcoPadrao ?? null;
+
+  const trocarFamilia = (novaFamilia: FamiliaModelo) => {
+    if (!catalogo) return;
+    const daFamilia = catalogo.modelos.filter((m) => m.familia === novaFamilia);
+    if (daFamilia.length === 0) return;
+    const comMesmaForca = esforcoAtual ? daFamilia.find((m) => m.forcaEmbutida === esforcoAtual) : undefined;
+    const escolhido = comMesmaForca ?? daFamilia[0];
+    configurarModeloOuForca(escolhido.id, escolhido.forcaEmbutida ?? esforcoAtual ?? undefined);
+  };
+
+  const trocarModelo = (idModelo: string) => {
+    const m = catalogo?.modelos.find((x) => x.id === idModelo);
+    configurarModeloOuForca(idModelo, m?.forcaEmbutida ?? esforcoAtual ?? undefined);
+  };
+
+  const trocarEsforco = (novoEsforco: EsforcoModelo) => {
+    if (!catalogo) return;
+    const sufixoAlvo: "low" | "medium" | "high" =
+      novoEsforco === "low" ? "low" : novoEsforco === "medium" ? "medium" : "high";
+    const varianteDoGrupo = modeloAtualObj
+      ? catalogo.modelos.find((m) => m.grupoBase === modeloAtualObj.grupoBase && m.forcaEmbutida === sufixoAlvo)
+      : undefined;
+    configurarModeloOuForca(varianteDoGrupo?.id ?? modeloAtualId, novoEsforco);
+  };
+
+  const iniciarNovaConversa = () => {
+    setMsgs([BOAS_VINDAS]);
+    setConversaId(null);
+    setUltimoUso(null);
+    setErro(null);
+  };
+
   const perguntar = async (conteudo: string) => {
     const pergunta = conteudo.trim();
     if (pergunta.length < 2 || pensando) return;
@@ -282,7 +452,11 @@ export function ClaudeButton() {
     const r = await fetch("/api/assistente", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pagina: pathname, mensagens: historico.map(({ role, content }) => ({ role, content })) }),
+      body: JSON.stringify({
+        pagina: pathname,
+        conversaId,
+        mensagens: historico.map(({ role, content }) => ({ role, content })),
+      }),
     })
       .then((x) => x.json())
       .catch(() => null);
@@ -296,6 +470,8 @@ export function ClaudeButton() {
       return;
     }
     if (r.motor) setMotor(r.motor);
+    if (r.conversaId) setConversaId(r.conversaId);
+    if (r.uso) setUltimoUso(r.uso);
     setMsgs((m) => [
       ...m,
       {
@@ -309,8 +485,10 @@ export function ClaudeButton() {
       },
     ]);
     if (vozLigada) falar(r.resposta);
+    carregarEstadoCerebro(false);
   };
 
+  // 👍/👎: a pergunta que originou a resposta vai junto, para o Vince saber o que evitar.
   const avaliar = (indice: number, nota: 1 | -1) => {
     const resposta = msgs[indice];
     const pergunta = [...msgs.slice(0, indice)].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -444,6 +622,19 @@ export function ClaudeButton() {
     if (!v && "speechSynthesis" in window) window.speechSynthesis.cancel();
   };
 
+  const modelosDaFamilia = catalogo
+    ? catalogo.familias.length > 1
+      ? catalogo.modelos.filter((m) => m.familia === familiaAtual)
+      : catalogo.modelos
+    : [];
+
+  const corStatusCota =
+    limites?.telemetriaLocal.statusCota === "limite"
+      ? "bg-error"
+      : limites?.telemetriaLocal.statusCota === "atencao"
+        ? "bg-warning"
+        : "bg-success";
+
   return (
     <>
       <button
@@ -459,18 +650,47 @@ export function ClaudeButton() {
       </button>
 
       {open && (
-        <aside className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] flex-col rounded-t-2xl border border-line bg-surface-low shadow-2xl sm:inset-x-auto sm:bottom-24 sm:right-6 sm:h-[620px] sm:w-[440px] sm:rounded-2xl">
-          <header className="flex items-center gap-3 border-b border-line px-4 py-3 bg-surface-mid/40">
+        <aside className="fixed inset-x-0 bottom-0 z-50 flex max-h-[90vh] flex-col rounded-t-2xl border border-line bg-surface-low shadow-2xl sm:inset-x-auto sm:bottom-24 sm:right-6 sm:h-[650px] sm:w-[440px] sm:rounded-2xl">
+          <header className="flex items-center gap-2.5 border-b border-line bg-surface-mid/40 px-4 py-2.5">
             <VinceAvatar className="size-9 shrink-0" falando={pensando || executandoStudio} />
             <div className="min-w-0 flex-1">
-              <div className="flex items-center gap-2">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <span className="font-display text-sm font-bold text-fg">Vince</span>
-                <span className="rounded-full bg-primary/10 border border-primary/30 px-2 py-0.2 text-[10px] font-medium text-primary-bright">
+                <span className="rounded-full border border-primary/30 bg-primary/10 px-2 py-0.5 text-[10px] font-medium text-primary-bright">
                   {contextoTela}
                 </span>
+                {limites && !precisaVincular && (
+                  <button
+                    type="button"
+                    onClick={() => setAba(aba === "limites" ? "conversar" : "limites")}
+                    className="flex items-center gap-1 rounded-full border border-line bg-void/60 px-2 py-0.5 font-mono text-[10px] text-fg-secondary hover:border-primary/50 hover:text-fg"
+                    title="Ver limites, janela de 5h e uso de tokens da IA"
+                  >
+                    <span className={cn("size-1.5 rounded-full", corStatusCota)} />
+                    <span>5h: {limites.telemetriaLocal.promptsJanela5h}</span>
+                    <span>·</span>
+                    <span>{formatarTokens(limites.consumoMotor.hoje.totalTokens)} tok</span>
+                  </button>
+                )}
               </div>
               <p className="truncate text-[11px] text-muted">{motor ? `IA ativa: ${motor}` : "Assistente Agente-Primeiro"}</p>
             </div>
+            <button
+              type="button"
+              onClick={() => {
+                acionarAutoHealing({
+                  subsystem: pathname.includes("/studio") ? "hyperframes" : "geral",
+                  titulo: `Auto-Healing solicitado em ${pathname}`,
+                  detalheErro: "Verificação proativa e auto-correção de serviços, jobs e estado da tela atual.",
+                  pagina: pathname,
+                  projetoId: overrideProjetoId || projetoId,
+                });
+              }}
+              className="grid size-8 place-items-center rounded text-primary-bright hover:bg-primary/15"
+              title="Executar Auto-Healing nesta tela com sua IA/Agente"
+            >
+              <Icon name="auto_fix_high" className="text-[18px]" />
+            </button>
             <button
               onClick={alternarVoz}
               className={cn("grid size-8 place-items-center rounded", vozLigada ? "text-primary-bright" : "text-muted hover:text-fg")}
@@ -483,14 +703,92 @@ export function ClaudeButton() {
             </button>
           </header>
 
-          <nav className="grid grid-cols-3 border-b border-line text-xs bg-void/30">
-            {(["conversar", "claude", "memoria"] as const).map((a) => (
+          {/* Barra rápida de Família (Gemini / Claude / GPT), Modelo e Força da IA conectada */}
+          {!precisaVincular && catalogo && catalogo.modelos.length > 0 && (
+            <div className="space-y-1.5 border-b border-line bg-void/40 px-3 py-2 text-[11px]">
+              <div className="flex items-center gap-1.5">
+                {catalogo.familias.length > 1 ? (
+                  <div className="flex shrink-0 items-center rounded-lg border border-line bg-surface-low p-0.5">
+                    {catalogo.familias.map((fam) => (
+                      <button
+                        key={fam}
+                        type="button"
+                        disabled={salvandoCfg}
+                        onClick={() => trocarFamilia(fam)}
+                        className={cn(
+                          "rounded-md px-2 py-0.5 text-[10px] font-bold transition-colors",
+                          familiaAtual === fam ? "bg-primary text-void" : "text-muted hover:text-fg",
+                        )}
+                      >
+                        {fam}
+                      </button>
+                    ))}
+                  </div>
+                ) : (
+                  <span className="shrink-0 rounded-md border border-line bg-surface-low px-2 py-0.5 font-mono text-[10px] font-semibold text-primary-bright">
+                    {catalogo.familias[0] ?? catalogo.motorNome}
+                  </span>
+                )}
+
+                <select
+                  aria-label="Selecionar modelo de IA"
+                  disabled={salvandoCfg}
+                  value={modeloAtualId}
+                  onChange={(e) => trocarModelo(e.target.value)}
+                  className="field h-7 min-w-0 flex-1 truncate rounded-md px-2 text-[11px] font-medium"
+                >
+                  {modelosDaFamilia.map((m) => (
+                    <option key={m.id} value={m.id}>
+                      {m.nome}
+                    </option>
+                  ))}
+                </select>
+              </div>
+
+              {catalogo.suportaEsforco && catalogo.esforcosDisponiveis.length > 0 && (
+                <div className="flex items-center justify-between gap-2">
+                  <span className="font-mono text-[10px] uppercase tracking-wide text-muted">Força:</span>
+                  <div className="flex flex-1 items-center justify-end gap-1">
+                    {catalogo.esforcosDisponiveis.map((esf) => (
+                      <button
+                        key={esf.id}
+                        type="button"
+                        disabled={salvandoCfg}
+                        onClick={() => trocarEsforco(esf.id)}
+                        title={`${esf.rotulo} — ${esf.descricao}`}
+                        className={cn(
+                          "rounded border px-2 py-0.5 font-mono text-[10px] font-semibold transition-colors",
+                          esforcoAtual === esf.id
+                            ? "border-primary bg-primary/20 text-primary-bright"
+                            : "border-line bg-surface-low text-muted hover:text-fg",
+                        )}
+                      >
+                        {esf.curto}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          <nav className="grid grid-cols-4 border-b border-line bg-void/30 text-xs">
+            {(["conversar", "claude", "limites", "memoria"] as const).map((a) => (
               <button
                 key={a}
                 onClick={() => setAba(a)}
-                className={cn("py-2.5 font-semibold transition-colors", aba === a ? "border-b-2 border-primary text-fg bg-surface-low/80" : "text-muted hover:text-fg")}
+                className={cn(
+                  "py-2 font-semibold transition-colors",
+                  aba === a ? "border-b-2 border-primary bg-surface-low/80 text-fg" : "text-muted hover:text-fg",
+                )}
               >
-                {a === "conversar" ? "Conversar & Ações" : a === "memoria" ? "Memória" : `Pedidos${ativos ? ` (${ativos})` : ""}`}
+                {a === "conversar"
+                  ? "Conversar"
+                  : a === "claude"
+                    ? `Pedidos${ativos ? ` (${ativos})` : ""}`
+                    : a === "limites"
+                      ? "Limites"
+                      : "Memória"}
               </button>
             ))}
           </nav>
@@ -500,185 +798,193 @@ export function ClaudeButton() {
               <div className="flex-1 overflow-y-auto p-4">
                 <h3 className="mb-2 font-display text-sm font-bold text-fg">Vincule a sua IA ao Vince</h3>
                 <PainelVincularCerebro
-                  onVinculado={(texto, nome) => {
-                    setMsgs([{ role: "assistant", content: texto }]);
+                  onVinculado={(textoApres, nome, novaConvId) => {
+                    setMsgs([{ role: "assistant", content: textoApres }]);
+                    setConversaId(novaConvId ?? null);
                     setMotor(nome);
                     setPrecisaVincular(false);
+                    carregarEstadoCerebro(true);
                   }}
-                  aoMudar={() => {}}
+                  aoMudar={() => carregarEstadoCerebro(true)}
                 />
               </div>
             ) : (
-            <>
-              {/* Sugestões Rápidas da Tela Atual */}
-              <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line/40 bg-surface-mid/20 px-3 py-2 text-xs">
-                <span className="text-[10px] text-muted shrink-0 font-medium">Sugestões:</span>
-                {sugestoesContextuais.map((s, idx) => (
-                  <button
-                    key={idx}
-                    type="button"
-                    disabled={executandoStudio || pensando}
-                    onClick={() => {
-                      if (s.acaoStudio) {
-                        executarAcaoStudio(s.acaoStudio, s.payloadStudio, s.labelStudio);
-                      } else if (s.texto) {
-                        perguntar(s.texto);
-                      }
-                    }}
-                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface-low px-2.5 py-1 text-[11px] text-fg-secondary hover:border-primary/50 hover:text-fg hover:bg-primary/5 transition-colors disabled:opacity-40"
-                  >
-                    <span>{s.rotulo}</span>
-                  </button>
-                ))}
-              </div>
-
-              <div className="flex-1 space-y-3 overflow-y-auto p-4">
-                {msgs.map((m, i) => (
-                  <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
-                    <div
-                      className={cn(
-                        "max-w-[88%] space-y-2 rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-sm",
-                        m.role === "user" ? "rounded-br-sm bg-primary text-void" : "rounded-bl-sm border border-line bg-void/60 text-fg",
-                      )}
+              <>
+                {/* Sugestões Rápidas da Tela Atual */}
+                <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line/40 bg-surface-mid/20 px-3 py-2 text-xs">
+                  <span className="shrink-0 text-[10px] font-medium text-muted">Sugestões:</span>
+                  {sugestoesContextuais.map((s, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      disabled={executandoStudio || pensando}
+                      onClick={() => {
+                        if (s.acaoStudio) {
+                          executarAcaoStudio(s.acaoStudio, s.payloadStudio, s.labelStudio);
+                        } else if (s.texto) {
+                          perguntar(s.texto);
+                        }
+                      }}
+                      className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface-low px-2.5 py-1 text-[11px] text-fg-secondary transition-colors hover:border-primary/50 hover:bg-primary/5 hover:text-fg disabled:opacity-40"
                     >
-                      <p className="whitespace-pre-wrap">{m.content}</p>
+                      <span>{s.rotulo}</span>
+                    </button>
+                  ))}
+                </div>
 
-                      {/* Skill Sugerida */}
-                      {m.skillSugerida && (
-                        <div className="rounded-lg border border-primary/30 bg-primary/10 p-2.5 text-[11px] space-y-1">
-                          <div className="flex items-center justify-between">
-                            <span className="font-semibold text-primary-bright flex items-center gap-1">
-                              <Icon name="psychology" className="text-[14px]" />
-                              Skill: <code>{m.skillSugerida.comando}</code>
-                            </span>
+                <div className="flex-1 space-y-3 overflow-y-auto p-4">
+                  {msgs.map((m, i) => (
+                    <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
+                      <div
+                        className={cn(
+                          "max-w-[88%] space-y-2 rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-sm",
+                          m.role === "user" ? "rounded-br-sm bg-primary text-void" : "rounded-bl-sm border border-line bg-void/60 text-fg",
+                        )}
+                      >
+                        <p className="whitespace-pre-wrap">{m.content}</p>
+
+                        {/* Skill Sugerida */}
+                        {m.skillSugerida && (
+                          <div className="space-y-1 rounded-lg border border-primary/30 bg-primary/10 p-2.5 text-[11px]">
+                            <div className="flex items-center justify-between">
+                              <span className="flex items-center gap-1 font-semibold text-primary-bright">
+                                <Icon name="psychology" className="text-[14px]" />
+                                Skill: <code>{m.skillSugerida.comando}</code>
+                              </span>
+                              <button
+                                type="button"
+                                onClick={() => enviarPedido(`Execute a skill ${m.skillSugerida!.comando} no projeto`)}
+                                className="text-[10px] font-semibold text-primary-bright hover:underline"
+                              >
+                                Mandar executar
+                              </button>
+                            </div>
+                            {m.skillSugerida.motivo && <p className="text-[10px] text-fg-secondary">{m.skillSugerida.motivo}</p>}
+                          </div>
+                        )}
+
+                        {/* Execução de Ação Direta no Studio */}
+                        {m.acaoStudio && (
+                          <div className="pt-1">
                             <button
                               type="button"
-                              onClick={() => enviarPedido(`Execute a skill ${m.skillSugerida!.comando} no projeto`)}
-                              className="text-[10px] font-semibold text-primary-bright hover:underline"
+                              disabled={executandoStudio}
+                              onClick={() => executarAcaoStudio(m.acaoStudio!.action, m.acaoStudio!.payload, m.acaoStudio!.label)}
+                              className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-violet-600 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:opacity-90 disabled:opacity-40"
                             >
-                              Mandar executar
+                              <Icon name={executandoStudio ? "sync" : "bolt"} className={executandoStudio ? "animate-spin text-[14px]" : "text-[14px] text-amber-300"} />
+                              <span>{m.acaoStudio.label || "Executar no Projeto"}</span>
                             </button>
                           </div>
-                          {m.skillSugerida.motivo && <p className="text-fg-secondary text-[10px]">{m.skillSugerida.motivo}</p>}
-                        </div>
-                      )}
+                        )}
 
-                      {/* Execução de Ação Direta no Studio */}
-                      {m.acaoStudio && (
-                        <div className="pt-1">
-                          <button
-                            type="button"
-                            disabled={executandoStudio}
-                            onClick={() => executarAcaoStudio(m.acaoStudio!.action, m.acaoStudio!.payload, m.acaoStudio!.label)}
-                            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-violet-600 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:opacity-90 disabled:opacity-40"
-                          >
-                            <Icon name={executandoStudio ? "sync" : "bolt"} className={executandoStudio ? "animate-spin text-[14px]" : "text-[14px] text-amber-300"} />
-                            <span>{m.acaoStudio.label || "Executar no Projeto"}</span>
-                          </button>
-                        </div>
-                      )}
+                        {m.lembrou && (
+                          <p className="flex items-center gap-1 text-[11px] text-success">
+                            <Icon name="bookmark_added" className="text-[14px]" /> Anotei: {m.lembrou}
+                          </p>
+                        )}
 
-                      {m.lembrou && (
-                        <p className="flex items-center gap-1 text-[11px] text-success">
-                          <Icon name="bookmark_added" className="text-[14px]" /> Anotei: {m.lembrou}
-                        </p>
-                      )}
+                        {(m.irPara || m.acaoClaude) && (
+                          <div className="flex flex-wrap gap-1.5 pt-1">
+                            {m.irPara && (
+                              <button
+                                onClick={() => router.push(m.irPara!)}
+                                className="rounded-full border border-line px-2.5 py-1 text-[11px] text-fg-secondary hover:text-fg"
+                              >
+                                Ir para {m.irPara}
+                              </button>
+                            )}
+                            {m.acaoClaude && (
+                              <button
+                                onClick={() => enviarPedido(m.acaoClaude!, undefined)}
+                                className="rounded-full bg-primary/20 px-2.5 py-1 text-[11px] font-semibold text-primary-bright hover:bg-primary/30"
+                              >
+                                Mandar o agente fazer
+                              </button>
+                            )}
+                          </div>
+                        )}
 
-                      {(m.irPara || m.acaoClaude) && (
-                        <div className="flex flex-wrap gap-1.5 pt-1">
-                          {m.irPara && (
-                            <button
-                              onClick={() => router.push(m.irPara!)}
-                              className="rounded-full border border-line px-2.5 py-1 text-[11px] text-fg-secondary hover:text-fg"
-                            >
-                              Ir para {m.irPara}
-                            </button>
-                          )}
-                          {m.acaoClaude && (
-                            <button
-                              onClick={() => enviarPedido(m.acaoClaude!, undefined)}
-                              className="rounded-full bg-primary/20 px-2.5 py-1 text-[11px] font-semibold text-primary-bright hover:bg-primary/30"
-                            >
-                              Mandar o agente fazer
-                            </button>
-                          )}
-                        </div>
-                      )}
-
-                      {m.role === "assistant" && i > 0 && (
-                        <div className="flex gap-1 pt-0.5">
-                          {([1, -1] as const).map((n) => (
-                            <button
-                              key={n}
-                              onClick={() => avaliar(i, n)}
-                              disabled={!!m.nota}
-                              className={cn(
-                                "grid size-6 place-items-center rounded text-muted hover:text-fg disabled:cursor-default",
-                                m.nota === n && (n === 1 ? "text-success" : "text-error"),
-                              )}
-                              title={n === 1 ? "Boa resposta" : "Resposta ruim (o Vince evita na próxima)"}
-                            >
-                              <Icon name={n === 1 ? "thumb_up" : "thumb_down"} className="text-[14px]" filled={m.nota === n} />
-                            </button>
-                          ))}
-                        </div>
-                      )}
+                        {m.role === "assistant" && i > 0 && (
+                          <div className="flex gap-1 pt-0.5">
+                            {([1, -1] as const).map((n) => (
+                              <button
+                                key={n}
+                                onClick={() => avaliar(i, n)}
+                                disabled={!!m.nota}
+                                className={cn(
+                                  "grid size-6 place-items-center rounded text-muted hover:text-fg disabled:cursor-default",
+                                  m.nota === n && (n === 1 ? "text-success" : "text-error"),
+                                )}
+                                title={n === 1 ? "Boa resposta" : "Resposta ruim (o Vince evita na próxima)"}
+                              >
+                                <Icon name={n === 1 ? "thumb_up" : "thumb_down"} className="text-[14px]" filled={m.nota === n} />
+                              </button>
+                            ))}
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                ))}
-                {pensando && <p className="text-[11px] text-muted animate-pulse">Vince está pensando…</p>}
-                {executandoStudio && <p className="text-[11px] text-primary-bright animate-pulse">Executando no projeto…</p>}
-                <div ref={fimRef} />
-              </div>
+                  ))}
+                  {pensando && <p className="animate-pulse text-[11px] text-muted">Vince está pensando…</p>}
+                  {executandoStudio && <p className="animate-pulse text-[11px] text-primary-bright">Executando no projeto…</p>}
+                  <div ref={fimRef} />
+                </div>
 
-              <form
-                onSubmit={(e) => {
-                  e.preventDefault();
-                  perguntar(texto);
-                }}
-                className="flex items-center gap-2 border-t border-line p-3 bg-surface-mid/20"
-              >
-                <button
-                  type="button"
-                  onClick={() => alternarMic("conversar")}
-                  className={cn("grid size-10 shrink-0 place-items-center rounded-full border", ouvindo ? "animate-pulse border-error bg-error/15 text-error" : "border-line text-fg-secondary hover:text-fg")}
-                  title="Falar com o Vince"
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    perguntar(texto);
+                  }}
+                  className="flex items-center gap-2 border-t border-line bg-surface-mid/20 p-3"
                 >
-                  <Icon name={ouvindo ? "stop" : "mic"} className="text-[20px]" />
-                </button>
-                <input
-                  value={texto}
-                  onChange={(e) => setTexto(e.target.value)}
-                  placeholder={`Pergunte algo em ${contextoTela}…`}
-                  className="field h-10 flex-1 px-3 text-sm"
-                />
-                <button
-                  type="submit"
-                  disabled={pensando || executandoStudio || texto.trim().length < 2}
-                  className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-void disabled:opacity-40"
-                  aria-label="Enviar"
-                >
-                  <Icon name="send" className="text-[18px]" />
-                </button>
-              </form>
-              {erro && <p className="px-4 pb-2 text-[11px] text-error">{erro}</p>}
-              <div className="flex items-center justify-between px-4 pb-2 text-[10px] text-muted">
-                {msgs.length > 1 ? (
-                  <button onClick={() => setMsgs([BOAS_VINDAS])} className="hover:text-fg">
-                    Limpar conversa
+                  <button
+                    type="button"
+                    onClick={() => alternarMic("conversar")}
+                    className={cn(
+                      "grid size-10 shrink-0 place-items-center rounded-full border",
+                      ouvindo ? "animate-pulse border-error bg-error/15 text-error" : "border-line text-fg-secondary hover:text-fg",
+                    )}
+                    title="Falar com o Vince"
+                  >
+                    <Icon name={ouvindo ? "stop" : "mic"} className="text-[20px]" />
                   </button>
-                ) : <span />}
-                <button onClick={() => setPrecisaVincular(true)} className="hover:text-fg">
-                  Trocar IA ({motor || "Vincular"})
-                </button>
-              </div>
-            </>
+                  <input
+                    value={texto}
+                    onChange={(e) => setTexto(e.target.value)}
+                    placeholder={`Pergunte algo em ${contextoTela}…`}
+                    className="field h-10 flex-1 px-3 text-sm"
+                  />
+                  <button
+                    type="submit"
+                    disabled={pensando || executandoStudio || texto.trim().length < 2}
+                    className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-void disabled:opacity-40"
+                    aria-label="Enviar"
+                  >
+                    <Icon name="send" className="text-[18px]" />
+                  </button>
+                </form>
+                {erro && <p className="px-4 pb-2 text-[11px] text-error">{erro}</p>}
+                <div className="flex items-center justify-between gap-2 border-t border-line/60 px-3 py-2 text-[10px] text-muted">
+                  <span className="truncate font-mono" title={conversaId ? `Sessão contínua no agente: ${conversaId}` : "A próxima mensagem inicia um chat novo no agente"}>
+                    {conversaId ? `Chat ativo: #${conversaId.slice(0, 8)}` : "Sessão nova no agente"}
+                  </span>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={iniciarNovaConversa} className="font-semibold text-primary-bright hover:underline">
+                      + Nova conversa
+                    </button>
+                    <button type="button" onClick={() => setPrecisaVincular(true)} className="hover:text-fg hover:underline">
+                      Trocar IA
+                    </button>
+                  </div>
+                </div>
+              </>
             )
           ) : aba === "claude" ? (
             <>
-              <div className="space-y-2 border-b border-line p-4 bg-surface-mid/20">
+              <div className="space-y-2 border-b border-line bg-surface-mid/20 p-4">
                 <p className="text-[11px] text-muted">
-                  Os pedidos são executados pelo <strong className="text-primary-bright">agente local (Antigravity agy / Claude Code)</strong> nos arquivos do seu projeto.
+                  Os pedidos são executados pelo <strong className="text-primary-bright">{motor ?? "agente local (Antigravity agy / Claude Code)"}</strong> nos arquivos do seu projeto.
                 </p>
                 {anexo && <span className="inline-block rounded border border-primary/40 px-1.5 py-0.5 font-mono text-[10px] text-primary-bright">+ anexo</span>}
                 <textarea
@@ -692,7 +998,10 @@ export function ClaudeButton() {
                   <button
                     type="button"
                     onClick={() => alternarMic("claude")}
-                    className={cn("grid size-10 place-items-center rounded border", ouvindo ? "animate-pulse border-error bg-error/15 text-error" : "border-line text-fg-secondary hover:text-fg")}
+                    className={cn(
+                      "grid size-10 place-items-center rounded border",
+                      ouvindo ? "animate-pulse border-error bg-error/15 text-error" : "border-line text-fg-secondary hover:text-fg",
+                    )}
                     title="Ditar por voz"
                   >
                     <Icon name={ouvindo ? "stop" : "mic"} className="text-[20px]" />
@@ -711,7 +1020,7 @@ export function ClaudeButton() {
               </div>
 
               {/* Toolbar de Limpeza de Pedidos */}
-              <div className="flex items-center justify-between border-b border-line/40 px-4 py-2 text-xs bg-void/30">
+              <div className="flex items-center justify-between border-b border-line/40 bg-void/30 px-4 py-2 text-xs">
                 <span className="font-mono text-[11px] text-muted">
                   {pedidos.length} {pedidos.length === 1 ? "pedido" : "pedidos"} na fila
                 </span>
@@ -743,8 +1052,8 @@ export function ClaudeButton() {
 
               <div className="flex-1 space-y-2 overflow-y-auto p-4">
                 {pedidos.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-muted space-y-1">
-                    <Icon name="inbox" className="text-[28px] mx-auto text-muted/50" />
+                  <div className="space-y-1 py-8 text-center text-xs text-muted">
+                    <Icon name="inbox" className="mx-auto text-[28px] text-muted/50" />
                     <p>Caixa de pedidos limpa.</p>
                   </div>
                 ) : (
@@ -760,7 +1069,7 @@ export function ClaudeButton() {
                             type="button"
                             onClick={() => excluirPedido(i.id)}
                             title="Excluir pedido"
-                            className="rounded p-1 text-muted hover:text-error hover:bg-error/15 transition-colors"
+                            className="rounded p-1 text-muted transition-colors hover:bg-error/15 hover:text-error"
                           >
                             <Icon name="delete" className="text-[13px]" />
                           </button>
@@ -773,8 +1082,17 @@ export function ClaudeButton() {
                 )}
               </div>
             </>
+          ) : aba === "limites" ? (
+            <PainelLimitesVince
+              limites={limites}
+              catalogo={catalogo}
+              ultimoUso={ultimoUso}
+              conversaId={conversaId}
+              atualizando={atualizandoLimites}
+              onAtualizar={() => carregarEstadoCerebro(true)}
+            />
           ) : (
-            <MemoriaVince projetoId={projetoId} pathname={pathname} />
+            <MemoriaVince projetoId={overrideProjetoId || projetoId} pathname={pathname} />
           )}
         </aside>
       )}
@@ -782,8 +1100,154 @@ export function ClaudeButton() {
   );
 }
 
-/** Aba "Memória": o que o Vince aprende com você a cada edição e projeto. */
-function MemoriaVince({ projetoId, pathname }: { projetoId?: string; pathname: string }) {
+/** Aba "Limites": mostra limites da janela de 5h, consumo de tokens por período, conta conectada e orçamento. */
+function PainelLimitesVince({
+  limites,
+  catalogo,
+  ultimoUso,
+  conversaId,
+  atualizando,
+  onAtualizar,
+}: {
+  limites: ResumoLimitesCerebro | null;
+  catalogo: CatalogoCerebro | null;
+  ultimoUso: UsoUltimaResposta | null;
+  conversaId: string | null;
+  atualizando: boolean;
+  onAtualizar: () => void;
+}) {
+  if (!limites) {
+    return <div className="flex-1 p-4 text-xs text-muted">Carregando limites e telemetria da IA conectada…</div>;
+  }
+
+  const { telemetriaLocal, consumoMotor, orcamentoVincere } = limites;
+  const badgeCls =
+    telemetriaLocal.statusCota === "limite"
+      ? "border-error/50 bg-error/15 text-error"
+      : telemetriaLocal.statusCota === "atencao"
+        ? "border-warning/50 bg-warning/15 text-warning"
+        : "border-success/40 bg-success/10 text-success";
+
+  return (
+    <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
+      <div className="flex items-center justify-between gap-2">
+        <div>
+          <div className="font-display text-sm font-bold text-fg">{limites.motorNome}</div>
+          <div className="font-mono text-[10px] text-muted">{catalogo?.origemCatalogo ?? "Telemetria local"}</div>
+        </div>
+        <button
+          type="button"
+          disabled={atualizando}
+          onClick={onAtualizar}
+          className="flex items-center gap-1 rounded border border-line bg-void/60 px-2.5 py-1 text-[11px] font-semibold text-fg-secondary hover:border-primary/50 hover:text-fg disabled:opacity-40"
+        >
+          <Icon name="refresh" className="text-[14px]" />
+          {atualizando ? "Atualizando…" : "Atualizar"}
+        </button>
+      </div>
+
+      {/* Status da Conta e Janela de Cota */}
+      <div className={cn("space-y-1 rounded-lg border p-3", badgeCls)}>
+        <div className="flex items-center justify-between font-semibold">
+          <span>{telemetriaLocal.contaConectada ?? limites.motorNome}</span>
+          {telemetriaLocal.planoOuModo && <span className="font-mono text-[10px] opacity-90">{telemetriaLocal.planoOuModo}</span>}
+        </div>
+        <p className="text-[11px] leading-relaxed opacity-90">{telemetriaLocal.mensagemCota}</p>
+      </div>
+
+      {/* Uso na Conta / CLI Local (Janela de 5h e Hoje) */}
+      <div className="space-y-2 rounded-lg border border-line bg-void/50 p-3">
+        <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Ritmo de uso da conta ({limites.motorNome})</div>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <div className="rounded border border-line/60 bg-surface-low p-2">
+            <div className="font-display text-base font-bold text-fg">{telemetriaLocal.promptsJanela5h}</div>
+            <div className="text-[10px] text-muted">Prompts (5h)</div>
+          </div>
+          <div className="rounded border border-line/60 bg-surface-low p-2">
+            <div className="font-display text-base font-bold text-fg">{telemetriaLocal.promptsHoje}</div>
+            <div className="text-[10px] text-muted">Prompts hoje</div>
+          </div>
+          <div className="rounded border border-line/60 bg-surface-low p-2">
+            <div className="font-display text-base font-bold text-fg">{telemetriaLocal.conversasAtivas}</div>
+            <div className="text-[10px] text-muted">Chats no agente</div>
+          </div>
+        </div>
+        {conversaId && (
+          <div className="font-mono text-[10px] text-muted">
+            Conversa atual no agente: <span className="text-fg">{conversaId}</span>
+          </div>
+        )}
+      </div>
+
+      {/* Tokens Medidos no Vincere Studio */}
+      <div className="space-y-2 rounded-lg border border-line bg-void/50 p-3">
+        <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Tokens medidos no Vincere Studio</div>
+        <div className="space-y-1.5 text-[11px]">
+          <div className="flex items-center justify-between">
+            <span className="text-muted">Últimas 5 horas:</span>
+            <span className="font-mono text-fg">
+              {formatarTokens(consumoMotor.janela5h.totalTokens)} tok ({formatarTokens(consumoMotor.janela5h.tokensIn)} in / {formatarTokens(consumoMotor.janela5h.tokensOut)} out)
+            </span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted">Hoje ({consumoMotor.hoje.chamadas} resp.):</span>
+            <span className="font-mono text-fg">{formatarTokens(consumoMotor.hoje.totalTokens)} tok</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-muted">Este mês ({consumoMotor.mes.chamadas} resp.):</span>
+            <span className="font-mono text-fg">{formatarTokens(consumoMotor.mes.totalTokens)} tok</span>
+          </div>
+        </div>
+
+        {ultimoUso && (
+          <div className="mt-2 rounded border border-line/60 bg-surface-low p-2 font-mono text-[10px] text-fg-secondary">
+            <div className="mb-1 font-semibold text-fg">Última resposta do Vince:</div>
+            <div className="flex flex-wrap gap-x-3 gap-y-1">
+              <span>In: {formatarTokens(ultimoUso.tokensIn ?? 0)}</span>
+              <span>Out: {formatarTokens(ultimoUso.tokensOut ?? 0)}</span>
+              {Boolean(ultimoUso.tokensPensamento) && <span>Pensamento: {formatarTokens(ultimoUso.tokensPensamento ?? 0)}</span>}
+              {Boolean(ultimoUso.tokensCache) && <span>Cache lido: {formatarTokens(ultimoUso.tokensCache ?? 0)}</span>}
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* Orçamento Mensal de IA Paga do Vincere Studio */}
+      <div className="space-y-1.5 rounded-lg border border-line bg-void/50 p-3">
+        <div className="font-mono text-[10px] uppercase tracking-wide text-muted">Orçamento de IA paga (Vincere Studio)</div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted">Gasto cobrável no mês:</span>
+          <span className="font-mono font-semibold text-fg">
+            US$ {orcamentoVincere.spentUsd.toFixed(2)} / US$ {orcamentoVincere.capUsd.toFixed(2)}
+          </span>
+        </div>
+        <div className="flex items-center justify-between text-[11px]">
+          <span className="text-muted">Saldo disponível no teto:</span>
+          <span className="font-mono text-success">US$ {orcamentoVincere.remainingUsd.toFixed(2)}</span>
+        </div>
+      </div>
+
+      {/* Resumo dos Modelos Detectados para o Usuário */}
+      {catalogo && catalogo.modelos.length > 0 && (
+        <div className="space-y-1.5 rounded-lg border border-line bg-void/50 p-3">
+          <div className="font-mono text-[10px] uppercase tracking-wide text-muted">
+            Modelos disponíveis nesta conta ({catalogo.modelos.length})
+          </div>
+          <div className="flex flex-wrap gap-1">
+            {catalogo.modelos.map((m) => (
+              <span key={m.id} className="rounded border border-line bg-surface-low px-2 py-0.5 font-mono text-[10px] text-fg-secondary">
+                {m.nome}
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Aba "Memória": o que o Vince aprende com você a cada edição e projeto. Tudo aqui entra no prompt de cada conversa. */
+function MemoriaVince({ projetoId }: { projetoId?: string; pathname?: string }) {
   const [itens, setItens] = useState<Array<{ id: string; texto: string; origem: string; criadoEm: string }>>([]);
   const [novo, setNovo] = useState("");
   const [notas, setNotas] = useState({ boas: 0, ruins: 0 });
@@ -824,7 +1288,7 @@ function MemoriaVince({ projetoId, pathname }: { projetoId?: string; pathname: s
 
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
-      <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-[11px] leading-relaxed text-fg-secondary space-y-2">
+      <div className="space-y-2 rounded-lg border border-primary/25 bg-primary/5 p-3 text-[11px] leading-relaxed text-fg-secondary">
         <p>
           O Vince aprende ativamente com suas decisões. As notas 👍 ({notas.boas}) e 👎 ({notas.ruins}) ensinam o que repetir ou evitar, e as regras abaixo entram no cérebro dele em toda conversa.
         </p>

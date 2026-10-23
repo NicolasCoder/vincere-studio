@@ -10,6 +10,17 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 23/10/2026 — Unificação Completa: Auto-Healing Global, Correção do HyperFrames Studio, Seleção de Modelo/Força/Limites e Avanços do Colega (`origin/fix/acesso-local-api-v1`)
+
+- **Correção Definitiva do HyperFrames Studio (`apps/web/lib/hyperframes-runtime.ts` + `/api/hyperframes`)**:
+  - `resolveWorkspaceDir()` e `listWorkspaceProjects()` varrem e unificam `HYPERFRAMES_PROJECTS_DIR`, `storage/hyperframes/workspace` e `Videos-HF`, evitando que uma pasta `Videos-HF` vazia oculte os projetos reais.
+  - `ensureStarterProject()` cria automaticamente o projeto inicial `referenciamotion-pro` se o workspace estiver vazio, e `ensureHyperframesRunning()` limpa processos órfãos na porta `3010` (`--kill-all`) antes de subir o daemon Node, mesclado com a resolução dinâmica de `hyperframes.mjs` global e ação `delete` de projetos.
+- **Sistema Global de Auto-Healing com IA / Agente Vinculado (`apps/web/lib/auto-heal.ts`, `/api/auto-heal`, `apps/web/components/AutoHealingMonitor.tsx`, `apps/web/app/(studio)/error.tsx`)**:
+  - Monitor global montado em `apps/web/app/(studio)/layout.tsx` que intercepta erros HTTP `>= 500`, falhas de runtime, jobs com falha (`FAILED`), worker inativo e quedas do HyperFrames `:3010`.
+  - Exibe notificação flutuante persistente (`"Auto-Healing em andamento..."`) com cronômetro ao vivo, nome do Agente/IA ativo (`Antigravity agy`, `Claude Code`, `Codex`, `Hermes` ou LLM vinculada) e log de etapas até concluir o reparo (`"Auto-Healing Concluído ✓"`).
+- **Vince Unificado (4 Abas + Catálogo de Modelos/Força + Telemetria 5h + Ações Contextuais)**:
+  - `apps/web/components/ClaudeButton.tsx`, `apps/web/lib/cerebro-catalogo.ts` e `apps/web/lib/cerebro-comandos.ts` combinam as 4 abas (`Conversar`, `Pedidos`, `Limites`, `Memória`), seletor rápido de Família (`Gemini`/`Claude`/`GPT`), Modelo e Força (`Low`/`Med`/`High`/`Max`), continuidade de sessão (`conversaId`), telemetria de janela de 5h/tokens e botão de Auto-Healing com as sugestões contextuais por tela, execução direta de `acaoStudio` (`/api/v1/projects/[id]/actions`), `skillSugerida` e limpeza da caixa de `Pedidos`.
+
 ## Estado deixado em 23/10/2026 — Vince Flutuante Ativo, Limpeza de Pedidos, Exclusão Universal e HyperFrames 0.8.189
 
 - **Vince como Agente Flutuante Ativo e Contextual (`apps/web/components/ClaudeButton.tsx`)**:

@@ -48,10 +48,16 @@ const createSchema = z.object({
 });
 
 // Sem motor escolhido, executa com o agente que a pessoa vinculou ao Vince (se houver); senão, o primeiro detectado.
-async function motorDoPedido(escolhido?: "auto" | "agy" | "claude" | "codex" | "hermes" | "inbox") {
-  if (escolhido && escolhido !== "auto") return escolhido;
+async function resolverConfigPedido(escolhido?: "auto" | "agy" | "claude" | "codex" | "hermes" | "inbox") {
   const c = await lerCerebro();
-  return c?.tipo === "agente" ? (c.id as "agy" | "claude" | "codex" | "hermes") : "auto";
+  const engine: "auto" | "agy" | "claude" | "codex" | "hermes" | "inbox" =
+    escolhido && escolhido !== "auto" ? escolhido : c?.tipo === "agente" ? (c.id as "agy" | "claude" | "codex" | "hermes") : "auto";
+  const mesmoAgente = c?.tipo === "agente" && (engine === "auto" || c.id === engine);
+  return {
+    engine,
+    modelo: mesmoAgente ? c?.modelo : undefined,
+    esforco: mesmoAgente ? c?.esforco : undefined,
+  };
 }
 
 // POST /api/claude  → cria pedido e dispara o agente local (Antigravity agy / Claude Code)
@@ -62,11 +68,14 @@ export async function POST(req: Request) {
   }
   const { engine, projectDir, selection, ...rest } = parsed.data;
   const item = await createRequest(rest);
+  const cfg = await resolverConfigPedido(engine);
 
   const dispatch = await dispatchLocalAgent({
     requestId: item.id,
     pedido: rest.pedido,
-    engine: await motorDoPedido(engine),
+    engine: cfg.engine,
+    modelo: cfg.modelo,
+    esforco: cfg.esforco,
     projectHf: rest.projetoHf,
     projectDir,
     pagina: rest.pagina,
