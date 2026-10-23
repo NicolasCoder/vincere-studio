@@ -1,8 +1,10 @@
 import Link from "next/link";
 import { prisma } from "@vincere-studio/db";
+import { carregarChavesNoAmbiente, statusDasChaves } from "@vincere-studio/providers";
 import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { Badge, Button, Card, Icon } from "@vincere-studio/ui";
+import { fmtAge, getSystemHealth } from "@/lib/data";
 import { NICHOS } from "@/lib/nichos";
 import { chamarFerramenta, lerResposta } from "@/lib/voicestudio";
 import { getPcGpuStatus } from "@/lib/pc-gpu-engine";
@@ -94,7 +96,13 @@ export default async function CopilotoPage({ searchParams }: { searchParams: Pro
       })
     : null;
 
-  const perfis = (await prisma.voiceProfile.findMany({ orderBy: { name: "asc" } })).filter((v) => v.provider !== "ELEVENLABS");
+  await carregarChavesNoAmbiente();
+  const [perfisBrutos, health, chavesStatus] = await Promise.all([
+    prisma.voiceProfile.findMany({ orderBy: { name: "asc" } }),
+    getSystemHealth(),
+    statusDasChaves(),
+  ]);
+  const perfis = perfisBrutos.filter((v) => v.provider !== "ELEVENLABS");
   const vozesVs = etapaPedida === 3 || (sp.projeto && !sp.etapa) ? await vozesDoVoiceStudio() : [];
   const jobsAtivos = p ? await prisma.job.findMany({ where: { projectId: p.id, status: { in: ["QUEUED", "RUNNING"] } }, orderBy: { createdAt: "desc" } }) : [];
   const ultimoErro = p
@@ -118,11 +126,38 @@ export default async function CopilotoPage({ searchParams }: { searchParams: Pro
   const skillsDaEtapa = SKILLS[etapa] ?? [];
   const nicho = p ? NICHOS.find((n) => n.nome === p.tone) : undefined;
 
+  const workerOffline = health.workerStatus === "offline";
+  const temChave = (nome: string) => Boolean(chavesStatus.find((c) => c.name === nome)?.configurada);
+  const provedorTexto = (process.env.TEXT_PROVIDER ?? "GEMINI").toUpperCase();
+
+  const avisosChaves: { chave: string; motivo: string }[] = [];
+  if ((etapa === 1 || etapa === 2) && provedorTexto === "GEMINI" && !temChave("GEMINI_API_KEY")) {
+    avisosChaves.push({
+      chave: "GEMINI_API_KEY",
+      motivo: "Necessária para gerar ideias e estruturar o roteiro em beats com o Gemini.",
+    });
+  } else if ((etapa === 1 || etapa === 2) && provedorTexto === "OPENAI_COMPAT" && !temChave("OPENAI_COMPAT_API_KEY")) {
+    avisosChaves.push({
+      chave: "OPENAI_COMPAT_API_KEY",
+      motivo: "Necessária para usar o provedor compatível com OpenAI configurado.",
+    });
+  } else if (etapa === 3 && !temChave("GEMINI_API_KEY")) {
+    avisosChaves.push({
+      chave: "GEMINI_API_KEY",
+      motivo: "Recomendada para narrar com vozes neurais do Gemini TTS (as vozes Edge TTS continuam funcionando grátis sem chave).",
+    });
+  } else if (etapa === 4 && !temChave("PEXELS_API_KEY") && !temChave("PIXABAY_API_KEY")) {
+    avisosChaves.push({
+      chave: "PEXELS_API_KEY",
+      motivo: "Configure PEXELS_API_KEY ou PIXABAY_API_KEY para habilitar a busca automática de B-roll gratuito.",
+    });
+  }
+
   return (
     <>
       <Topbar crumbs={["Criar", "Copiloto"]} />
       <main className="space-y-6 p-4 sm:p-6">
-        <AutoRefresh ativo={ocupado} />
+        <AutoRefresh ativo={ocupado || workerOffline} />
         <PageHeader
           icon="psychology"
           title="Copiloto — esteira de criação"
@@ -133,6 +168,51 @@ export default async function CopilotoPage({ searchParams }: { searchParams: Pro
             </Link>
           }
         />
+
+        {/* Banner em tempo real de Worker Offline */}
+        {workerOffline && (
+          <div className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-warning/50 bg-warning/10 px-4 py-3 text-xs text-warning">
+            <div className="flex items-start gap-2.5">
+              <Icon name="pause_circle" className="mt-0.5 text-[18px] shrink-0" />
+              <div>
+                <div className="font-semibold text-sm">Worker offline — o processamento da esteira está pausado</div>
+                <p className="mt-0.5 text-fg-secondary">
+                  O processo do Worker não envia pulso há <span className="font-mono">{fmtAge(health.heartbeatAgeMs)}</span>.
+                  Os pedidos ficam guardados na fila e começam assim que o Worker subir (<code className="font-mono text-[11px]">pnpm dev</code> ou <code className="font-mono text-[11px]">Iniciar Vincere Local.bat</code>).
+                </p>
+              </div>
+            </div>
+            <Link
+              href="/settings"
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded border border-warning/40 bg-void/60 px-3 font-semibold text-warning hover:bg-warning/20"
+            >
+              <Icon name="settings" className="text-[14px]" />
+              Ver configurações
+            </Link>
+          </div>
+        )}
+
+        {/* Banner de Chave de API ausente na etapa atual com link direto para /settings#chaves */}
+        {avisosChaves.map((av) => (
+          <div key={av.chave} className="flex flex-wrap items-center justify-between gap-3 rounded-lg border border-primary/40 bg-primary/10 px-4 py-3 text-xs">
+            <div className="flex items-start gap-2.5">
+              <Icon name="key" className="mt-0.5 text-[18px] shrink-0 text-primary-bright" />
+              <div>
+                <div className="font-semibold text-fg">
+                  Falta configurar <code className="font-mono text-primary-bright">{av.chave}</code> nesta etapa
+                </div>
+                <p className="mt-0.5 text-fg-secondary">{av.motivo}</p>
+              </div>
+            </div>
+            <Link
+              href={`/settings#chave-${av.chave}`}
+              className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded bg-primary px-3 font-semibold text-void hover:opacity-90"
+            >
+              <Icon name="open_in_new" className="text-[14px]" />
+              Configurar {av.chave} em Configurações
+            </Link>
+          </div>
+        ))}
 
         {projetos.length > 0 && (
           <div className="flex gap-2 overflow-x-auto pb-1">
@@ -174,8 +254,17 @@ export default async function CopilotoPage({ searchParams }: { searchParams: Pro
           </div>
         )}
         {p && !ocupado && ultimoErro && ultimoErro.createdAt > p.updatedAt && (
-          <div className="rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
-            Último erro ({NOME_DO_JOB[ultimoErro.type] ?? ultimoErro.type}): {ultimoErro.error?.slice(0, 240) ?? "sem detalhe"}
+          <div className="flex flex-wrap items-center justify-between gap-2 rounded border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-300">
+            <span>
+              Último erro ({NOME_DO_JOB[ultimoErro.type] ?? ultimoErro.type}): {ultimoErro.error?.slice(0, 240) ?? "sem detalhe"}
+            </span>
+            <Link
+              href="/settings#chaves"
+              className="inline-flex items-center gap-1 rounded border border-amber-400/40 bg-void/60 px-2.5 py-1 font-semibold text-amber-200 hover:bg-amber-500/20"
+            >
+              <Icon name="key" className="text-[13px]" />
+              Conferir Chaves de API
+            </Link>
           </div>
         )}
 

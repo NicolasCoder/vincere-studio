@@ -30,8 +30,8 @@ export default async function SettingsPage({ searchParams }: { searchParams: Pro
   const chaves = await statusDasChaves();
   const rotulo = chaves.find((c) => c.name === n)?.label ?? "Chave";
   const avisoChave =
-    chave === "salva" ? { tipo: "ok" as const, texto: `${rotulo}: salva. Já vale para ideias, roteiro e voz.` }
-    : chave === "removida" ? { tipo: "ok" as const, texto: `${rotulo}: removida.` }
+    chave === "salva" ? { tipo: "ok" as const, texto: `${rotulo}: salva no banco local (Setting), ativada em tempo real na Web/Worker e sincronizada no seu arquivo .env.` }
+    : chave === "removida" ? { tipo: "ok" as const, texto: `${rotulo}: removida do banco local e limpa no seu .env.` }
     : chave === "teste_ok" ? { tipo: "ok" as const, texto: cmsg ?? "Chave válida." }
     : chave === "erro" ? { tipo: "erro" as const, texto: cmsg ?? "Não foi possível concluir." }
     : undefined;

@@ -893,3 +893,8 @@ Branch: **`fix/acesso-local-api-v1`**
 
 3. **Unificação Completa do Assistente Vince (`apps/web/components/ClaudeButton.tsx`, `apps/web/lib/cerebro-catalogo.ts`, `apps/web/lib/cerebro-comandos.ts`)**:
    - Mescladas as 4 abas (`Conversar`, `Pedidos`, `Limites`, `Memória`), barra de seleção de Família (`Gemini`/`Claude`/`GPT`), Modelo e Força (`Low`/`Med`/`High`/`Max`), sessão contínua (`conversaId`), telemetria de janela de 5h/tokens e botão de Auto-Healing com as sugestões contextuais por tela, execução direta de `acaoStudio` (`/api/v1/projects/[id]/actions`), `skillSugerida` e limpeza da caixa de `Pedidos`.
+
+4. **Blindagem Open Source de Chaves (`.env` + SQLite + Memória) & Alertas no Copiloto**:
+   - `packages/providers/src/api-keys.ts` (`sincronizarChaveNoArquivoEnv` e `gerarEnvExemploZerado`): ao clicar em "Salvar" em `/settings#chaves`, a chave é gravada no SQLite (`Setting`), aplicada imediatamente em `process.env` e sincronizada no arquivo `.env` local da máquina.
+   - `apps/web/app/api/settings/download-env-example/route.ts` + botão **"Baixar .env zerado"** em `apps/web/components/ChavesApi.tsx`.
+   - `apps/web/app/(studio)/copiloto/page.tsx`: detecção do pulso do Worker em tempo real (banner de Worker offline) e links diretos `/settings#chave-<NOME>` quando faltar alguma chave na etapa atual.

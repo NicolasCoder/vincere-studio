@@ -1,11 +1,16 @@
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { prisma } from "@vincere-studio/db";
 import {
   carregarChavesNoAmbiente,
+  gerarEnvExemploZerado,
   mascarar,
   nomePermitido,
   removerChave,
   salvarChave,
+  sincronizarChaveNoArquivoEnv,
   statusDasChaves,
   testarChaveGemini,
   validarValor,
@@ -129,5 +134,55 @@ describe("testarChaveGemini", () => {
 
     const queda = vi.fn().mockRejectedValue(new Error("sem rede"));
     expect((await testarChaveGemini("x", queda as unknown as typeof fetch)).mensagem).toMatch(/sem rede/);
+  });
+});
+
+describe("sincronizarChaveNoArquivoEnv e gerarEnvExemploZerado", () => {
+  it("atualiza e limpa chaves diretamente em um arquivo .env isolado preservando comentários", async () => {
+    const tmpDir = mkdtempSync(path.join(os.tmpdir(), "vincere-env-test-"));
+    const tempEnv = path.join(tmpDir, ".env");
+    try {
+      writeFileSync(
+        tempEnv,
+        [
+          '# Comentário inicial',
+          'GEMINI_API_KEY="" # chave gratuita',
+          'STORAGE_DIR="./storage"',
+        ].join("\n"),
+        "utf8",
+      );
+
+      expect(sincronizarChaveNoArquivoEnv("GEMINI_API_KEY", "nova-chave-12345", tempEnv)).toBe(true);
+      expect(sincronizarChaveNoArquivoEnv("PEXELS_API_KEY", "pexels-xyz-987", tempEnv)).toBe(true);
+
+      const aposSalvar = readFileSync(tempEnv, "utf8");
+      expect(aposSalvar).toContain('GEMINI_API_KEY="nova-chave-12345"  # chave gratuita');
+      expect(aposSalvar).toContain('PEXELS_API_KEY="pexels-xyz-987"');
+      expect(aposSalvar).toContain('STORAGE_DIR="./storage"');
+
+      expect(sincronizarChaveNoArquivoEnv("GEMINI_API_KEY", null, tempEnv)).toBe(true);
+      const aposLimpar = readFileSync(tempEnv, "utf8");
+      expect(aposLimpar).toContain('GEMINI_API_KEY=""  # chave gratuita');
+    } finally {
+      rmSync(tmpDir, { recursive: true, force: true });
+    }
+  });
+
+  it("gera .env.example com todas as chaves secretas zeradas para Open Source", () => {
+    const sujo = [
+      'STORAGE_DIR="./storage"',
+      'GEMINI_API_KEY="AIzaSySegredo123" # comentario',
+      'PEXELS_API_KEY="pexels-segredo"',
+      'ADMIN_TOKEN="token-secreto"',
+      'TEXT_PROVIDER="GEMINI"',
+    ].join("\n");
+    const limpo = gerarEnvExemploZerado(sujo);
+    expect(limpo).not.toContain("AIzaSySegredo123");
+    expect(limpo).not.toContain("pexels-segredo");
+    expect(limpo).not.toContain("token-secreto");
+    expect(limpo).toContain('GEMINI_API_KEY=""            # comentario');
+    expect(limpo).toContain('PEXELS_API_KEY=""');
+    expect(limpo).toContain('STORAGE_DIR="./storage"');
+    expect(limpo).toContain('TEXT_PROVIDER="GEMINI"');
   });
 });

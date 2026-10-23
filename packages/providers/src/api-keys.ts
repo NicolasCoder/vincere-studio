@@ -1,8 +1,13 @@
+import { copyFileSync, existsSync, readFileSync, writeFileSync } from "node:fs";
+import path from "node:path";
 import { prisma } from "@vincere-studio/db";
 
 // Chaves de API salvas pela interface (Configurações), por instância. Cada pessoa usa as próprias chaves:
-// nada aqui é compartilhado e nenhum valor sai do servidor da instância. Ficam na tabela Setting (prefixo
-// "apikey:") e, ao carregar, passam a valer em process.env (o valor salvo na tela vence o do .env).
+// nada aqui é compartilhado e nenhum valor sai do servidor da instância.
+// Sincronização em 3 camadas ao salvar pela interface:
+//   1. Banco SQLite local (tabela Setting, prefixo "apikey:")
+//   2. Memória em tempo real (process.env da Web e do Worker, sem reiniciar)
+//   3. Arquivo .env local da máquina do usuário
 
 export type GrupoChave = "texto" | "midia" | "voz" | "youtube";
 
@@ -77,6 +82,98 @@ export function validarValor(name: string, bruto: string): string {
   return ehProvedorDeTexto ? valor.toUpperCase() : valor;
 }
 
+/** Localiza o arquivo .env na raiz do monorepo (ou no diretório atual). */
+export function encontrarArquivoEnvLocal(baseDir = process.cwd()): string {
+  const candidatos = [
+    path.resolve(baseDir, ".env"),
+    path.resolve(baseDir, "..", "..", ".env"),
+  ];
+  for (const c of candidatos) {
+    if (existsSync(c)) return c;
+  }
+  for (const c of candidatos) {
+    if (existsSync(`${c}.example`)) return c;
+  }
+  return candidatos[0]!;
+}
+
+/**
+ * Atualiza (ou adiciona) uma única variável permitida no arquivo .env local da máquina,
+ * preservando comentários e todas as demais linhas intactas.
+ * Se valor === null, zera a variável no .env (`CHAVE=""`).
+ */
+export function sincronizarChaveNoArquivoEnv(
+  name: string,
+  valor: string | null,
+  caminhoEnv: string = encontrarArquivoEnvLocal(),
+): boolean {
+  if (!nomePermitido(name)) throw new Error("Chave desconhecida.");
+  try {
+    const exemploAoLado = `${caminhoEnv}.example`;
+    if (!existsSync(caminhoEnv) && existsSync(exemploAoLado)) {
+      copyFileSync(exemploAoLado, caminhoEnv);
+    }
+
+    const bruto = existsSync(caminhoEnv) ? readFileSync(caminhoEnv, "utf8") : "";
+    const quebras = bruto.includes("\r\n") ? "\r\n" : "\n";
+    const linhas = bruto ? bruto.split(/\r?\n/) : [];
+    const padraoLinha = new RegExp(`^(\\s*)${name}\\s*=\\s*(.*)$`);
+    const valorFormatado = valor ? `"${valor.replace(/\\/g, "\\\\").replace(/"/g, '\\"')}"` : '""';
+
+    let encontrou = false;
+    const novasLinhas = linhas.map((linha) => {
+      const m = linha.match(padraoLinha);
+      if (!m) return linha;
+      encontrou = true;
+      const recuo = m[1] ?? "";
+      const resto = m[2] ?? "";
+      // Preserva comentário inline (# ...) após o valor anterior
+      const comentarioMatch = resto.match(/^(?:"[^"]*"|'[^']*'|[^\s#]*)\s*(#.*)$/);
+      const comentario = comentarioMatch?.[1] ? `  ${comentarioMatch[1]}` : "";
+      return `${recuo}${name}=${valorFormatado}${comentario}`;
+    });
+
+    if (!encontrou && valor !== null) {
+      if (novasLinhas.length > 0 && novasLinhas[novasLinhas.length - 1] !== "") {
+        novasLinhas.push(`${name}=${valorFormatado}`);
+      } else if (novasLinhas.length > 0) {
+        novasLinhas.splice(novasLinhas.length - 1, 0, `${name}=${valorFormatado}`);
+      } else {
+        novasLinhas.push(`${name}=${valorFormatado}`, "");
+      }
+    }
+
+    writeFileSync(caminhoEnv, novasLinhas.join(quebras), "utf8");
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/**
+ * Garante que o conteúdo de um .env.example tenha todos os segredos zerados ("")
+ * antes de ser servido para download pela interface.
+ */
+export function gerarEnvExemploZerado(conteudo: string): string {
+  const segredos = new Set(API_KEY_SPECS.filter((s) => s.segredo).map((s) => s.name));
+  for (const extra of ["ADMIN_TOKEN", "LAN_PIN", "VINCERE_AGENT_TOKEN", "PC_GPU_TOKEN", "OMNIVOICE_API_KEY"]) {
+    segredos.add(extra);
+  }
+  const quebras = conteudo.includes("\r\n") ? "\r\n" : "\n";
+  return conteudo
+    .split(/\r?\n/)
+    .map((linha) => {
+      const m = linha.match(/^(\s*)([A-Z0-9_]+)\s*=\s*(.*)$/);
+      if (!m) return linha;
+      const [, recuo, chave, resto] = m;
+      if (!chave || !segredos.has(chave)) return linha;
+      const comentarioMatch = (resto ?? "").match(/^(?:"[^"]*"|'[^']*'|[^\s#]*)\s*(#.*)$/);
+      const comentario = comentarioMatch?.[1] ? `            ${comentarioMatch[1]}` : "";
+      return `${recuo ?? ""}${chave}=""${comentario}`;
+    })
+    .join(quebras);
+}
+
 type Ambiente = Record<string, string | undefined>;
 
 // Valor que o .env já tinha antes de a tela sobrescrevê-lo, para voltar a ele se a chave for removida.
@@ -129,7 +226,17 @@ export async function carregarChavesNoAmbiente(env: Ambiente = process.env): Pro
   return Object.keys(salvas);
 }
 
-export async function salvarChave(name: string, bruto: string, env: Ambiente = process.env): Promise<void> {
+export interface OpcoesPersistenciaChave {
+  sincronizarEnv?: boolean;
+  caminhoEnv?: string;
+}
+
+export async function salvarChave(
+  name: string,
+  bruto: string,
+  env: Ambiente = process.env,
+  opcoes?: OpcoesPersistenciaChave,
+): Promise<void> {
   const valor = validarValor(name, bruto);
   await prisma.setting.upsert({
     where: { key: chaveNoBanco(name) },
@@ -137,12 +244,25 @@ export async function salvarChave(name: string, bruto: string, env: Ambiente = p
     create: { key: chaveNoBanco(name), value: valor },
   });
   aplicar(env, name, valor);
+  const deveSincronizar = opcoes?.sincronizarEnv ?? (env === process.env && !process.env.VITEST);
+  if (deveSincronizar) {
+    sincronizarChaveNoArquivoEnv(name, valor, opcoes?.caminhoEnv);
+  }
 }
 
-export async function removerChave(name: string, env: Ambiente = process.env): Promise<void> {
+export async function removerChave(
+  name: string,
+  env: Ambiente = process.env,
+  opcoes?: OpcoesPersistenciaChave,
+): Promise<void> {
   if (!nomePermitido(name)) throw new Error("Chave desconhecida.");
   await prisma.setting.deleteMany({ where: { key: chaveNoBanco(name) } });
   restaurar(env, name);
+  const deveSincronizar = opcoes?.sincronizarEnv ?? (env === process.env && !process.env.VITEST);
+  if (deveSincronizar) {
+    sincronizarChaveNoArquivoEnv(name, null, opcoes?.caminhoEnv);
+    delete env[name];
+  }
 }
 
 export interface StatusChave {

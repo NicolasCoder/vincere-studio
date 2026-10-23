@@ -20,6 +20,10 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
   - Exibe notificação flutuante persistente (`"Auto-Healing em andamento..."`) com cronômetro ao vivo, nome do Agente/IA ativo (`Antigravity agy`, `Claude Code`, `Codex`, `Hermes` ou LLM vinculada) e log de etapas até concluir o reparo (`"Auto-Healing Concluído ✓"`).
 - **Vince Unificado (4 Abas + Catálogo de Modelos/Força + Telemetria 5h + Ações Contextuais)**:
   - `apps/web/components/ClaudeButton.tsx`, `apps/web/lib/cerebro-catalogo.ts` e `apps/web/lib/cerebro-comandos.ts` combinam as 4 abas (`Conversar`, `Pedidos`, `Limites`, `Memória`), seletor rápido de Família (`Gemini`/`Claude`/`GPT`), Modelo e Força (`Low`/`Med`/`High`/`Max`), continuidade de sessão (`conversaId`), telemetria de janela de 5h/tokens e botão de Auto-Healing com as sugestões contextuais por tela, execução direta de `acaoStudio` (`/api/v1/projects/[id]/actions`), `skillSugerida` e limpeza da caixa de `Pedidos`.
+- **Blindagem Open Source de Chaves + Aviso de Worker Offline no Copiloto**:
+  - `packages/providers/src/api-keys.ts` + `apps/web/components/ChavesApi.tsx` (`/settings#chaves`): salvar uma chave pela interface agora sincroniza em 3 lugares locais (`Setting` no SQLite, `process.env` em tempo real para Web/Worker e direto no `.env` local da máquina).
+  - Rota `GET /api/settings/download-env-example` + botão **"Baixar .env zerado"** em `/settings#chaves`.
+  - `apps/web/app/(studio)/copiloto/page.tsx`: detecção em tempo real do pulso do Worker (exibe banner de processamento pausado se offline) e aviso contextual de chaves ausentes (`GEMINI_API_KEY`, `PEXELS_API_KEY`, etc.) com link direto para `/settings#chave-<NOME>`.
 
 ## Estado deixado em 23/10/2026 — Vince Flutuante Ativo, Limpeza de Pedidos, Exclusão Universal e HyperFrames 0.8.189
 
