@@ -11,7 +11,22 @@ import {
   type TimedWord,
 } from "@vincere-studio/core";
 
-const REELS_TOOLS_DIR = process.env.REELS_TOOLS_DIR || "F:\\Python Projects\\reels_tools";
+import { existsSync } from "node:fs";
+
+function resolveReelsToolsDir(): string {
+  if (process.env.REELS_TOOLS_DIR?.trim()) return process.env.REELS_TOOLS_DIR.trim();
+  const candidates = [
+    path.resolve(process.cwd(), "..", "reels_tools"),
+    path.resolve(process.cwd(), "..", "..", "reels_tools"),
+    path.join(process.env.USERPROFILE || process.env.HOME || "", "reels_tools"),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[0];
+}
+
+const REELS_TOOLS_DIR = resolveReelsToolsDir();
 
 async function fileExists(p: string): Promise<boolean> {
   try {

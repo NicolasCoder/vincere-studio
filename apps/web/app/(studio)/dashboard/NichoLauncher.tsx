@@ -7,7 +7,7 @@ import { Badge, Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude } from "@/components/ClaudeButton";
 import { NICHOS, pedidoDoNicho, type Formato, type Nicho } from "@/lib/nichos";
 import { IDIOMAS, idiomaPorId } from "@/lib/idiomas";
-import { criarProjetoDoInicio } from "./actions";
+import { criarProjetoDoInicio, criarProjetoRetornandoId } from "./actions";
 
 const FORMATOS_OPCOES: {
   id: Formato;
@@ -55,16 +55,19 @@ export function NichoLauncher() {
     if (!sel || tema.trim().length < 3 || criando) return;
     setCriando(true);
     try {
-      const c = await fetch("/api/cerebro", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
-      if (c?.cerebro?.tipo === "agente") {
-        chamarClaude({ pedido: pedidoDoNicho(sel, tema.trim(), formato, notas.trim() || undefined, idiomaPorId(idiomaId)) });
-        return;
-      }
       if (formato === "1:1") {
         router.push(`/workflow?formato=${encodeURIComponent(formato)}&estilo=${encodeURIComponent(sel.id)}`);
         return;
       }
-      await criarProjetoDoInicio({ formato, nichoId: sel.id, tema: tema.trim(), notas: notas.trim() || undefined });
+      const c = await fetch("/api/cerebro", { cache: "no-store" }).then((r) => r.json()).catch(() => null);
+      const res = await criarProjetoRetornandoId({ formato, nichoId: sel.id, tema: tema.trim(), notas: notas.trim() || undefined });
+      if (c?.cerebro?.tipo === "agente") {
+        chamarClaude({
+          pedido: pedidoDoNicho(sel, tema.trim(), formato, notas.trim() || undefined, idiomaPorId(idiomaId)),
+          projetoId: res.id,
+        });
+      }
+      router.push(`/projects/${res.id}/ideation`);
     } finally {
       setCriando(false);
     }

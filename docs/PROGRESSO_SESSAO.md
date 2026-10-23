@@ -159,6 +159,27 @@ Sétima rodada (21/10) — Video-Sharingan com IA Local & Offload GPU para o Com
   (local / nuvem / PC forte), pasta de projetos e de mídia por usuário (`STORAGE_DIR`, `HYPERFRAMES_PROJECTS_DIR`),
   voz clonada do VoiceStudio como provedor completo do pipeline e edição por voz com LLM/agente configurável.
 
+## Décima segunda rodada (23/10, manhã) — Estabilização, Portabilidade, Smoke Test e Criar do Início
+
+Branch: **`fix/acesso-local-api-v1`**. Validação: `pnpm typecheck` 7/7 verde; `pnpm test` (unitários + smoke) 100% verde; `pnpm build` de produção Next.js 15 aprovado.
+
+### O que entrou
+1. **Localização e Conexão da Instância**:
+   - Confirmado repositório atualizado: `C:\dev\vincere-validacao` sincronizado com `https://github.com/Igorferreirax/vincere-studio.git`.
+   - Criado `.env` oficial apontando com caminho absoluto canônico para `vista.db` (`DATABASE_URL="file:C:/dev/vincere-validacao/vista.db"`), preservando todos os 9 projetos e 6 workflows sem discrepâncias de caminho relativo entre os pacotes do monorepo.
+2. **HyperFrames Preview & Portabilidade Sem Quedas**:
+   - Eliminados caminhos hardcoded de desenvolvedores e drives alheios (`C:\Users\Nicolas\...` e `F:\...`) em `apps/web/app/api/hyperframes/route.ts`, `apps/web/lib/pc-gpu-engine.ts`, `apps/worker/src/jobs/sharingan-clone.ts` e `talking-head.ts`.
+   - O launcher do HyperFrames agora localiza dinamicamente o `hyperframes.mjs` no `%APPDATA%\npm\node_modules` e roda diretamente via `node.exe` com fallback seguro `shell: true`, eliminando o erro de `spawn npx ENOENT` no Windows.
+3. **Botão "Criar" do Início (`NichoLauncher.tsx`)**:
+   - Nova server action `criarProjetoRetornandoId` cria o projeto no banco SQLite em qualquer proporção (`9:16`, `16:9`, `1:1`) e nicho.
+   - Navega imediatamente para `/projects/[id]/ideation`. Se houver agente vinculado (`claude`, `agy`, `codex`), o Vince abre simultaneamente já com o `projetoId` no contexto para condução assistida.
+4. **Smoke Test de Produção (`pages.smoke.test.ts`)**:
+   - Corrigido `WEB_DIR` e busca de `.env` ascendente: o teste passou de **280 segundos (timeout)** para **~3 segundos com aprovação total**.
+5. **UI Desacoplada**:
+   - Removido rótulo fixo "Gemini" na tela de ideação (`ideation/page.tsx`), exibindo "com IA" flexível para qualquer motor (Gemini, OpenAI, Ollama ou Agente).
+
+---
+
 ## Décima primeira rodada (23/10) — Arquitetura Agente-Primeiro (`/api/v1/*`, Runbooks, Servidor MCP e Unificação HyperFrames)
 
 Checklist completo e validado em [`docs/TAREFAS_AGENTE_PRIMEIRO.md`](./TAREFAS_AGENTE_PRIMEIRO.md).
@@ -761,3 +782,32 @@ Branch: **`fix/acesso-local-api-v1`** (sobre o trabalho agente-primeiro do Nicol
 Verificado: `pnpm typecheck` 7/7, build, e ao vivo (`next start` + proxy de teste): `Host` forjado e marca forjada pelo proxy → 401 em `/api/v1/capabilities` e `DELETE`; página → 307 para `/entrar`; acesso direto local → 200. O proxy foi testado com `Host` e marca forjados, upgrade e destino fora do ar (502).
 
 Fora do escopo (segue aberto): o Remotion que sobrou em `EditarInsercao.tsx`, `skills-catalog.ts`, `apply-visual-layer.ts` e `packages/core/src/edit-plan*.ts`; teste do `worker` + render nesta máquina; criptografar as chaves salvas.
+
+---
+
+## Décima terceira rodada (23/10) — Correção Visual do HyperFrames Studio, Job de Atualização de Skills na Máquina e Estabilização Portátil
+
+Branch: **`fix/acesso-local-api-v1`**
+
+1. **Correção Visual do Dropdown de Atualização do HyperFrames (`C:\Users\Igor\Desktop\ajuste 1.png`)**:
+   - **Causa raiz:** No `/studio`, o contêiner inferior com a barra flutuante de comandos (`backdrop-blur-xl border border-line/60 bg-surface-low/90`) estabelecia um *stacking context* no navegador que se sobrepunha aos elementos suspensos da barra superior (`AtualizarVersao.tsx`).
+   - **Correção:** Em `apps/web/app/(studio)/studio/page.tsx`, adicionado `relative z-40` ao contêiner superior do header de ferramentas e `relative z-10` à barra inferior. Em `apps/web/components/AtualizarVersao.tsx`, o card/dropdown de atualização foi posicionado com `absolute right-0 top-full mt-2 z-50` com transições suaves e backdrop-filter. O modal de atualização da versão (`0.8.181 → 0.8.188`) agora abre 100% visível sobre qualquer painel sem ser ocultado.
+
+2. **Job de Atualização de Skills na Máquina do Usuário (`CHECK_SKILLS_UPDATES`)**:
+   - **Pipeline Core (`packages/core/src/pipeline.ts`):** Adicionado `"CHECK_SKILLS_UPDATES"` à lista de tipos oficiais de jobs suportados.
+   - **Handler Worker (`apps/worker/src/jobs/skills-updates.ts`):** Varre dinamicamente os diretórios de agentes instalados no computador (`~/.gemini/config/skills` para Antigravity, `~/.claude/skills` para Claude Code, `~/.agents/skills`, `.codex/skills` e repositório local). Compara mtimes dos arquivos `SKILL.md`, copia recursivamente as versões mais novas entre as pastas dos agentes e salva o relatório detalhado em `Setting` (`skills_update_status`).
+   - **Rota REST (`apps/web/app/api/skills/check-updates/route.ts`):**
+     - `GET`: Retorna o último relatório gerado e status do job ativo (`activeJob`).
+     - `POST`: Enfileira novo job no SQLite (`prisma.job.create`) com `{ autoUpdate: true }`.
+   - **Interface Interativa (`apps/web/app/(studio)/skills/SystemSkillsCatalog.tsx`):**
+     - Painel visual no topo do catálogo com indicadores de skills detectadas, total de atualizadas, pastas monitoradas e timestamp da última varredura.
+     - Botão "Verificar e Atualizar Skills" que despacha o job, monitora progresso em tempo real com spinner/polling e exibe drawer com status detalhado por skill (`Em dia`, `Atualizado`, `Pendente`).
+
+3. **Portabilidade & Criação de Projetos Multi-Nicho**:
+   - `NichoLauncher.tsx` + `actions.ts`: Botão "Criar" cria o projeto diretamente no SQLite via `criarProjetoRetornandoId` e redireciona para `/projects/[id]/ideation` já com o contexto injetado, permitindo criar vídeos independentemente de formato (`9:16`, `16:9`, `1:1`) e nicho.
+   - Eliminados caminhos absolutos hardcoded em `apps/web/app/api/hyperframes/route.ts` e scripts de worker.
+   - Launcher em 1 clique: `Iniciar Vincere Local.bat`.
+
+4. **Validação**:
+   - `pnpm typecheck`: 7/7 pacotes aprovados (0 erros).
+   - `pnpm test`: 5/5 suítes aprovadas (100% verde).

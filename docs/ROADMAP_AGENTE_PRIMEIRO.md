@@ -101,3 +101,32 @@ flowchart LR
 - [x] Bateria E2E ao vivo contra `http://localhost:3210`:
   - `GET /api/v1/capabilities` (`worker.online: true`, 6 runbooks, `visualEngine: "HyperFrames"`).
   - Criação de projeto → injeção direta de ideias, roteiro, cenas, plano de edição e SEO → avaliação de Runbook → síntese de voz real no Worker (`sintetizar_voz` + `/api/v1/jobs/[id]/wait` concluída com `DONE`) → exportação HyperFrames (`index.html` gerado) → bloqueio `403 GATE_APROVACAO_OBRIGATORIO` sem aprovação → criação e validação de Workflow UGC → chamadas JSON-RPC ao Servidor MCP → **21/21 rotas da interface com HTTP 200 OK**.
+
+---
+
+## 4. Próximas Fases Planejadas (Ciclo de Expansão e Escala)
+
+```mermaid
+flowchart TD
+  F6["Fase 6: Loop Autônomo AUTO_PRODUCE"] --> F7["Fase 7: Auto-Healing & Safe-Zones Visuais"]
+  F7 --> F8["Fase 8: Publicação Multiplataforma (TikTok/Reels) + SFX"]
+  F8 --> F9["Fase 9: Loop Fechado com Métricas Reais do YouTube"]
+```
+
+### 🚀 Fase 6 — Automação Contínua & Loop de Produção Autônomo (`AUTO_PRODUCE`)
+- [ ] **Ação Unificada `auto_produce`**: Um comando único via MCP ou `/api/v1/projects/[id]/actions` (`action: "auto_produce"`) que orquestra todo o ciclo do vídeo (ideação -> roteiro -> narração -> legendas -> cenas IA/B-roll -> HyperFrames -> render de prova) sem intervenção humana no meio.
+- [ ] **Garantia Inviolável de Gate Humano**: O loop para estritamente na aprovação do render (`403 GATE_APROVACAO_OBRIGATORIO`). Nenhuma publicação ocorre de forma automática sem o OK do editor.
+- [ ] **Webhooks de Notificação Instantânea**: Disparo de payload configurável (`WEBHOOK_URL`) com preview e link de aprovação assim que o render for concluído no worker.
+
+### 🛡 Fase 7 — Auto-Healing & Auditoria Visual Automatizada
+- [ ] **Recuperação de Falhas em Camadas**: Se a síntese de voz ou busca de acervo falhar por limite de taxa (429/503), o worker chaveia automaticamente para provedores secundários (Edge TTS / VoiceStudio / Pollinations / Cloudflare) sem interromper o fluxo global.
+- [ ] **Verificação de Safe-Zones para Formato Vertical (`9:16`)**: Auditoria automatizada para impedir que legendas, lower-thirds e elementos gráficos caiam nas áreas cobertas pela interface nativa do TikTok, Instagram Reels e YouTube Shorts (zona inferior e lateral direita).
+- [ ] **Detecção Perceptual de Imagens Parecidas**: Comparação de embeddings/hashes perceptuais para garantir diversidade visual entre tomadas consecutivas do vídeo.
+
+### 🌐 Fase 8 — Multiplataforma (Reels & TikTok) e Sonorização Dinâmica (SFX)
+- [ ] **Conexão OAuth com TikTok & Meta Graph API (Instagram Reels)**: Painel de canais no `/settings` para conectar contas adicionais e agendar vídeos verticais diretamente da interface.
+- [ ] **Biblioteca de Efeitos Sonoros Dinâmicos (SFX Sincronizados)**: Ingestão de whooshes, risers, swooshes e impactos sonoros vinculados automaticamente às palavras de destaque das legendas lockup e aos cortes de cena no master de áudio.
+
+### 📈 Fase 9 — Calibração por Aprendizado com Dados Reais
+- [ ] **Ingestão de Retenção do YouTube Analytics API**: Coleta das curvas de retenção segundo a segundo e taxas de cliques (CTR) dos vídeos publicados no canal.
+- [ ] **Fechamento do Ciclo com o Vince**: Comparação da curva prevista no roteiro com os números reais do YouTube, retroalimentando as preferências e os estilos de gancho na geração dos próximos roteiros.

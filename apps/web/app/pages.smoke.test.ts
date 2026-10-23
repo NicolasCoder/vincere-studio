@@ -6,7 +6,29 @@ import { spawn, type ChildProcess } from "node:child_process";
 // Mesmo .env que next.config.ts carrega em produção — smoke test roda contra o banco
 // real (só leitura), não um banco de teste separado, porque o objetivo aqui é confirmar
 // que a página renderiza de verdade com dado real, não com um fixture artificial.
-config({ path: path.resolve(process.cwd(), "../../.env") });
+function carregarEnvLocal() {
+  const candidatos = [
+    path.resolve(process.cwd(), ".env"),
+    path.resolve(process.cwd(), "../../.env"),
+    path.resolve(process.cwd(), "../.env"),
+    path.resolve(__dirname, "../../.env"),
+    path.resolve(__dirname, "../../../.env"),
+  ];
+  for (const p of candidatos) {
+    if (fs.existsSync(p)) {
+      config({ path: p });
+      return;
+    }
+  }
+}
+carregarEnvLocal();
+
+if (!process.env.DATABASE_URL) {
+  const vistaDb = path.resolve(process.cwd(), "../../vista.db");
+  const localVista = path.resolve(process.cwd(), "vista.db");
+  if (fs.existsSync(vistaDb)) process.env.DATABASE_URL = "file:" + vistaDb.replace(/\\/g, "/");
+  else if (fs.existsSync(localVista)) process.env.DATABASE_URL = "file:" + localVista.replace(/\\/g, "/");
+}
 
 const PORT = 3299;
 const BASE_URL = `http://localhost:${PORT}`;
@@ -22,10 +44,11 @@ import { createRequire } from "node:module";
 import fs from "node:fs";
 const require = createRequire(import.meta.url);
 const nextBin = require.resolve("next/dist/bin/next");
+const WEB_DIR = path.resolve(__dirname, "..");
 
 function run(args: string[]): Promise<void> {
   return new Promise((resolve, reject) => {
-    const p = spawn(process.execPath, [nextBin, ...args], { cwd: process.cwd(), stdio: "inherit" });
+    const p = spawn(process.execPath, [nextBin, ...args], { cwd: WEB_DIR, stdio: "inherit" });
     p.on("exit", (code) => (code === 0 ? resolve() : reject(new Error(`next ${args.join(" ")} saiu com código ${code}`))));
     p.on("error", reject);
   });
@@ -50,11 +73,11 @@ beforeAll(async () => {
   if (!process.env.DATABASE_URL) {
     throw new Error("DATABASE_URL ausente: crie o .env (rode `pnpm run setup`) ou exporte DATABASE_URL antes de rodar o smoke test.");
   }
-  if (!fs.existsSync(path.resolve(process.cwd(), ".next/BUILD_ID"))) {
+  if (!fs.existsSync(path.resolve(WEB_DIR, ".next/BUILD_ID"))) {
     await run(["build"]);
   }
 
-  server = spawn(process.execPath, [nextBin, "start", "--port", String(PORT)], { cwd: process.cwd(), stdio: "pipe" });
+  server = spawn(process.execPath, [nextBin, "start", "--port", String(PORT)], { cwd: WEB_DIR, stdio: "pipe" });
   await waitForServer(60_000);
 
   // Pega um projeto real qualquer pra testar a rota dinâmica de repurposing.
@@ -62,7 +85,7 @@ beforeAll(async () => {
   const project = await prisma.project.findFirst({ select: { id: true } });
   sampleProjectId = project?.id ?? null;
   await prisma.$disconnect();
-}, 280_000);
+}, 450_000);
 
 afterAll(() => {
   if (!server?.pid) return;

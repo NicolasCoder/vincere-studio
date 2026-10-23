@@ -24,6 +24,7 @@ apps/web/storage/
 .DS_Store
 _incoming/
 scripts/auto-pull.log
+*.log
 
 # Scripts e logs de diagnóstico local (convenção: prefixo _)
 _*

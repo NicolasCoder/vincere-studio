@@ -37,7 +37,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
             <div className="flex gap-2">
               <form action={generateIdeas.bind(null, project.id, { append: false, focus: "all" })}>
                 <Button type="submit" variant="primary" icon="bolt" disabled={busy}>
-                  Gerar Ideias Magnéticas com IA <span className="ml-1 rounded-sm bg-void/30 px-1.5 font-mono text-[10px] font-normal">Gemini</span>
+                  Gerar Ideias Magnéticas com IA
                 </Button>
               </form>
               <form action={generateIdeas.bind(null, project.id, { append: false, focus: (["all", "viral", "hooks"] as const)[Math.floor(Math.random() * 3)], count: 3 })}>
@@ -67,7 +67,7 @@ export default async function IdeationPage({ params, searchParams }: { params: P
             </div>
           </div>
 
-          {job && <div className="mt-4"><JobWatcher jobId={job} label="Gerando ideias magnéticas com o Gemini" /></div>}
+          {job && <div className="mt-4"><JobWatcher jobId={job} label="Gerando ideias magnéticas com IA" /></div>}
 
           {project.ideas.length === 0 ? (
             !job && <Card className="mt-4 p-10 text-center text-sm text-muted">Nenhuma ideia ainda. Clique em "Gerar Ideias Magnéticas com IA".</Card>

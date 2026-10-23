@@ -32,7 +32,7 @@ export const HF_PROJECT_KEY = "vincere.hfProject";
 const CHAT_KEY = "vincere.vince.chat";
 const VOZ_KEY = "vincere.vince.voz";
 
-export function chamarClaude(detail: { pedido: string; anexo?: string }) {
+export function chamarClaude(detail: { pedido: string; anexo?: string; projetoId?: string }) {
   window.dispatchEvent(new CustomEvent(CLAUDE_EVENT, { detail }));
 }
 
@@ -112,6 +112,7 @@ export function ClaudeButton() {
   // Pedidos ao Claude
   const [pedido, setPedido] = useState("");
   const [anexo, setAnexo] = useState<string | undefined>();
+  const [overrideProjetoId, setOverrideProjetoId] = useState<string | undefined>();
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviando, setEnviando] = useState(false);
 
@@ -163,9 +164,10 @@ export function ClaudeButton() {
 
   useEffect(() => {
     const onOpen = (e: Event) => {
-      const d = (e as CustomEvent<{ pedido: string; anexo?: string }>).detail;
+      const d = (e as CustomEvent<{ pedido: string; anexo?: string; projetoId?: string }>).detail;
       setPedido(d?.pedido ?? "");
       setAnexo(d?.anexo);
+      setOverrideProjetoId(d?.projetoId);
       setAba("claude");
       setOpen(true);
     };
@@ -224,7 +226,7 @@ export function ClaudeButton() {
     const r = await fetch("/api/claude", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ pedido: texto, pagina: pathname, projetoHf, projetoId, anexo: extra }),
+      body: JSON.stringify({ pedido: texto, pagina: pathname, projetoHf, projetoId: overrideProjetoId || projetoId, anexo: extra }),
     })
       .then((x) => x.json())
       .catch(() => null);

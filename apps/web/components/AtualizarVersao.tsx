@@ -40,23 +40,46 @@ export function AtualizarVersao({ id, compacto = false }: { id: string; compacto
   const rotulo = item.disponivel ? `Atualizar versão (${item.atual} → ${item.ultima})` : item.atual ? `Atualizar versão (v${item.atual})` : "Atualizar versão";
 
   return (
-    <div className="relative inline-block">
+    <div className="relative inline-block z-50">
       <Button size="sm" variant={item.disponivel ? "primary" : "outline"} icon="system_update_alt" onClick={() => { setPedindo((v) => !v); setMsg(item.manual); }}>
         {compacto ? "Atualizar" : rotulo}
       </Button>
       {pedindo && (
-        <div className="absolute right-0 z-30 mt-2 w-72 space-y-2 rounded border border-line bg-surface p-3 text-xs shadow-xl">
-          <p className="font-semibold">{item.nome}{item.atual ? ` · instalada ${item.atual}` : ""}{item.ultima ? ` · última ${item.ultima}` : ""}</p>
+        <div className="absolute right-0 z-50 mt-2 w-80 space-y-3 rounded-xl border border-white/[0.18] bg-void/95 backdrop-blur-2xl p-4 text-xs shadow-2xl ring-1 ring-white/10">
+          <div className="flex items-center justify-between gap-2">
+            <p className="font-semibold text-fg">{item.nome}{item.atual ? ` · v${item.atual}` : ""}</p>
+            <button
+              type="button"
+              onClick={() => setPedindo(false)}
+              className="text-muted hover:text-fg p-0.5 rounded transition-colors"
+              title="Fechar"
+            >
+              <Icon name="close" className="text-[14px]" />
+            </button>
+          </div>
+          {item.ultima && item.ultima !== item.atual && (
+            <div className="rounded-lg border border-primary/30 bg-primary/10 px-2.5 py-1 text-[11px] text-primary-bright">
+              Nova versão disponível: <strong>{item.ultima}</strong>
+            </div>
+          )}
           {item.automatico ? (
-            <>
-              <input type="password" value={token} onChange={(e) => setToken(e.target.value)} placeholder="Token de admin" className="w-full rounded border border-line bg-surface-low px-2 py-1.5 text-fg" />
-              <Button size="sm" variant="primary" icon="download" disabled={busy || token.length < 12} onClick={atualizar}>{busy ? "Atualizando…" : "Atualizar agora"}</Button>
-            </>
+            <div className="space-y-2 pt-1">
+              <input
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="Token de admin"
+                className="w-full rounded-lg border border-white/[0.12] bg-surface-low px-2.5 py-1.5 text-fg text-xs focus:outline-none focus:border-primary"
+              />
+              <Button size="sm" variant="primary" icon="download" disabled={busy || token.length < 12} onClick={atualizar} className="w-full justify-center">
+                {busy ? "Atualizando…" : "Atualizar agora"}
+              </Button>
+            </div>
           ) : null}
-          {msg && <p className="text-fg-secondary"><Icon name="info" className="mr-1 align-[-3px] text-[14px]" />{msg}</p>}
+          {msg && <p className="text-fg-secondary text-[11px] leading-relaxed"><Icon name="info" className="mr-1 align-[-3px] text-[13px] text-primary-bright" />{msg}</p>}
         </div>
       )}
-      {!pedindo && msg && <p className="absolute right-0 mt-1 w-64 text-[11px] text-emerald-300">{msg}</p>}
+      {!pedindo && msg && <p className="absolute right-0 z-50 mt-1 w-64 text-[11px] text-emerald-300 bg-void/90 px-2 py-1 rounded border border-emerald-500/30">{msg}</p>}
     </div>
   );
 }

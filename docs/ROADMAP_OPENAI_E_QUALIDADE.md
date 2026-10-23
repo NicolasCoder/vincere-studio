@@ -2,19 +2,20 @@
 
 Registrado em 16/09/2026 para retomada no próximo ciclo.
 
-## Integrações com API — próximo ciclo
+## Integrações com API — status atualizado
 
-- [ ] Configurar `OPENAI_API_KEY` apenas no servidor e testar a conexão.
-- [ ] Implementar `OpenAITextProvider` pela Responses API, mantendo Gemini como alternativa.
-- [ ] Usar saída estruturada validada pelos schemas Zod atuais.
-- [ ] Adicionar seleção de provedor e modelo nas configurações do Studio.
-- [ ] Atualizar imagens OpenAI de `gpt-image-1` para GPT Image 2.5.
+- [x] Configurar `OPENAI_API_KEY` apenas no servidor e testar a conexão (implementado via `api-keys.ts` e `SettingsPage`).
+- [x] Implementar `OpenAITextProvider` pela Responses API, mantendo Gemini como alternativa (atendido por `OpenAICompatTextProvider` que suporta OpenAI oficial, NVIDIA NIM, OpenRouter e Ollama).
+- [x] Usar saída estruturada validada pelos schemas Zod atuais (`generateJson` integrado com Zod schemas do core).
+- [x] Adicionar seleção de provedor e modelo nas configurações do Studio (`TEXT_PROVIDER`, `TEXT_PROVIDER_IDEIAS`, `TEXT_PROVIDER_ROTEIRO`, `TEXT_PROVIDER_FALLBACK`).
+- [x] Criar “Gerar imagens das cenas” para preencher automaticamente cenas pendentes (implementado via job `GENERATE_IMAGES` com `forPendingScenes: true` e fallback no pipeline de ações).
+- [x] Motores de imagem unificados com teto de orçamento obrigatório (Pollinations, Cloudflare, Hugging Face, Together, Gemini, OpenAI GPT Image, Kie.ai).
+- [ ] Atualizar imagens OpenAI de `gpt-image-1` para GPT Image 2.5 / DALL-E 3 conforme disponibilidade de endpoint.
 - [ ] Usar Flare para cenas em lote e Sunburst para thumbnails/cenas principais.
-- [ ] Criar “Gerar imagens das cenas” para preencher automaticamente cenas pendentes.
 - [ ] Criar bíblia visual por projeto e usar imagens aprovadas como referência de continuidade.
 - [ ] Validar imagens por visão e regenerar, com limite, quando houver defeitos ou baixa aderência.
 - [ ] Acrescentar pesquisa com fontes, revisão crítica e checagem de fatos ao roteiro.
-- [ ] Exibir estimativa antes da execução, teto por projeto e consumo por provedor.
+- [x] Exibir estimativa antes da execução, teto por projeto e consumo por provedor (painel `Orçamento de IA paga` no `/settings`).
 
 ## Melhorias locais — ciclo atual
 

@@ -1,10 +1,23 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Icon, cn } from "@vincere-studio/ui";
 import { chamarClaude } from "@/components/ClaudeButton";
 import { NICHOS } from "@/lib/nichos";
 import { SKILLS, type Motor, type Preview } from "@/lib/skills-catalog";
+
+interface SkillReport {
+  timestamp: string;
+  skillsDirFound: string[];
+  totalSkillsDetected: number;
+  skills: {
+    name: string;
+    locations: { path: string; modifiedAt: string; hasSkillMd: boolean }[];
+    status: "up_to_date" | "outdated" | "missing_in_target" | "updated";
+    actionTaken?: string;
+  }[];
+  updatedCount: number;
+}
 
 
 
@@ -88,6 +101,66 @@ export function SystemSkillsCatalog() {
   const [copied, setCopied] = useState<string | null>(null);
   const [busca, setBusca] = useState("");
 
+  // Estados para atualização de skills do sistema
+  const [updateStatus, setUpdateStatus] = useState<SkillReport | null>(null);
+  const [activeJob, setActiveJob] = useState<{ id: string; status: string; progress: number } | null>(null);
+  const [checking, setChecking] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
+  const [feedbackMsg, setFeedbackMsg] = useState<string | null>(null);
+
+  const carregarStatusAtualizacao = async () => {
+    try {
+      const res = await fetch("/api/skills/check-updates");
+      if (res.ok) {
+        const data = await res.json();
+        setUpdateStatus(data.status);
+        setActiveJob(data.activeJob);
+        return data;
+      }
+    } catch {}
+    return null;
+  };
+
+  useEffect(() => {
+    carregarStatusAtualizacao();
+  }, []);
+
+  useEffect(() => {
+    if (!activeJob || activeJob.status === "DONE" || activeJob.status === "FAILED") return;
+    const timer = setInterval(async () => {
+      const data = await carregarStatusAtualizacao();
+      if (!data?.activeJob) {
+        setChecking(false);
+        setFeedbackMsg("Varredura de skills concluída!");
+        setTimeout(() => setFeedbackMsg(null), 5000);
+      }
+    }, 2000);
+    return () => clearInterval(timer);
+  }, [activeJob]);
+
+  const dispararVerificacao = async () => {
+    setChecking(true);
+    setFeedbackMsg("Disparando job de verificação e atualização...");
+    try {
+      const res = await fetch("/api/skills/check-updates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ autoUpdate: true }),
+      });
+      if (res.ok) {
+        const data = await res.json();
+        setActiveJob({ id: data.jobId, status: "QUEUED", progress: 0 });
+        setFeedbackMsg("Job enfileirado! O Worker está varrendo as pastas da máquina.");
+      } else {
+        setFeedbackMsg("Erro ao iniciar o job.");
+        setChecking(false);
+      }
+    } catch {
+      setFeedbackMsg("Falha na conexão com o servidor.");
+      setChecking(false);
+    }
+  };
+
   const copy = (text: string) => {
     navigator.clipboard?.writeText(text).catch(() => {});
     setCopied(text);
@@ -101,6 +174,139 @@ export function SystemSkillsCatalog() {
 
   return (
     <div className="space-y-10">
+      {/* 0. Central de Atualização de Skills na Máquina */}
+      <section className="relative overflow-hidden rounded-xl border border-primary/30 bg-gradient-to-br from-surface-low via-surface-low to-primary/5 p-4 sm:p-5 shadow-lg">
+        <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+          <div className="flex items-start gap-3">
+            <div className="grid size-10 shrink-0 place-items-center rounded-lg border border-primary/40 bg-primary/10 text-primary-bright">
+              <Icon name="sync" className={cn("text-[24px]", (checking || !!activeJob) && "animate-spin text-primary-bright")} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="font-display text-base font-bold text-fg">Sincronizador & Atualizador de Skills</h3>
+                <span className="rounded bg-primary/20 px-2 py-0.5 font-mono text-[10px] font-semibold text-primary-bright">
+                  Job Automático
+                </span>
+              </div>
+              <p className="mt-0.5 text-xs text-muted max-w-xl">
+                Varre as pastas de skills locais (<code className="text-primary-bright">~/.gemini</code>, <code className="text-primary-bright">~/.claude</code>, <code className="text-primary-bright">~/.agents</code>), compara versões e propaga atualizações mais recentes automaticamente.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-2 shrink-0">
+            {updateStatus && (
+              <button
+                type="button"
+                onClick={() => setShowDetails(!showDetails)}
+                className="flex items-center gap-1.5 rounded-lg border border-line bg-surface-mid px-3 py-2 text-xs font-semibold text-fg-secondary hover:text-fg hover:border-line-bright transition-colors"
+              >
+                <Icon name={showDetails ? "expand_less" : "tune"} className="text-[16px]" />
+                {showDetails ? "Ocultar Detalhes" : "Ver Detalhes"}
+              </button>
+            )}
+            <button
+              type="button"
+              disabled={checking || !!activeJob}
+              onClick={dispararVerificacao}
+              className={cn(
+                "flex items-center gap-2 rounded-lg px-4 py-2 text-xs font-bold transition-all shadow-md",
+                checking || activeJob
+                  ? "cursor-not-allowed bg-primary/30 text-primary-bright/60"
+                  : "bg-primary text-void hover:bg-primary-bright active:scale-95"
+              )}
+            >
+              <Icon name="autorenew" className={cn("text-[18px]", (checking || !!activeJob) && "animate-spin")} />
+              {checking || activeJob ? "Verificando..." : "Verificar e Atualizar Skills"}
+            </button>
+          </div>
+        </div>
+
+        {/* Status / Notificação */}
+        {feedbackMsg && (
+          <div className="mt-3 flex items-center gap-2 rounded-md border border-primary/40 bg-primary/10 px-3 py-2 text-xs text-primary-bright">
+            <Icon name="info" className="text-[16px]" />
+            <span>{feedbackMsg}</span>
+          </div>
+        )}
+
+        {/* Cartões de Status Rápido */}
+        <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
+          <div className="rounded-lg border border-line/70 bg-void/50 p-2.5">
+            <span className="label-mono block text-[10px] text-muted">SKILLS DETECTADAS</span>
+            <span className="font-display text-lg font-bold text-fg">
+              {updateStatus ? updateStatus.totalSkillsDetected : "—"}
+            </span>
+          </div>
+          <div className="rounded-lg border border-line/70 bg-void/50 p-2.5">
+            <span className="label-mono block text-[10px] text-muted">ATUALIZADAS / SINCRONIZADAS</span>
+            <span className="font-display text-lg font-bold text-success">
+              {updateStatus ? updateStatus.updatedCount : "—"}
+            </span>
+          </div>
+          <div className="rounded-lg border border-line/70 bg-void/50 p-2.5">
+            <span className="label-mono block text-[10px] text-muted">PASTAS DO SISTEMA</span>
+            <span className="font-display text-lg font-bold text-secondary-soft">
+              {updateStatus ? updateStatus.skillsDirFound.length : "—"}
+            </span>
+          </div>
+          <div className="rounded-lg border border-line/70 bg-void/50 p-2.5">
+            <span className="label-mono block text-[10px] text-muted">ÚLTIMA VARREDURA</span>
+            <span className="text-xs text-fg-secondary truncate block font-mono mt-1">
+              {updateStatus ? new Date(updateStatus.timestamp).toLocaleTimeString("pt-BR") : "Ainda não executado"}
+            </span>
+          </div>
+        </div>
+
+        {/* Detalhes expandidos */}
+        {showDetails && updateStatus && (
+          <div className="mt-4 border-t border-line/70 pt-4 space-y-3">
+            <h4 className="font-display text-xs font-bold text-fg flex items-center gap-2">
+              <Icon name="folder_open" className="text-primary-bright text-[16px]" />
+              Diretórios Monitorados:
+            </h4>
+            <div className="flex flex-wrap gap-1.5">
+              {updateStatus.skillsDirFound.map((dir) => (
+                <code key={dir} className="rounded border border-line bg-void px-2 py-1 font-mono text-[11px] text-muted">
+                  {dir}
+                </code>
+              ))}
+            </div>
+
+            <h4 className="font-display text-xs font-bold text-fg flex items-center gap-2 pt-2">
+              <Icon name="check_circle" className="text-success text-[16px]" />
+              Status por Skill:
+            </h4>
+            <div className="max-h-60 overflow-y-auto space-y-1.5 pr-1">
+              {updateStatus.skills.map((s) => (
+                <div key={s.name} className="flex items-center justify-between rounded border border-line/60 bg-surface-mid/40 px-3 py-1.5 text-xs">
+                  <div className="flex items-center gap-2">
+                    <span className="font-semibold text-fg">{s.name}</span>
+                    <span className="text-[10px] text-muted font-mono">({s.locations.length} localizações)</span>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    {s.actionTaken && (
+                      <span className="text-[10px] text-secondary-soft font-mono">{s.actionTaken}</span>
+                    )}
+                    <span className={cn(
+                      "rounded px-2 py-0.5 text-[10px] font-mono font-semibold",
+                      s.status === "up_to_date" && "border border-success/40 bg-success/10 text-success",
+                      s.status === "updated" && "border border-primary/40 bg-primary/10 text-primary-bright",
+                      s.status === "outdated" && "border border-warning/40 bg-warning/10 text-warning",
+                      s.status === "missing_in_target" && "border border-line bg-void text-muted"
+                    )}>
+                      {s.status === "up_to_date" && "Em dia"}
+                      {s.status === "updated" && "Atualizado"}
+                      {s.status === "outdated" && "Desatualizado"}
+                      {s.status === "missing_in_target" && "Pendente"}
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+      </section>
       <section className="space-y-3">
         <div>
           <h3 className="flex items-center gap-2 font-display text-base font-bold text-fg">

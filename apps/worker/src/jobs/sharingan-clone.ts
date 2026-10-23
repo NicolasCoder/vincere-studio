@@ -4,7 +4,22 @@ import { spawn } from "node:child_process";
 import type { JobContext } from "../queue";
 import { getTextProviderFor, storageRoot } from "@vincere-studio/providers";
 
-const REELS_TOOLS_DIR = process.env.REELS_TOOLS_DIR || "F:\\Python Projects\\reels_tools";
+import { existsSync } from "node:fs";
+
+function resolveReelsToolsDir(): string {
+  if (process.env.REELS_TOOLS_DIR?.trim()) return process.env.REELS_TOOLS_DIR.trim();
+  const candidates = [
+    path.resolve(process.cwd(), "..", "reels_tools"),
+    path.resolve(process.cwd(), "..", "..", "reels_tools"),
+    path.join(process.env.USERPROFILE || process.env.HOME || "", "reels_tools"),
+  ];
+  for (const c of candidates) {
+    if (existsSync(c)) return c;
+  }
+  return candidates[0];
+}
+
+const REELS_TOOLS_DIR = resolveReelsToolsDir();
 const SHARINGAN_SCRIPT = path.join(REELS_TOOLS_DIR, "video-sharingan", "scripts", "sharingan.py");
 const PC_GPU_BRIDGE = path.resolve(process.cwd(), "scripts", "pc-gpu-bridge.py");
 const PC_GPU_BRIDGE_ALT = path.resolve(process.cwd(), "..", "..", "scripts", "pc-gpu-bridge.py");

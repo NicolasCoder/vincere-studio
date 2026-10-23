@@ -50,5 +50,6 @@ export const JOB_TYPES = [
   "APPLY_VISUAL_LAYER",
   "TALKING_HEAD_PIPELINE",
   "SHARINGAN_CLONE",
+  "CHECK_SKILLS_UPDATES",
 ] as const;
 export type JobType = (typeof JOB_TYPES)[number];

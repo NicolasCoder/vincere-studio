@@ -8,8 +8,7 @@ function findBridgeScript(): string {
   const candidates = [
     path.resolve(process.cwd(), "scripts", "pc-gpu-bridge.py"),
     path.resolve(process.cwd(), "..", "..", "scripts", "pc-gpu-bridge.py"),
-    "F:\\Python Projects\\vincere-studio\\scripts\\pc-gpu-bridge.py",
-  ];
+      ];
   return candidates[0];
 }
 
@@ -17,8 +16,7 @@ async function resolveBridgeScript(): Promise<string | null> {
   const candidates = [
     path.resolve(process.cwd(), "scripts", "pc-gpu-bridge.py"),
     path.resolve(process.cwd(), "..", "..", "scripts", "pc-gpu-bridge.py"),
-    "F:\\Python Projects\\vincere-studio\\scripts\\pc-gpu-bridge.py",
-  ];
+      ];
   for (const c of candidates) {
     try {
       await fs.access(c);

@@ -10,6 +10,32 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 23/10/2026 — Correção Visual do HyperFrames Studio, Job de Atualização de Skills na Máquina e Estabilização
+
+- **Pasta e Repositório**: A pasta ativa e atualizada com o GitHub (`https://github.com/Igorferreirax/vincere-studio.git`) é `C:\dev\vincere-validacao` na branch `fix/acesso-local-api-v1`.
+- **Banco de Dados Real**: O banco SQLite oficial da instância com os 9 projetos e 6 workflows é `vista.db`. O `.env` na raiz agora aponta diretamente para ele (`DATABASE_URL="file:C:/dev/vincere-validacao/vista.db"`), eliminando qualquer divergência entre `apps/web`, `apps/worker` e Prisma.
+- **Correção Visual do Dropdown de Atualização do HyperFrames (`ajuste 1.png`)**:
+  - Ajustado o stacking context em `apps/web/app/(studio)/studio/page.tsx` (`relative z-40` na barra de ferramentas superior) e `apps/web/components/AtualizarVersao.tsx` (`z-50`). O card do popup de atualização da versão (`0.8.181 → 0.8.188`) agora flutua por cima da barra de comandos sem ficar escondido.
+- **Job e Painel de Atualização de Skills na Máquina (`CHECK_SKILLS_UPDATES`)**:
+  - Adicionado suporte ao job `CHECK_SKILLS_UPDATES` no core (`packages/core/src/pipeline.ts`) e no worker (`apps/worker/src/jobs/skills-updates.ts`).
+  - Varre pastas de skills locais (`~/.gemini/config/skills`, `~/.claude/skills`, `~/.agents/skills`, `.codex/skills` e repositório) e atualiza/sincroniza as versões mais recentes automaticamente.
+  - Rota `/api/skills/check-updates` (GET e POST) implementada.
+  - Painel interativo com status em tempo real, contadores de skills, diretórios monitorados e acionamento em 1 clique em `apps/web/app/(studio)/skills/SystemSkillsCatalog.tsx`.
+- **Geração de Imagens das Cenas por IA (`GENERATE_IMAGES` + `forPendingScenes`)**:
+  - `apps/worker/src/jobs/generate-images.ts` agora suporta preencher automaticamente todas as cenas pendentes do roteiro com IA a partir dos prompts de cena compostos, sem exigir inserção manual, salvando metadados de dimensões e status `READY` nas cenas.
+  - Rota de ações `POST /api/v1/projects/[id]/actions` (`gerar_imagens`) suporta seleção de motor de imagem (`POLLINATIONS`, `CLOUDFLARE`, `HUGGINGFACE`, `TOGETHER`, `GEMINI`, `OPENAI`, `KIE`) e preenchimento de cenas pendentes.
+- **Roadmap Atualizado & Fases 6 a 9 Delineadas**:
+  - `docs/ROADMAP_AGENTE_PRIMEIRO.md` e `docs/ROADMAP_OPENAI_E_QUALIDADE.md` atualizados com status das integrações e com o planejamento das Fases 6 (`AUTO_PRODUCE`), 7 (Auto-Healing & Safe Zones), 8 (Multiplataforma Reels/TikTok + SFX) e 9 (Métricas reais do YouTube).
+- **Portabilidade & HyperFrames Preview Sem Quedas**:
+  - Eliminados caminhos hardcoded de drives e usuários alheios (`F:\Python Projects\...` e `C:\Users\Nicolas\...`) em `hyperframes/route.ts`, `pc-gpu-engine.ts`, `sharingan-clone.ts` e `talking-head.ts`.
+  - O launcher do HyperFrames agora localiza dinamicamente o `hyperframes.mjs` no `%APPDATA%\npm\node_modules` e roda diretamente via `node.exe` com fallback seguro `shell: true`, eliminando o erro de `spawn npx ENOENT` no Windows.
+- **Botão "Criar" no Início Multi-Nicho (`NichoLauncher.tsx`)**:
+  - Ao clicar em "Criar", o projeto agora **sempre é criado no banco** (`criarProjetoRetornandoId`), com o nicho e formato selecionados, e redireciona imediatamente para `/projects/[id]/ideation`. Se houver agente vinculado, o Vince abre simultaneamente já com o `projetoId` no contexto.
+- **Suíte de Testes e Typecheck 100% Verde**:
+  - `pnpm typecheck` (7/7 pacotes) e `pnpm test` (unitários + smoke de rotas) aprovados sem nenhuma falha.
+  - Build de produção configurado com `--max-old-space-size=4096` evitando estouro de heap no Windows.
+  - Atalho `Iniciar Vincere Local.bat` pronto para inicialização dos serviços em 1 clique.
+
 ## Estado deixado em 23/10/2026 — Arquitetura Agente-Primeiro (`/api/v1/*`, Runbooks, Servidor MCP e Unificação HyperFrames)
 
 - **Contrato REST Completo para Agentes (`/api/v1/*` + `apps/web/lib/agent-api.ts`)**:

@@ -30,36 +30,49 @@ function resolveWorkspaceDir(): string {
   return path.join(HF_STORAGE(), "workspace");
 }
 
-function resolveNode22AndHyperframes(): {
+function resolveNodeAndHyperframes(): {
   nodeBin: string;
   hfMjs: string | null;
   npxBin: string;
   envPath: string;
 } {
-  const nvm22Dir = "C:\\Users\\Nicolas\\AppData\\Local\\nvm\\v22.11.0";
-  const node22Exe = path.join(nvm22Dir, "node.exe");
-  const npx22Cmd = path.join(nvm22Dir, "npx.cmd");
+  const nodeBin = process.execPath;
+  const appData = process.env.APPDATA || "";
+  const userProfile = process.env.USERPROFILE || process.env.HOME || "";
 
   const hfCandidates = [
-    "F:\\npm-cache\\_npx\\702923228c2ce1e6\\node_modules\\hyperframes\\bin\\hyperframes.mjs",
-    "F:\\npm-cache\\_npx\\329cd6bfc4591090\\node_modules\\hyperframes\\bin\\hyperframes.mjs",
-  ];
-  const hfMjs = hfCandidates.find((p) => existsSync(p)) ?? null;
-  const nodeBin = existsSync(node22Exe) ? node22Exe : process.execPath;
-  const npxBin = existsSync(npx22Cmd) ? npx22Cmd : "npx";
-  const envPath = existsSync(nvm22Dir)
-    ? `${nvm22Dir};${process.env.PATH || ""}`
-    : process.env.PATH || "";
+    appData ? path.join(appData, "npm", "node_modules", "hyperframes", "bin", "hyperframes.mjs") : "",
+    userProfile ? path.join(userProfile, "AppData", "Roaming", "npm", "node_modules", "hyperframes", "bin", "hyperframes.mjs") : "",
+    path.resolve(process.cwd(), "..", "..", "node_modules", "hyperframes", "bin", "hyperframes.mjs"),
+  ].filter(Boolean);
 
-  return { nodeBin, hfMjs, npxBin, envPath };
+  const hfMjs = hfCandidates.find((p) => existsSync(p)) ?? null;
+
+  const npxCli = path.join(path.dirname(nodeBin), "node_modules", "npm", "bin", "npx-cli.js");
+  const npxBin = existsSync(npxCli)
+    ? npxCli
+    : (process.platform === "win32" ? "npx.cmd" : "npx");
+
+  return {
+    nodeBin,
+    hfMjs,
+    npxBin,
+    envPath: process.env.PATH || "",
+  };
 }
 
 // No Windows "npx" é npx.cmd, e o Node recusa executar .cmd sem shell (ENOENT/EINVAL). O npx-cli.js que
-// acompanha o npm roda direto com o node, sem shell, então nenhum nome de pasta vira comando.
-function npxInvocation(npxBin: string, nodeBin: string): { cmd: string; prefix: string[] } {
-  if (process.platform !== "win32") return { cmd: npxBin, prefix: [] };
+// acompanha o npm roda direto com o node, sem shell. Se cair no cmd, passa shell: true como fallback.
+function npxInvocation(npxBin: string, nodeBin: string): { cmd: string; prefix: string[]; useShell: boolean } {
+  if (process.platform !== "win32") return { cmd: npxBin, prefix: [], useShell: false };
+  if (npxBin.endsWith(".js") && existsSync(npxBin)) {
+    return { cmd: nodeBin, prefix: [npxBin], useShell: false };
+  }
   const cli = path.join(path.dirname(nodeBin), "node_modules", "npm", "bin", "npx-cli.js");
-  return existsSync(cli) ? { cmd: nodeBin, prefix: [cli] } : { cmd: npxBin, prefix: [] };
+  if (existsSync(cli)) {
+    return { cmd: nodeBin, prefix: [cli], useShell: false };
+  }
+  return { cmd: npxBin, prefix: [], useShell: true };
 }
 
 interface HfConfigResponse {
@@ -145,7 +158,7 @@ async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfCon
         await new Promise((r) => setTimeout(r, 450));
       }
 
-      const { nodeBin, hfMjs, npxBin, envPath } = resolveNode22AndHyperframes();
+      const { nodeBin, hfMjs, npxBin, envPath } = resolveNodeAndHyperframes();
       const npx = npxInvocation(npxBin, nodeBin);
       const cmd = hfMjs ? nodeBin : npx.cmd;
       const args = hfMjs
@@ -158,6 +171,7 @@ async function ensureHyperframesRunning(targetProjectDir: string): Promise<HfCon
         detached: true,
         stdio: "ignore",
         windowsHide: true,
+        shell: hfMjs ? false : npx.useShell,
       });
       // Sem este ouvinte, um ENOENT vira uncaughtException e derruba o servidor inteiro.
       child.on("error", (err) => console.error("[hyperframes] não foi possível iniciar o preview:", err.message));

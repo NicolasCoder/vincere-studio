@@ -59,8 +59,10 @@ const actionSchema = z.discriminatedUnion("action", [
   }),
   z.object({
     action: z.literal("gerar_imagens"),
-    prompts: z.array(z.string().min(3)).min(1).max(20),
-    engine: z.enum(["GEMINI", "POLLINATIONS"]).default("POLLINATIONS"),
+    prompts: z.array(z.string().min(3)).min(1).max(20).optional(),
+    prompt: z.string().min(3).optional(),
+    forPendingScenes: z.boolean().default(false),
+    engine: z.enum(["POLLINATIONS", "CLOUDFLARE", "HUGGINGFACE", "TOGETHER", "GEMINI", "OPENAI", "KIE"]).default("POLLINATIONS"),
     aspect: z.enum(["16:9", "9:16", "1:1"]).optional(),
     force: z.boolean().default(false),
   }),
@@ -311,6 +313,8 @@ export async function POST(req: Request, { params }: { params: Promise<{ id: str
         "GENERATE_IMAGES",
         {
           prompts: d.prompts,
+          prompt: d.prompt,
+          forPendingScenes: d.forPendingScenes ?? (!d.prompt && !d.prompts?.length),
           engine: d.engine,
           aspect: d.aspect ?? (state.format === "SHORT_9_16" ? "9:16" : "16:9"),
         },

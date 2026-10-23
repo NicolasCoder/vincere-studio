@@ -304,7 +304,7 @@ export default function HyperFramesStudioPage() {
   return (
     <div className="flex flex-col h-[calc(100vh-3.5rem)] space-y-2.5 p-3 sm:p-5">
       {/* 1. Barra Superior Minimalista do HyperFrames Studio */}
-      <div className="flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-surface-low/80 backdrop-blur-xl px-4 py-2.5">
+      <div className="relative z-40 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-white/[0.07] bg-surface-low/80 backdrop-blur-xl px-4 py-2.5">
         <div className="flex items-center gap-3">
           <div className="grid size-8 place-items-center rounded-lg bg-primary/15 text-primary-bright">
             <Icon name="movie_filter" className="text-[18px]" />
@@ -388,7 +388,7 @@ export default function HyperFramesStudioPage() {
       </div>
 
       {/* 2. Barra Integrada de Conexão com o Agente (Antigravity agy / Claude Code + Elemento Selecionado no HyperFrames) */}
-      <div className="rounded-xl border border-white/[0.08] bg-surface-low/70 backdrop-blur-xl px-3.5 py-2.5 space-y-2">
+      <div className="relative z-10 rounded-xl border border-white/[0.08] bg-surface-low/70 backdrop-blur-xl px-3.5 py-2.5 space-y-2">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="flex flex-wrap items-center gap-2">
             {/* Seletor do Agente Operador */}
