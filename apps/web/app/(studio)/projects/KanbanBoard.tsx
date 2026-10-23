@@ -135,14 +135,14 @@ export function KanbanBoard({ projects }: { projects: KanbanProject[] }) {
                         os arquivos junto, então não deve estar no caminho de um clique distraído. */}
                     <button
                       type="button"
-                      title="Apagar projeto"
+                      title="Apagar projeto permanentemente"
                       aria-label={`Apagar ${p.title}`}
                       onClick={(e) => {
                         e.stopPropagation();
                         if (!confirm(`Apagar "${p.title}"?\n\nIsto remove o projeto e TODOS os arquivos dele no disco — roteiro, locução, cenas, renders e miniaturas. Não tem como desfazer.`)) return;
                         startTransition(() => deleteProject(p.id));
                       }}
-                      className="absolute right-1.5 top-1.5 hidden rounded p-1 text-muted hover:bg-error/15 hover:text-error group-hover:block"
+                      className="absolute right-1.5 top-1.5 z-10 rounded p-1 text-muted/60 transition-colors hover:bg-error/20 hover:text-error"
                     >
                       <Icon name="delete" className="text-[16px]" />
                     </button>

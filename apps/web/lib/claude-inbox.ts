@@ -88,3 +88,28 @@ export async function updateRequest(id: string, patch: Partial<Pick<ClaudeReques
     return item;
   });
 }
+
+export async function deleteRequest(id: string) {
+  return emSerie(async () => {
+    const items = await readAll();
+    const rest = items.filter((i) => i.id !== id);
+    if (rest.length === items.length) return false;
+    await writeAll(rest);
+    return true;
+  });
+}
+
+export async function clearRequests(filtro?: ClaudeRequestStatus | "all") {
+  return emSerie(async () => {
+    const items = await readAll();
+    let mantidos: ClaudeRequest[];
+    if (!filtro || filtro === "all") {
+      mantidos = [];
+    } else {
+      mantidos = items.filter((i) => i.status !== filtro);
+    }
+    const apagados = items.length - mantidos.length;
+    await writeAll(mantidos);
+    return apagados;
+  });
+}

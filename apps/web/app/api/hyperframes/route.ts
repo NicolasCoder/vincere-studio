@@ -433,6 +433,19 @@ export async function POST(req: Request) {
     });
   }
 
+  // 1.1 Apagar projeto do workspace local (Videos-HF)
+  if (body.action === "delete") {
+    const parsed = z.object({ action: z.literal("delete"), project: z.string().regex(NOME_RE) }).safeParse(body);
+    if (!parsed.success) return NextResponse.json({ ok: false, error: "Projeto inválido" }, { status: 400 });
+    const workspaceDir = resolveWorkspaceDir();
+    const targetDir = path.join(workspaceDir, parsed.data.project);
+    if (existsSync(targetDir)) {
+      await fs.rm(targetDir, { recursive: true, force: true }).catch(() => {});
+    }
+    const remaining = listWorkspaceProjects(workspaceDir);
+    return NextResponse.json({ ok: true, projects: remaining });
+  }
+
   // 2. Criar novo projeto localmente no disco + abrir no Studio + acionar Agente se tiver prompt
   if (body.action === "create") {
     const parsed = createProjectSchema.safeParse(body);

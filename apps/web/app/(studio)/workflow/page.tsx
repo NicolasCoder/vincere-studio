@@ -6,6 +6,7 @@ import { Badge, Icon } from "@vincere-studio/ui";
 import { Topbar } from "@/components/Topbar";
 import { getUsageSummary, parseJson } from "@/lib/data";
 import { createWorkflow, createWorkflowWithAi } from "./actions";
+import { BotaoApagarWorkflow } from "./BotaoApagarWorkflow";
 
 const FLUXOS_PRONTOS = [
   {
@@ -212,9 +213,12 @@ export default async function WorkflowListPage({
                       <span className="truncate font-display text-xs font-semibold text-fg">
                         {w.name}
                       </span>
-                      <span className="shrink-0 rounded-full bg-white/[0.05] px-2 py-0.5 text-[9px] font-medium text-fg-secondary">
-                        { idx === 0 ? "Último editado" : STATUS_LABEL[w.status] ?? w.status }
-                      </span>
+                      <div className="flex items-center gap-1.5 shrink-0">
+                        <span className="rounded-full bg-white/[0.05] px-2 py-0.5 text-[9px] font-medium text-fg-secondary">
+                          { idx === 0 ? "Último editado" : STATUS_LABEL[w.status] ?? w.status }
+                        </span>
+                        <BotaoApagarWorkflow workflowId={w.id} workflowName={w.name} />
+                      </div>
                     </div>
 
                     <div className="mt-2 flex flex-wrap gap-1">

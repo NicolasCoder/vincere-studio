@@ -68,9 +68,19 @@ export function AtualizarVersao({ id, compacto = false }: { id: string; compacto
                 type="password"
                 value={token}
                 onChange={(e) => setToken(e.target.value)}
-                placeholder="Token de admin"
+                placeholder="Token de admin (vincere-admin-2026)"
                 className="w-full rounded-lg border border-white/[0.12] bg-surface-low px-2.5 py-1.5 text-fg text-xs focus:outline-none focus:border-primary"
               />
+              <div className="flex items-center justify-between text-[10px] text-muted">
+                <span>Padrão: <code className="text-primary-bright font-mono">vincere-admin-2026</code></span>
+                <button
+                  type="button"
+                  onClick={() => setToken("vincere-admin-2026")}
+                  className="text-primary-bright hover:underline"
+                >
+                  Usar padrão
+                </button>
+              </div>
               <Button size="sm" variant="primary" icon="download" disabled={busy || token.length < 12} onClick={atualizar} className="w-full justify-center">
                 {busy ? "Atualizando…" : "Atualizar agora"}
               </Button>

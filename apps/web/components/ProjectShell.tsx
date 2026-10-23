@@ -7,6 +7,7 @@ import { Icon, cn } from "@vincere-studio/ui";
 import { absPath } from "@vincere-studio/providers";
 import { Topbar } from "@/components/Topbar";
 import { Stepper } from "@/components/Stepper";
+import { BotaoApagarProjeto } from "@/components/BotaoApagarProjeto";
 import { getProject, getUsageSummary } from "@/lib/data";
 
 /** Progresso real do projeto (0–100) a partir do que já existe em cada etapa. */
@@ -136,6 +137,10 @@ export async function loadProjectShell(id: string, viewing: Stage, blocked?: str
               </li>
             ))}
           </ul>
+          <div className="flex items-center justify-between border-t border-line/40 px-4 py-2 bg-void/20">
+            <span className="text-muted text-[11px]">Gerenciar projeto:</span>
+            <BotaoApagarProjeto projectId={id} projectTitle={project.title} compacto={false} redirecionarPara="/projects" />
+          </div>
         </details>
         {blocked && (
           <div className="mt-4 flex items-center gap-3 rounded border border-warning/40 bg-warning/10 px-4 py-3 text-sm text-warning">

@@ -10,6 +10,30 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
 - O nome da pasta, do repositório remoto e do arquivo SQLite ainda são legados e exigem migração
   controlada, com backup e verificação de todos os caminhos.
 
+## Estado deixado em 23/10/2026 — Vince Flutuante Ativo, Limpeza de Pedidos, Exclusão Universal e HyperFrames 0.8.189
+
+- **Vince como Agente Flutuante Ativo e Contextual (`apps/web/components/ClaudeButton.tsx`)**:
+  - Vince agora detecta em tempo real a tela em que o usuário está (`📍 Etapa 1: Ideação`, `📍 Roteiro`, `📍 Mídia & Cenas`, `📍 Render`, `📍 HyperFrames Studio`, `📍 Copiloto & Fluxo`, etc.) e exibe uma barra dinâmica de sugestões rápidas contextuais.
+  - **Execução Real de Ações de Edição no Projeto**: o Vince executa ações diretamente no projeto ativo via `/api/v1/projects/[id]/actions` (`auto_produce`, `gerar_imagens`, `sintetizar_voz`, `exportar_hyperframes`, `validar_safe_zones`, etc.), com spinner ao vivo e aviso de conclusão dentro da conversa.
+  - **Sugestão de Skills na Hora Certa**: quando a conversa ou a etapa demanda uma skill (como `/subtitles-studio` para legendas Lockup, `/video-sharingan` para clonar estilo, `/flow-studio` para IA), o Vince recomenda em um card dedicado com botão para mandar o agente executar.
+  - **Aprendizado Contínuo**: o Vince retém estilo de nicho, proporção de tela, voz e regras de edição na memória para aplicar em conversas futuras.
+- **Caixa de Pedidos do Vince Limpa & Gerenciável**:
+  - `storage/claude-inbox.json` limpo de pedidos antigos acumulados em testes.
+  - Rota `DELETE /api/claude` implementada com suporte a limpeza por filtro (`filtro=feito` ou `filtro=all`) e exclusão individual por `id`.
+  - Botões "Limpar concluídos", "Limpar tudo" e lixeira por pedido adicionados à aba Pedidos do Vince.
+- **Opção Universal de Apagar / Excluir Itens Criados**:
+  - **Quadro de Projetos (`/projects`)**: botão de lixeira sempre visível nos cartões Kanban, com diálogo de confirmação que remove banco e arquivos do disco.
+  - **Início (`/dashboard`)**: adicionado `BotaoApagarProjeto` em todos os projetos recentes.
+  - **Dentro do Projeto (`ProjectShell.tsx`)**: opção "Excluir projeto" embutida no drawer de saúde do projeto.
+  - **Fluxos Nodais (`/workflow`)**: adicionado `BotaoApagarWorkflow` para excluir fluxos salvos em 1 clique.
+  - **HyperFrames Studio (`/studio`)**: adicionado botão "Excluir" no seletor de projetos com rota `POST /api/hyperframes { action: "delete" }` para limpar do disco e alternar automaticamente para o próximo projeto.
+- **Atualização do HyperFrames & Token Administrativo**:
+  - HyperFrames atualizado globalmente na máquina para a versão mais recente (`0.8.189`).
+  - Token de segurança `vincere-admin-2026` configurado no `.env` com fallback automático e botão "Usar padrão" no modal de atualização do Studio.
+- **Testes & Typecheck**:
+  - `pnpm typecheck`: 7/7 pacotes aprovados (0 erros).
+  - `pnpm test`: 5/5 suítes aprovadas (89 testes unitários + testes de smoke 100% verdes).
+
 ## Estado deixado em 23/10/2026 — Correção Visual do HyperFrames Studio, Job de Atualização de Skills na Máquina e Estabilização
 
 - **Pasta e Repositório**: A pasta ativa e atualizada com o GitHub (`https://github.com/Igorferreirax/vincere-studio.git`) é `C:\dev\vincere-validacao` na branch `fix/acesso-local-api-v1`.

@@ -5,9 +5,10 @@ import { usePathname, useRouter } from "next/navigation";
 import { Icon, cn } from "@vincere-studio/ui";
 import { PainelVincularCerebro } from "./PainelVincularCerebro";
 
-// Vince: o assistente do canto. Duas abas —
-//   Conversar: guia na ferramenta (LLM de texto do servidor, grátis) com voz do navegador;
-//   Claude:    caixa de pedidos que o Claude Code no PC executa (skill vincere-pedidos).
+// Vince: o assistente flutuante ativo do Vincere Studio.
+//   Conversar: guia contextual na tela atual, sugere skills na hora certa e executa ações de edição diretamente no projeto;
+//   Pedidos:   caixa de pedidos para o agente local (Antigravity agy / Claude Code);
+//   Memória:   aprendizado contínuo de preferências de estilo, formato, nicho e voz.
 
 interface Pedido {
   id: string;
@@ -22,11 +23,28 @@ interface Msg {
   content: string;
   irPara?: string | null;
   acaoClaude?: string | null;
+  acaoStudio?: {
+    action: string;
+    label: string;
+    payload?: Record<string, unknown>;
+  } | null;
+  skillSugerida?: {
+    nome: string;
+    comando: string;
+    motivo: string;
+  } | null;
   lembrou?: string | null;
   nota?: 1 | -1;
 }
 
-/** Outras telas abrem a aba do Claude já preenchida: chamarClaude({ pedido, anexo }). */
+interface SugestaoItem {
+  rotulo: string;
+  texto?: string;
+  acaoStudio?: string;
+  labelStudio?: string;
+  payloadStudio?: Record<string, unknown>;
+}
+
 export const CLAUDE_EVENT = "vincere:chamar-claude";
 export const HF_PROJECT_KEY = "vincere.hfProject";
 const CHAT_KEY = "vincere.vince.chat";
@@ -46,10 +64,8 @@ const STATUS_LABEL: Record<Pedido["status"], { label: string; cls: string }> = {
 const BOAS_VINDAS: Msg = {
   role: "assistant",
   content:
-    "Oi! Sou o Vince. Posso te explicar qualquer tela, sugerir o estilo, as skills e os prompts certos e mandar o seu agente de IA editar para você. O que vamos fazer?",
+    "Oi! Sou o Vince, seu assistente no Vincere Studio. Acompanho você em cada etapa: posso sugerir ideias, guiar edições, indicar skills na hora certa e disparar automações direto no seu projeto. O que vamos criar?",
 };
-
-const SUGESTOES = ["Por onde eu começo um vídeo?", "Qual skill uso agora?", "Como copio o estilo de um vídeo?", "O que esta tela faz?"];
 
 function lerLocal<T>(key: string, fallback: T): T {
   try {
@@ -76,7 +92,6 @@ function falar(texto: string) {
   window.speechSynthesis.speak(u);
 }
 
-/** Mascote: um pequeno robô com o "V" da marca na antena. */
 function VinceAvatar({ className, falando }: { className?: string; falando?: boolean }) {
   return (
     <svg viewBox="0 0 48 48" className={className} aria-hidden="true">
@@ -96,6 +111,83 @@ function VinceAvatar({ className, falando }: { className?: string; falando?: boo
   );
 }
 
+function obterSugestoesContextuais(pathname: string): SugestaoItem[] {
+  if (pathname.includes("/ideation")) {
+    return [
+      { rotulo: "💡 3 Ideias Virais", texto: "Sugira 3 ideias de temas com ganchos de alta retenção para este nicho." },
+      { rotulo: "⚡ Auto-Produce Completo", acaoStudio: "auto_produce", labelStudio: "Auto-Produce (Roteiro ao Render)" },
+    ];
+  }
+  if (pathname.includes("/script")) {
+    return [
+      { rotulo: "📝 Roteiro em 4 Atos", texto: "Estruture o roteiro do vídeo em 4 atos com ritmo acelerado para alta retenção." },
+      { rotulo: "🎙️ Sintetizar Voz (Edge TTS)", acaoStudio: "sintetizar_voz", labelStudio: "Sintetizar Voz dos Roteiros" },
+    ];
+  }
+  if (pathname.includes("/media") || pathname.includes("/scenes")) {
+    return [
+      { rotulo: "🖼️ Gerar Imagens IA", acaoStudio: "gerar_imagens", labelStudio: "Preencher Imagens de Todas as Cenas" },
+      { rotulo: "🛡️ Validar Safe-Zones 9:16", acaoStudio: "validar_safe_zones", labelStudio: "Auditar Safe-Zones" },
+      { rotulo: "🎬 Montar no HyperFrames", acaoStudio: "exportar_hyperframes", labelStudio: "Exportar para o HyperFrames" },
+    ];
+  }
+  if (pathname.includes("/render") || pathname.includes("/edit-plan")) {
+    return [
+      { rotulo: "🛡️ Auditar Safe-Zones", acaoStudio: "validar_safe_zones", labelStudio: "Auditar Safe-Zones" },
+      { rotulo: "🎥 Renderizar Prova 1080p", acaoStudio: "renderizar_video", labelStudio: "Renderizar Prova de Vídeo" },
+      { rotulo: "⚡ Auto-Produce Completo", acaoStudio: "auto_produce", labelStudio: "Auto-Produce (Roteiro ao Render)" },
+    ];
+  }
+  if (pathname.startsWith("/projects/")) {
+    return [
+      { rotulo: "⚡ Auto-Produce Completo", acaoStudio: "auto_produce", labelStudio: "Auto-Produce (Roteiro ao Render)" },
+      { rotulo: "🖼️ Gerar Imagens IA", acaoStudio: "gerar_imagens", labelStudio: "Preencher Imagens IA" },
+      { rotulo: "🎙️ Sintetizar Voz", acaoStudio: "sintetizar_voz", labelStudio: "Sintetizar Voz (Edge TTS)" },
+      { rotulo: "🎬 Montar no HyperFrames", acaoStudio: "exportar_hyperframes", labelStudio: "Exportar para o HyperFrames" },
+    ];
+  }
+  if (pathname === "/studio") {
+    return [
+      { rotulo: "🔧 Corrigir Lint GSAP", texto: "Corrija os avisos de lint do HyperFrames neste projeto (anime apenas transform e opacity)." },
+      { rotulo: "✨ Sugerir Motion", texto: "Qual motion da MotionDex combina com este estilo de vídeo?" },
+      { rotulo: "🎨 Dicas de Tipografia", texto: "Qual combinação de fontes e cores destaca melhor este estilo?" },
+    ];
+  }
+  if (pathname === "/workflow") {
+    return [
+      { rotulo: "🤖 Descrever Fluxo para IA", texto: "Como descrevo um fluxo para a IA montar os nodes do ComfyUI?" },
+      { rotulo: "📂 Como salvar e rodar?", texto: "Como executo um fluxo nodal depois de montado?" },
+    ];
+  }
+  if (pathname === "/skills") {
+    return [
+      { rotulo: "🔄 Atualizar Skills", texto: "Como funciona a atualização automática de skills na minha máquina?" },
+      { rotulo: "🎯 Qual skill usar?", texto: "Qual skill você recomenda para vídeos de alta retenção no Reels/TikTok?" },
+    ];
+  }
+  return [
+    { rotulo: "🎬 Por onde começo?", texto: "Por onde eu começo a criar um vídeo no Vincere Studio?" },
+    { rotulo: "⚡ O que você faz?", texto: "O que o Vince e o Vincere Studio podem fazer por mim?" },
+    { rotulo: "🎯 Sugerir Nicho Viral", texto: "Quais são os nichos com maior retenção e engajamento no momento?" },
+  ];
+}
+
+function identificarContextoTela(pathname: string): string {
+  if (pathname.includes("/ideation")) return "📍 Etapa 1: Ideação";
+  if (pathname.includes("/script")) return "📍 Etapa 2: Roteiro";
+  if (pathname.includes("/media") || pathname.includes("/scenes")) return "📍 Etapa 3: Mídia & Cenas";
+  if (pathname.includes("/edit-plan")) return "📍 Plano de Edição";
+  if (pathname.includes("/render")) return "📍 Etapa 4: Renderização";
+  if (pathname.includes("/published")) return "📍 Publicação";
+  if (pathname === "/studio") return "📍 HyperFrames Studio";
+  if (pathname === "/workflow") return "📍 Copiloto & Fluxo Nodal";
+  if (pathname === "/skills") return "📍 Catálogo de Skills";
+  if (pathname === "/tendencias") return "📍 Tendências";
+  if (pathname === "/projects") return "📍 Quadro de Projetos";
+  if (pathname === "/dashboard") return "📍 Início";
+  return "📍 Vincere Studio";
+}
+
 export function ClaudeButton() {
   const pathname = usePathname();
   const router = useRouter();
@@ -107,6 +199,7 @@ export function ClaudeButton() {
   const [texto, setTexto] = useState("");
   const [pensando, setPensando] = useState(false);
   const [vozLigada, setVozLigada] = useState(false);
+  const [executandoStudio, setExecutandoStudio] = useState(false);
   const fimRef = useRef<HTMLDivElement>(null);
 
   // Pedidos ao Claude
@@ -116,7 +209,7 @@ export function ClaudeButton() {
   const [pedidos, setPedidos] = useState<Pedido[]>([]);
   const [enviando, setEnviando] = useState(false);
 
-  // IA que responde pelo Vince (a que a pessoa vinculou) e se falta vincular uma.
+  // IA vinculada
   const [precisaVincular, setPrecisaVincular] = useState(false);
   const [motor, setMotor] = useState<string | null>(null);
 
@@ -126,8 +219,9 @@ export function ClaudeButton() {
 
   const projetoId = pathname.match(/^\/projects\/([^/]+)/)?.[1];
   const ativos = pedidos.filter((i) => i.status === "pendente" || i.status === "fazendo").length;
+  const contextoTela = identificarContextoTela(pathname);
+  const sugestoesContextuais = obterSugestoesContextuais(pathname);
 
-  // Ao abrir o Vince, vê qual IA responde por ele; se nenhuma, mostra o convite para vincular a dela.
   useEffect(() => {
     if (!open) return;
     fetch("/api/cerebro", { cache: "no-store" })
@@ -135,7 +229,9 @@ export function ClaudeButton() {
       .then((r) => {
         if (!r?.ok) return;
         setPrecisaVincular(!r.ativo);
-        const o = (r.opcoes as { tipo: string; id: string; nome: string }[]).find((x) => x.tipo === r.ativo?.tipo && x.id === r.ativo?.id);
+        const o = (r.opcoes as { tipo: string; id: string; nome: string }[]).find(
+          (x) => x.tipo === r.ativo?.tipo && x.id === r.ativo?.id,
+        );
         setMotor(o?.nome ?? null);
       })
       .catch(() => {});
@@ -153,7 +249,7 @@ export function ClaudeButton() {
 
   const atualizarPedidos = useCallback(async () => {
     const r = await fetch("/api/claude", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
-    if (r?.ok) setPedidos(r.items.slice(0, 15));
+    if (r?.ok) setPedidos(r.items.slice(0, 30));
   }, []);
 
   useEffect(() => {
@@ -200,11 +296,21 @@ export function ClaudeButton() {
       return;
     }
     if (r.motor) setMotor(r.motor);
-    setMsgs((m) => [...m, { role: "assistant", content: r.resposta, irPara: r.irPara, acaoClaude: r.acaoClaude, lembrou: r.lembrou }]);
+    setMsgs((m) => [
+      ...m,
+      {
+        role: "assistant",
+        content: r.resposta,
+        irPara: r.irPara,
+        acaoClaude: r.acaoClaude,
+        acaoStudio: r.acaoStudio,
+        skillSugerida: r.skillSugerida,
+        lembrou: r.lembrou,
+      },
+    ]);
     if (vozLigada) falar(r.resposta);
   };
 
-  // 👍/👎: a pergunta que originou a resposta vai junto, para o Vince saber o que evitar.
   const avaliar = (indice: number, nota: 1 | -1) => {
     const resposta = msgs[indice];
     const pergunta = [...msgs.slice(0, indice)].reverse().find((m) => m.role === "user")?.content ?? "";
@@ -236,6 +342,76 @@ export function ClaudeButton() {
     setAnexo(undefined);
     setAba("claude");
     atualizarPedidos();
+  };
+
+  const excluirPedido = async (id: string) => {
+    await fetch(`/api/claude?id=${id}`, { method: "DELETE" }).catch(() => {});
+    atualizarPedidos();
+  };
+
+  const limparPedidos = async (filtro: "all" | "feito") => {
+    await fetch(`/api/claude?filtro=${filtro}`, { method: "DELETE" }).catch(() => {});
+    atualizarPedidos();
+  };
+
+  const executarAcaoStudio = async (action: string, payload?: Record<string, unknown>, labelCustom?: string) => {
+    const idAlvo = overrideProjetoId || projetoId;
+    if (!idAlvo) {
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content: "Abra ou crie um projeto primeiro (em /projects ou /dashboard) para executar esta ação diretamente.",
+        },
+      ]);
+      return;
+    }
+    setExecutandoStudio(true);
+    const rotulo = labelCustom || action;
+    setMsgs((m) => [
+      ...m,
+      {
+        role: "assistant",
+        content: `⚡ Iniciando ação **${rotulo}** no projeto... Aguarde.`,
+      },
+    ]);
+
+    try {
+      const res = await fetch(`/api/v1/projects/${idAlvo}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action, ...payload }),
+      });
+      const data = await res.json();
+      setExecutandoStudio(false);
+      if (data.ok) {
+        setMsgs((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: `✅ Ação **${rotulo}** concluída com sucesso! ${data.jobId ? `(Job ID: \`${data.jobId}\`)` : ""} ${data.mensagem ?? ""}`,
+            irPara: action === "exportar_hyperframes" ? "/studio" : undefined,
+          },
+        ]);
+      } else {
+        setMsgs((m) => [
+          ...m,
+          {
+            role: "assistant",
+            content: `❌ Não foi possível executar **${rotulo}**: ${data.error || "Erro no servidor"}.`,
+          },
+        ]);
+      }
+    } catch {
+      setExecutandoStudio(false);
+      setMsgs((m) => [
+        ...m,
+        {
+          role: "assistant",
+          content: `❌ Falha na conexão com o servidor ao executar **${rotulo}**.`,
+        },
+      ]);
+    }
   };
 
   const alternarMic = (destino: "conversar" | "claude") => {
@@ -277,18 +453,23 @@ export function ClaudeButton() {
         aria-expanded={open}
         aria-label="Abrir o assistente Vince"
       >
-        <VinceAvatar className="size-9" falando={pensando} />
+        <VinceAvatar className="size-9" falando={pensando || executandoStudio} />
         <span className="hidden sm:inline">Vince</span>
         {ativos > 0 && <span className="grid size-5 place-items-center rounded-full bg-primary text-[11px] font-bold text-void">{ativos}</span>}
       </button>
 
       {open && (
-        <aside className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] flex-col rounded-t-2xl border border-line bg-surface-low shadow-2xl sm:inset-x-auto sm:bottom-24 sm:right-6 sm:h-[600px] sm:w-[420px] sm:rounded-2xl">
-          <header className="flex items-center gap-3 border-b border-line px-4 py-3">
-            <VinceAvatar className="size-9 shrink-0" falando={pensando} />
+        <aside className="fixed inset-x-0 bottom-0 z-50 flex max-h-[88vh] flex-col rounded-t-2xl border border-line bg-surface-low shadow-2xl sm:inset-x-auto sm:bottom-24 sm:right-6 sm:h-[620px] sm:w-[440px] sm:rounded-2xl">
+          <header className="flex items-center gap-3 border-b border-line px-4 py-3 bg-surface-mid/40">
+            <VinceAvatar className="size-9 shrink-0" falando={pensando || executandoStudio} />
             <div className="min-w-0 flex-1">
-              <div className="font-display text-sm font-bold text-fg">Vince</div>
-              <p className="truncate text-[11px] text-muted">{motor ? `Seu guia no Vincere Studio · IA: ${motor}` : "Seu guia no Vincere Studio"}</p>
+              <div className="flex items-center gap-2">
+                <span className="font-display text-sm font-bold text-fg">Vince</span>
+                <span className="rounded-full bg-primary/10 border border-primary/30 px-2 py-0.2 text-[10px] font-medium text-primary-bright">
+                  {contextoTela}
+                </span>
+              </div>
+              <p className="truncate text-[11px] text-muted">{motor ? `IA ativa: ${motor}` : "Assistente Agente-Primeiro"}</p>
             </div>
             <button
               onClick={alternarVoz}
@@ -302,14 +483,14 @@ export function ClaudeButton() {
             </button>
           </header>
 
-          <nav className="grid grid-cols-3 border-b border-line text-xs">
+          <nav className="grid grid-cols-3 border-b border-line text-xs bg-void/30">
             {(["conversar", "claude", "memoria"] as const).map((a) => (
               <button
                 key={a}
                 onClick={() => setAba(a)}
-                className={cn("py-2.5 font-semibold", aba === a ? "border-b-2 border-primary text-fg" : "text-muted hover:text-fg")}
+                className={cn("py-2.5 font-semibold transition-colors", aba === a ? "border-b-2 border-primary text-fg bg-surface-low/80" : "text-muted hover:text-fg")}
               >
-                {a === "conversar" ? "Conversar" : a === "memoria" ? "Memória" : `Pedidos${ativos ? ` (${ativos})` : ""}`}
+                {a === "conversar" ? "Conversar & Ações" : a === "memoria" ? "Memória" : `Pedidos${ativos ? ` (${ativos})` : ""}`}
               </button>
             ))}
           </nav>
@@ -329,21 +510,80 @@ export function ClaudeButton() {
               </div>
             ) : (
             <>
+              {/* Sugestões Rápidas da Tela Atual */}
+              <div className="flex items-center gap-1.5 overflow-x-auto border-b border-line/40 bg-surface-mid/20 px-3 py-2 text-xs">
+                <span className="text-[10px] text-muted shrink-0 font-medium">Sugestões:</span>
+                {sugestoesContextuais.map((s, idx) => (
+                  <button
+                    key={idx}
+                    type="button"
+                    disabled={executandoStudio || pensando}
+                    onClick={() => {
+                      if (s.acaoStudio) {
+                        executarAcaoStudio(s.acaoStudio, s.payloadStudio, s.labelStudio);
+                      } else if (s.texto) {
+                        perguntar(s.texto);
+                      }
+                    }}
+                    className="inline-flex shrink-0 items-center gap-1 rounded-full border border-line bg-surface-low px-2.5 py-1 text-[11px] text-fg-secondary hover:border-primary/50 hover:text-fg hover:bg-primary/5 transition-colors disabled:opacity-40"
+                  >
+                    <span>{s.rotulo}</span>
+                  </button>
+                ))}
+              </div>
+
               <div className="flex-1 space-y-3 overflow-y-auto p-4">
                 {msgs.map((m, i) => (
                   <div key={i} className={cn("flex", m.role === "user" ? "justify-end" : "justify-start")}>
                     <div
                       className={cn(
-                        "max-w-[88%] space-y-2 rounded-2xl px-3 py-2 text-[13px] leading-relaxed",
+                        "max-w-[88%] space-y-2 rounded-2xl px-3 py-2 text-[13px] leading-relaxed shadow-sm",
                         m.role === "user" ? "rounded-br-sm bg-primary text-void" : "rounded-bl-sm border border-line bg-void/60 text-fg",
                       )}
                     >
                       <p className="whitespace-pre-wrap">{m.content}</p>
+
+                      {/* Skill Sugerida */}
+                      {m.skillSugerida && (
+                        <div className="rounded-lg border border-primary/30 bg-primary/10 p-2.5 text-[11px] space-y-1">
+                          <div className="flex items-center justify-between">
+                            <span className="font-semibold text-primary-bright flex items-center gap-1">
+                              <Icon name="psychology" className="text-[14px]" />
+                              Skill: <code>{m.skillSugerida.comando}</code>
+                            </span>
+                            <button
+                              type="button"
+                              onClick={() => enviarPedido(`Execute a skill ${m.skillSugerida!.comando} no projeto`)}
+                              className="text-[10px] font-semibold text-primary-bright hover:underline"
+                            >
+                              Mandar executar
+                            </button>
+                          </div>
+                          {m.skillSugerida.motivo && <p className="text-fg-secondary text-[10px]">{m.skillSugerida.motivo}</p>}
+                        </div>
+                      )}
+
+                      {/* Execução de Ação Direta no Studio */}
+                      {m.acaoStudio && (
+                        <div className="pt-1">
+                          <button
+                            type="button"
+                            disabled={executandoStudio}
+                            onClick={() => executarAcaoStudio(m.acaoStudio!.action, m.acaoStudio!.payload, m.acaoStudio!.label)}
+                            className="inline-flex items-center gap-1.5 rounded-full bg-gradient-to-r from-primary to-violet-600 px-3 py-1.5 text-[11px] font-bold text-white shadow hover:opacity-90 disabled:opacity-40"
+                          >
+                            <Icon name={executandoStudio ? "sync" : "bolt"} className={executandoStudio ? "animate-spin text-[14px]" : "text-[14px] text-amber-300"} />
+                            <span>{m.acaoStudio.label || "Executar no Projeto"}</span>
+                          </button>
+                        </div>
+                      )}
+
                       {m.lembrou && (
                         <p className="flex items-center gap-1 text-[11px] text-success">
                           <Icon name="bookmark_added" className="text-[14px]" /> Anotei: {m.lembrou}
                         </p>
                       )}
+
                       {(m.irPara || m.acaoClaude) && (
                         <div className="flex flex-wrap gap-1.5 pt-1">
                           {m.irPara && (
@@ -364,6 +604,7 @@ export function ClaudeButton() {
                           )}
                         </div>
                       )}
+
                       {m.role === "assistant" && i > 0 && (
                         <div className="flex gap-1 pt-0.5">
                           {([1, -1] as const).map((n) => (
@@ -385,24 +626,17 @@ export function ClaudeButton() {
                     </div>
                   </div>
                 ))}
-                {pensando && <p className="text-[11px] text-muted">Vince está pensando…</p>}
-                {msgs.length <= 1 && (
-                  <div className="flex flex-wrap gap-1.5">
-                    {SUGESTOES.map((s) => (
-                      <button key={s} onClick={() => perguntar(s)} className="rounded-full border border-line px-2.5 py-1 text-[11px] text-fg-secondary hover:border-primary/50 hover:text-fg">
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-                )}
+                {pensando && <p className="text-[11px] text-muted animate-pulse">Vince está pensando…</p>}
+                {executandoStudio && <p className="text-[11px] text-primary-bright animate-pulse">Executando no projeto…</p>}
                 <div ref={fimRef} />
               </div>
+
               <form
                 onSubmit={(e) => {
                   e.preventDefault();
                   perguntar(texto);
                 }}
-                className="flex items-center gap-2 border-t border-line p-3"
+                className="flex items-center gap-2 border-t border-line p-3 bg-surface-mid/20"
               >
                 <button
                   type="button"
@@ -412,34 +646,46 @@ export function ClaudeButton() {
                 >
                   <Icon name={ouvindo ? "stop" : "mic"} className="text-[20px]" />
                 </button>
-                <input value={texto} onChange={(e) => setTexto(e.target.value)} placeholder="Pergunte qualquer coisa…" className="field h-10 flex-1 px-3 text-sm" />
-                <button type="submit" disabled={pensando || texto.trim().length < 2} className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-void disabled:opacity-40" aria-label="Enviar">
+                <input
+                  value={texto}
+                  onChange={(e) => setTexto(e.target.value)}
+                  placeholder={`Pergunte algo em ${contextoTela}…`}
+                  className="field h-10 flex-1 px-3 text-sm"
+                />
+                <button
+                  type="submit"
+                  disabled={pensando || executandoStudio || texto.trim().length < 2}
+                  className="grid size-10 shrink-0 place-items-center rounded-full bg-primary text-void disabled:opacity-40"
+                  aria-label="Enviar"
+                >
                   <Icon name="send" className="text-[18px]" />
                 </button>
               </form>
-              {erro && <p className="px-4 pb-3 text-[11px] text-error">{erro}</p>}
-              {msgs.length > 1 && (
-                <button onClick={() => setMsgs([BOAS_VINDAS])} className="pb-3 text-[10px] text-muted hover:text-fg">
-                  Limpar conversa
+              {erro && <p className="px-4 pb-2 text-[11px] text-error">{erro}</p>}
+              <div className="flex items-center justify-between px-4 pb-2 text-[10px] text-muted">
+                {msgs.length > 1 ? (
+                  <button onClick={() => setMsgs([BOAS_VINDAS])} className="hover:text-fg">
+                    Limpar conversa
+                  </button>
+                ) : <span />}
+                <button onClick={() => setPrecisaVincular(true)} className="hover:text-fg">
+                  Trocar IA ({motor || "Vincular"})
                 </button>
-              )}
-              <button onClick={() => setPrecisaVincular(true)} className="pb-3 text-[10px] text-muted hover:text-fg">
-                Trocar a IA do Vince
-              </button>
+              </div>
             </>
             )
           ) : aba === "claude" ? (
             <>
-              <div className="space-y-2 border-b border-line p-4">
+              <div className="space-y-2 border-b border-line p-4 bg-surface-mid/20">
                 <p className="text-[11px] text-muted">
-                  Os pedidos são executados pelo <strong className="text-primary-bright">agente de IA que você vinculou ao Vince</strong>, nos seus projetos locais.
+                  Os pedidos são executados pelo <strong className="text-primary-bright">agente local (Antigravity agy / Claude Code)</strong> nos arquivos do seu projeto.
                 </p>
                 {anexo && <span className="inline-block rounded border border-primary/40 px-1.5 py-0.5 font-mono text-[10px] text-primary-bright">+ anexo</span>}
                 <textarea
                   value={pedido}
                   onChange={(e) => setPedido(e.target.value)}
                   rows={3}
-                  placeholder='Ex.: "Na cena 2, deixe o título maior e troque o destaque para amarelo"'
+                  placeholder='Ex.: "Na cena 2, aumente o título e aplique o motion abertura-impacto"'
                   className="field w-full p-2.5 text-sm"
                 />
                 <div className="flex items-center gap-2">
@@ -458,22 +704,67 @@ export function ClaudeButton() {
                     className="flex h-10 flex-1 items-center justify-center gap-2 rounded bg-primary text-sm font-bold text-void disabled:opacity-40"
                   >
                     <Icon name="send" className="text-[18px]" />
-                    {enviando ? "Executando…" : "Executar com o agente vinculado"}
+                    {enviando ? "Executando…" : "Executar com o agente"}
                   </button>
                 </div>
                 {erro && <p className="text-[11px] text-error">{erro}</p>}
               </div>
+
+              {/* Toolbar de Limpeza de Pedidos */}
+              <div className="flex items-center justify-between border-b border-line/40 px-4 py-2 text-xs bg-void/30">
+                <span className="font-mono text-[11px] text-muted">
+                  {pedidos.length} {pedidos.length === 1 ? "pedido" : "pedidos"} na fila
+                </span>
+                <div className="flex items-center gap-3">
+                  {pedidos.some((p) => p.status === "feito" || p.status === "erro") && (
+                    <button
+                      type="button"
+                      onClick={() => limparPedidos("feito")}
+                      className="text-[11px] text-fg-secondary hover:text-fg hover:underline"
+                    >
+                      Limpar concluídos
+                    </button>
+                  )}
+                  {pedidos.length > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (confirm("Deseja apagar todos os pedidos da caixa?")) {
+                          limparPedidos("all");
+                        }
+                      }}
+                      className="text-[11px] text-muted hover:text-error hover:underline"
+                    >
+                      Limpar tudo
+                    </button>
+                  )}
+                </div>
+              </div>
+
               <div className="flex-1 space-y-2 overflow-y-auto p-4">
                 {pedidos.length === 0 ? (
-                  <p className="text-center text-xs text-muted">Nenhum pedido ainda.</p>
+                  <div className="py-8 text-center text-xs text-muted space-y-1">
+                    <Icon name="inbox" className="text-[28px] mx-auto text-muted/50" />
+                    <p>Caixa de pedidos limpa.</p>
+                  </div>
                 ) : (
                   pedidos.map((i) => (
-                    <div key={i.id} className="rounded-lg border border-line bg-void/50 p-3 text-xs">
+                    <div key={i.id} className="group relative rounded-lg border border-line bg-void/50 p-3 text-xs">
                       <div className="mb-1 flex items-center justify-between gap-2">
                         <span className={cn("rounded border px-1.5 py-0.5 font-mono text-[10px]", STATUS_LABEL[i.status].cls)}>{STATUS_LABEL[i.status].label}</span>
-                        <span className="font-mono text-[10px] text-muted">
-                          {new Date(i.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
-                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="font-mono text-[10px] text-muted">
+                            {new Date(i.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                          </span>
+                          <button
+                            type="button"
+                            onClick={() => excluirPedido(i.id)}
+                            title="Excluir pedido"
+                            className="rounded p-1 text-muted hover:text-error hover:bg-error/15 transition-colors"
+                          >
+                            <Icon name="delete" className="text-[13px]" />
+                          </button>
+                        </div>
                       </div>
                       <p className="text-fg">{i.pedido}</p>
                       {i.resposta && <p className="mt-2 whitespace-pre-wrap rounded border border-line/60 bg-surface-mid/40 p-2 text-fg-secondary">{i.resposta}</p>}
@@ -483,7 +774,7 @@ export function ClaudeButton() {
               </div>
             </>
           ) : (
-            <MemoriaVince />
+            <MemoriaVince projetoId={projetoId} pathname={pathname} />
           )}
         </aside>
       )}
@@ -491,9 +782,8 @@ export function ClaudeButton() {
   );
 }
 
-
-/** Aba "Memória": o que o Vince sabe do Igor. Tudo aqui entra no prompt de cada conversa. */
-function MemoriaVince() {
+/** Aba "Memória": o que o Vince aprende com você a cada edição e projeto. */
+function MemoriaVince({ projetoId, pathname }: { projetoId?: string; pathname: string }) {
   const [itens, setItens] = useState<Array<{ id: string; texto: string; origem: string; criadoEm: string }>>([]);
   const [novo, setNovo] = useState("");
   const [notas, setNotas] = useState({ boas: 0, ruins: 0 });
@@ -502,9 +792,13 @@ function MemoriaVince() {
     const r = await fetch("/api/vince", { cache: "no-store" }).then((x) => x.json()).catch(() => null);
     if (r?.ok) {
       setItens(r.itens);
-      setNotas({ boas: r.feedback.filter((f: { nota: number }) => f.nota === 1).length, ruins: r.feedback.filter((f: { nota: number }) => f.nota === -1).length });
+      setNotas({
+        boas: r.feedback.filter((f: { nota: number }) => f.nota === 1).length,
+        ruins: r.feedback.filter((f: { nota: number }) => f.nota === -1).length,
+      });
     }
   }, []);
+
   useEffect(() => {
     carregar();
   }, [carregar]);
@@ -514,12 +808,36 @@ function MemoriaVince() {
     carregar();
   };
 
+  const aprenderDoContexto = () => {
+    if (projetoId) {
+      post({
+        action: "lembrar",
+        texto: `No projeto atual (${projetoId}), priorize legendas dinâmicas, ganchos nos primeiros 2s e formato 9:16 vertical`,
+      });
+    } else {
+      post({
+        action: "lembrar",
+        texto: `Priorize vídeos verticais (Shorts/Reels) com narração em português, ritmo acelerado e B-roll denso`,
+      });
+    }
+  };
+
   return (
     <div className="flex-1 space-y-3 overflow-y-auto p-4 text-xs">
-      <p className="text-muted">
-        O Vince não treina um modelo: ele lê esta lista em toda conversa. Ele anota sozinho quando você conta uma preferência, e as respostas com 👎 ({notas.ruins}) viram exemplos do que evitar
-        {notas.boas ? `; as com 👍 (${notas.boas}), do que repetir` : ""}.
-      </p>
+      <div className="rounded-lg border border-primary/25 bg-primary/5 p-3 text-[11px] leading-relaxed text-fg-secondary space-y-2">
+        <p>
+          O Vince aprende ativamente com suas decisões. As notas 👍 ({notas.boas}) e 👎 ({notas.ruins}) ensinam o que repetir ou evitar, e as regras abaixo entram no cérebro dele em toda conversa.
+        </p>
+        <button
+          type="button"
+          onClick={aprenderDoContexto}
+          className="inline-flex items-center gap-1 rounded bg-primary/20 px-2 py-1 text-[10px] font-semibold text-primary-bright hover:bg-primary/30"
+        >
+          <Icon name="auto_awesome" className="text-[12px]" />
+          Aprender preferências desta tela
+        </button>
+      </div>
+
       <form
         onSubmit={(e) => {
           e.preventDefault();
@@ -527,13 +845,19 @@ function MemoriaVince() {
         }}
         className="flex gap-2"
       >
-        <input value={novo} onChange={(e) => setNovo(e.target.value)} placeholder="Ensine algo: ex. meu público principal é do México" className="field h-9 flex-1 px-3 text-xs" />
+        <input
+          value={novo}
+          onChange={(e) => setNovo(e.target.value)}
+          placeholder="Ensine algo: ex.: sempre use fonte Sora e legendas amarelas"
+          className="field h-9 flex-1 px-3 text-xs"
+        />
         <button type="submit" className="rounded bg-primary px-3 text-xs font-semibold text-void">
           Anotar
         </button>
       </form>
+
       {itens.length === 0 ? (
-        <p className="py-6 text-center text-muted">Nada anotado ainda.</p>
+        <p className="py-6 text-center text-muted">Nenhum aprendizado registrado ainda.</p>
       ) : (
         <ul className="space-y-1.5">
           {itens.map((i) => (

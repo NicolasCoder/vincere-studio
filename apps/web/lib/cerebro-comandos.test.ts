@@ -53,7 +53,25 @@ describe("montarComandoChat", () => {
 describe("interpretarRespostaDoVince", () => {
   it("lê JSON completo, inclusive com texto em volta", () => {
     const r = interpretarRespostaDoVince('Claro!\n{"resposta":"Comece pelo Início.","irPara":"/dashboard","acaoClaude":null,"lembrar":"gosta de 9:16"}', extrair);
-    expect(r).toEqual({ resposta: "Comece pelo Início.", irPara: "/dashboard", acaoClaude: null, lembrar: "gosta de 9:16" });
+    expect(r).toEqual({
+      resposta: "Comece pelo Início.",
+      irPara: "/dashboard",
+      acaoClaude: null,
+      lembrar: "gosta de 9:16",
+      acaoStudio: null,
+      skillSugerida: null,
+    });
+  });
+
+  it("lê acaoStudio e skillSugerida quando presentes", () => {
+    const json = JSON.stringify({
+      resposta: "Gerei as imagens para o projeto.",
+      acaoStudio: { action: "gerar_imagens", label: "Gerar Imagens IA" },
+      skillSugerida: { nome: "subtitles-studio", comando: "/subtitles-studio", motivo: "Legendas Lockup" },
+    });
+    const r = interpretarRespostaDoVince(json, extrair);
+    expect(r.acaoStudio?.action).toBe("gerar_imagens");
+    expect(r.skillSugerida?.comando).toBe("/subtitles-studio");
   });
 
   it("se a IA responder em texto corrido, o texto inteiro vira a resposta", () => {

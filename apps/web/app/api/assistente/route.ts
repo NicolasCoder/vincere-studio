@@ -41,7 +41,17 @@ export async function POST(req: Request) {
     const data = interpretarRespostaDoVince(texto, extractJson);
     const irPara = data.irPara && TELAS[data.irPara] ? data.irPara : null;
     const lembrou = data.lembrar ? await lembrar(data.lembrar) : null;
-    return NextResponse.json({ ok: true, resposta: data.resposta, irPara, acaoClaude: data.acaoClaude || null, lembrou: lembrou?.texto ?? null, motor, cerebro: ativo });
+    return NextResponse.json({
+      ok: true,
+      resposta: data.resposta,
+      irPara,
+      acaoClaude: data.acaoClaude || null,
+      acaoStudio: data.acaoStudio || null,
+      skillSugerida: data.skillSugerida || null,
+      lembrou: lembrou?.texto ?? null,
+      motor,
+      cerebro: ativo,
+    });
   } catch (err) {
     return NextResponse.json(
       { ok: false, error: `O assistente não conseguiu responder agora (${err instanceof Error ? err.message : String(err)}).` },

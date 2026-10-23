@@ -18,6 +18,32 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
 
 ---
 
+## Sessão 23/10/2026 (tarde, Antigravity) — Vince Flutuante Ativo, Limpeza de Pedidos e Exclusão Universal
+
+- **Vince Flutuante Ativo e Contextual (`apps/web/components/ClaudeButton.tsx`)**:
+  - Vince agora detecta a tela ativa do Studio e renderiza chips de ações contextuais imediatas.
+  - **Execução Real de Ações de Edição**: permite executar ações nativas (`auto_produce`, `gerar_imagens`, `sintetizar_voz`, `exportar_hyperframes`, etc.) diretamente no projeto ativo via `/api/v1/projects/[id]/actions` com spinner e feedback em tempo real.
+  - **Sugestão de Skills no Momento Certo**: suporte no cérebro (`vince-sistema.ts`, `cerebro-comandos.ts`) e na UI para recomendação inteligente de skills (`/subtitles-studio`, `/video-sharingan`, `/flow-studio`, etc.).
+  - **Memória & Aprendizado Contínuo**: o Vince retém preferências de nicho, proporções, vozes e estilos visuais do usuário para as próximas interações.
+- **Caixa de Pedidos Limpa & Gerenciável**:
+  - `storage/claude-inbox.json` esvaziado de pedidos legados de teste.
+  - Endpoint `DELETE /api/claude` implementado para exclusão por lote (`filtro=feito` ou `filtro=all`) ou unitária (`id`).
+  - Botões de limpeza em lote e lixeira individual adicionados à interface.
+- **Exclusão Universal de Projetos e Fluxos**:
+  - Botão de lixeira sempre visível no Kanban de Projetos (`/projects`).
+  - `BotaoApagarProjeto` adicionado em todos os itens recentes do Início (`/dashboard`).
+  - Exclusão de projeto embutida no drawer de saúde do projeto (`ProjectShell.tsx`).
+  - `BotaoApagarWorkflow` adicionado na lista de fluxos salvos (`/workflow`).
+  - Botão "Excluir" adicionado no seletor do HyperFrames Studio (`/studio`) com rota `POST /api/hyperframes { action: "delete" }`.
+- **Atualização do HyperFrames para v0.8.189 & Token Administrativo**:
+  - `hyperframes` atualizado globalmente no Node para a versão mais recente (`0.8.189`).
+  - Token de atualização `vincere-admin-2026` configurado no `.env` e botão "Usar padrão" adicionado ao modal `AtualizarVersao.tsx`.
+- **Qualidade & Validação**:
+  - `pnpm typecheck`: 7/7 pacotes aprovados (0 erros).
+  - `pnpm test`: 5/5 suítes aprovadas (89 testes unitários + testes de integração verdes).
+
+---
+
 ## Sessão 19/10/2026 (noite, Claude) — vistoria da 2.0
 
 Achados medidos (não presumidos):

@@ -6,6 +6,7 @@ import { Topbar } from "@/components/Topbar";
 import { PageHeader } from "@/components/PageHeader";
 import { getUsageSummary, listJobs, listProjects, parseJson } from "@/lib/data";
 import { NichoLauncher } from "./NichoLauncher";
+import { BotaoApagarProjeto } from "@/components/BotaoApagarProjeto";
 
 export default async function Dashboard() {
   const [projects, usage, jobs, youtubeConnection] = await Promise.all([
@@ -163,6 +164,7 @@ export default async function Dashboard() {
                           <Icon name="movie_filter" className="text-[14px] text-primary-bright" />
                           <span className="text-[11px]">Studio</span>
                         </Link>
+                        <BotaoApagarProjeto projectId={p.id} projectTitle={p.title} />
                       </div>
                     </Card>
                   );

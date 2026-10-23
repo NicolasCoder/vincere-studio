@@ -366,6 +366,34 @@ export default function HyperFramesStudioPage() {
 
           <Button
             size="sm"
+            variant="outline"
+            icon="delete"
+            title="Excluir projeto ativo do HyperFrames"
+            onClick={async () => {
+              if (!confirm(`Deseja realmente apagar o projeto "${activeProject}" do HyperFrames? Os arquivos HTML e assets na pasta serão removidos.`)) return;
+              try {
+                const res = await fetch("/api/hyperframes", {
+                  method: "POST",
+                  headers: { "Content-Type": "application/json" },
+                  body: JSON.stringify({ action: "delete", project: activeProject }),
+                });
+                const data = await res.json();
+                if (data.ok && data.projects?.length > 0) {
+                  setAvailableProjects(data.projects);
+                  handleSwitchProject(data.projects[0].name);
+                } else {
+                  window.location.reload();
+                }
+              } catch {
+                alert("Falha ao apagar projeto.");
+              }
+            }}
+          >
+            Excluir
+          </Button>
+
+          <Button
+            size="sm"
             variant="secondary"
             icon="auto_awesome"
             onClick={() => setShowCatalog(!showCatalog)}

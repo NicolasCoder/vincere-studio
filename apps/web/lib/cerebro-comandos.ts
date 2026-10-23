@@ -54,6 +54,16 @@ export interface RespostaDoVince {
   irPara?: string | null;
   acaoClaude?: string | null;
   lembrar?: string | null;
+  acaoStudio?: {
+    action: string;
+    label: string;
+    payload?: Record<string, unknown>;
+  } | null;
+  skillSugerida?: {
+    nome: string;
+    comando: string;
+    motivo: string;
+  } | null;
 }
 
 /**
@@ -67,8 +77,44 @@ export function interpretarRespostaDoVince(bruto: string, extrairJson: (t: strin
     const v = j.value as Record<string, unknown>;
     if (typeof v.resposta === "string" && v.resposta.trim()) {
       const s = (x: unknown) => (typeof x === "string" && x.trim() ? x.trim() : null);
-      return { resposta: v.resposta.trim(), irPara: s(v.irPara), acaoClaude: s(v.acaoClaude), lembrar: s(v.lembrar) };
+      let acaoStudio: RespostaDoVince["acaoStudio"] = null;
+      if (v.acaoStudio && typeof v.acaoStudio === "object") {
+        const asObj = v.acaoStudio as Record<string, unknown>;
+        if (typeof asObj.action === "string") {
+          acaoStudio = {
+            action: asObj.action,
+            label: typeof asObj.label === "string" ? asObj.label : asObj.action,
+            payload: asObj.payload && typeof asObj.payload === "object" ? (asObj.payload as Record<string, unknown>) : undefined,
+          };
+        }
+      }
+      let skillSugerida: RespostaDoVince["skillSugerida"] = null;
+      if (v.skillSugerida && typeof v.skillSugerida === "object") {
+        const skObj = v.skillSugerida as Record<string, unknown>;
+        if (typeof skObj.comando === "string" || typeof skObj.nome === "string") {
+          skillSugerida = {
+            nome: typeof skObj.nome === "string" ? skObj.nome : String(skObj.comando),
+            comando: typeof skObj.comando === "string" ? skObj.comando : `/${skObj.nome}`,
+            motivo: typeof skObj.motivo === "string" ? skObj.motivo : "",
+          };
+        }
+      }
+      return {
+        resposta: v.resposta.trim(),
+        irPara: s(v.irPara),
+        acaoClaude: s(v.acaoClaude),
+        lembrar: s(v.lembrar),
+        acaoStudio,
+        skillSugerida,
+      };
     }
   }
-  return { resposta: texto || "(a IA não devolveu texto)", irPara: null, acaoClaude: null, lembrar: null };
+  return {
+    resposta: texto || "(a IA não devolveu texto)",
+    irPara: null,
+    acaoClaude: null,
+    lembrar: null,
+    acaoStudio: null,
+    skillSugerida: null,
+  };
 }

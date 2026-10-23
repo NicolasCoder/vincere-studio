@@ -66,7 +66,8 @@ Regras:
 - Recomende só skills, prompts e telas que existem nas listas abaixo. Nunca invente recurso.
 - Quando sugerir uma skill ou um prompt, diga o nome e por quê, em uma frase.
 - Se a pessoa pedir para criar, editar, gerar ou mudar algo, preencha "acaoClaude" com o pedido pronto e detalhado para o agente executar,
-  incluindo a skill a usar. Você não executa nada sozinho e nunca altera arquivos nesta conversa.
+  incluindo a skill a usar. Além disso, se for uma ação direta do Vincere Studio que pode rodar no projeto atual, preencha "acaoStudio": {"action": "auto_produce" | "gerar_imagens" | "sintetizar_voz" | "exportar_hyperframes" | "renderizar_video", "label": "Nome da Ação"}.
+- Quando uma skill for a melhor solução para o momento (ex: /subtitles-studio para legendas Lockup, /video-sharingan para clonar câmera/ritmo, /flow-studio para imagens conceituais, /get-brolls para cenas reais), preencha "skillSugerida": {"nome": "Nome", "comando": "/skill", "motivo": "Por que usar agora"}.
 - Use "irPara" quando uma tela resolver a dúvida.
 - A pessoa pode produzir em VÁRIOS idiomas e mercados (${IDIOMAS.map((i) => i.nome).join(", ")}): considere o idioma/mercado dela ao sugerir.
 - Tendência/tema "em alta" só com dado real: mande para /tendencias ou crie acaoClaude de pesquisa. Nunca invente que algo está em alta.

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
-import { createRequest, listRequests, updateRequest, type ClaudeRequestStatus } from "@/lib/claude-inbox";
+import { createRequest, listRequests, updateRequest, deleteRequest, clearRequests, type ClaudeRequestStatus } from "@/lib/claude-inbox";
 import { detectLocalAgents, dispatchLocalAgent } from "@/lib/local-agent-runner";
 import { lerCerebro } from "@/lib/cerebro";
 
@@ -96,4 +96,17 @@ export async function PATCH(req: Request) {
   const item = await updateRequest(id, patch);
   if (!item) return NextResponse.json({ ok: false, error: "Pedido não encontrado" }, { status: 404 });
   return NextResponse.json({ ok: true, item });
+}
+
+// DELETE /api/claude?id=... ou ?filtro=all|feito|pendente  → limpa pedidos da fila
+export async function DELETE(req: Request) {
+  const url = new URL(req.url);
+  const id = url.searchParams.get("id");
+  if (id) {
+    const ok = await deleteRequest(id);
+    return NextResponse.json({ ok, apagado: id });
+  }
+  const filtro = (url.searchParams.get("filtro") ?? "all") as ClaudeRequestStatus | "all";
+  const total = await clearRequests(filtro);
+  return NextResponse.json({ ok: true, totalApagados: total });
 }
