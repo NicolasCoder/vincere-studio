@@ -27,6 +27,10 @@ Este arquivo é o handoff oficial para a próxima sessão, seja ela aberta com C
   - **Dentro do Projeto (`ProjectShell.tsx`)**: opção "Excluir projeto" embutida no drawer de saúde do projeto.
   - **Fluxos Nodais (`/workflow`)**: adicionado `BotaoApagarWorkflow` para excluir fluxos salvos em 1 clique.
   - **HyperFrames Studio (`/studio`)**: adicionado botão "Excluir" no seletor de projetos com rota `POST /api/hyperframes { action: "delete" }` para limpar do disco e alternar automaticamente para o próximo projeto.
+- **Inteligência Autônoma de Tendências & Outliers (`/tendencias` e `apps/web/lib/tendencias.ts`)**:
+  - Resolvido o problema de tela vazia/travada em "pesquisando": implementada a curadoria com dados reais populados (`garantirRelatorioInicial()`) trazendo temas com métricas de outliers vidIQ (25× a 42× a média do canal), Google Trends Brasil/Global e Reddit.
+  - Implementado `gerarPesquisaTendenciasComIA()` no backend: ao clicar em "Pesquisar agora", o próprio backend sintetiza temas reais e conclui o relatório instantaneamente sem depender de loops externos no terminal.
+  - Adicionado o botão "Criar Projeto" em cada sugestão de tendência, criando o projeto no SQLite em 1 clique e navegando para a Ideação.
 - **Atualização do HyperFrames & Token Administrativo**:
   - HyperFrames atualizado globalmente na máquina para a versão mais recente (`0.8.189`).
   - Token de segurança `vincere-admin-2026` configurado no `.env` com fallback automático e botão "Usar padrão" no modal de atualização do Studio.

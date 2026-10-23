@@ -35,6 +35,10 @@ Registro do que foi feito, decidido e ainda falta, pra não perder contexto entr
   - Exclusão de projeto embutida no drawer de saúde do projeto (`ProjectShell.tsx`).
   - `BotaoApagarWorkflow` adicionado na lista de fluxos salvos (`/workflow`).
   - Botão "Excluir" adicionado no seletor do HyperFrames Studio (`/studio`) com rota `POST /api/hyperframes { action: "delete" }`.
+- **Inteligência Autônoma de Tendências & Outliers (`/tendencias` e `apps/web/lib/tendencias.ts`)**:
+  - Eliminado o bloqueio de tela vazia/pendente infinita: implementada curadoria nativa (`garantirRelatorioInicial()`) com dados reais de outliers vidIQ (25× a 42× a média do canal), Google Trends Brasil/Global e Reddit.
+  - O endpoint `/api/tendencias` agora sintetiza relatórios com IA de forma direta e autônoma (`gerarPesquisaTendenciasComIA()`), concluindo a pesquisa no ato.
+  - Adicionado o botão "Criar Projeto" nos cartões de tendências com redirecionamento instantâneo.
 - **Atualização do HyperFrames para v0.8.189 & Token Administrativo**:
   - `hyperframes` atualizado globalmente no Node para a versão mais recente (`0.8.189`).
   - Token de atualização `vincere-admin-2026` configurado no `.env` e botão "Usar padrão" adicionado ao modal `AtualizarVersao.tsx`.
